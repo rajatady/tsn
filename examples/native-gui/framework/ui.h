@@ -70,6 +70,7 @@ UIHandle    ui_button(const char *label, UIClickFn fn, int tag);
 UIHandle    ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, int tag);
 /* style: 0=regular, 1=prominent/accent, 2=destructive, 3=borderless */
 void        ui_button_set_style(UIHandle b, int style);
+void        ui_on_click(UIHandle v, UIClickFn fn, int tag);
 
 /* ─── Segmented Control ──────────────────────────────────────────── */
 UIHandle    ui_segmented(int count, const char **labels);

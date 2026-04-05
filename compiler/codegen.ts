@@ -60,7 +60,7 @@ interface ParamInfo {
 }
 
 interface HookState {
-  kind: 'state' | 'route'
+  kind: 'state' | 'route' | 'store'
   sourceValueName: string
   sourceSetterName: string
   tsType: string
@@ -68,6 +68,7 @@ interface HookState {
   valueSymbol: string
   initSymbol: string
   applySymbol: string
+  storeKey: string
 }
 
 class CodeGen {
@@ -89,6 +90,7 @@ class CodeGen {
   private identifierAliases: Map<string, string> = new Map()
   private hookStates: HookState[] = []
   private hookStatesBySetter: Map<string, HookState> = new Map()
+  private hookStatesByStoreKey: Map<string, HookState> = new Map()
   private jsxBootStmts: string[] = []
   // JSX support
   jsxStmts: string[] = []    // accumulated C statements from JSX emission
@@ -251,18 +253,36 @@ class CodeGen {
     return { name, tsType, cType, aliases }
   }
 
-  private isHookCall(node: ts.Expression | undefined, kind?: 'state' | 'route'): node is ts.CallExpression {
+  private isHookCall(node: ts.Expression | undefined, kind?: 'state' | 'route' | 'store'): node is ts.CallExpression {
     if (!node || !ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return false
     if (kind === 'state') return node.expression.text === 'useState'
     if (kind === 'route') return node.expression.text === 'useRoute'
-    return node.expression.text === 'useState' || node.expression.text === 'useRoute'
+    if (kind === 'store') return node.expression.text === 'useStore'
+    return node.expression.text === 'useState' || node.expression.text === 'useRoute' || node.expression.text === 'useStore'
   }
 
   private inferHookTsType(call: ts.CallExpression): string {
     if (ts.isIdentifier(call.expression) && call.expression.text === 'useRoute') return 'string'
+    if (ts.isIdentifier(call.expression) && call.expression.text === 'useStore') {
+      if (call.typeArguments?.length) return this.tsTypeName(call.typeArguments[0])
+      if (call.arguments.length > 1) return this.exprType(call.arguments[1]) ?? 'number'
+      return 'number'
+    }
     if (call.typeArguments?.length) return this.tsTypeName(call.typeArguments[0])
     if (call.arguments.length > 0) return this.exprType(call.arguments[0]) ?? 'number'
     return 'number'
+  }
+
+  private hookInitArg(call: ts.CallExpression): ts.Expression | undefined {
+    if (ts.isIdentifier(call.expression) && call.expression.text === 'useStore') return call.arguments[1]
+    return call.arguments[0]
+  }
+
+  private hookStoreKey(call: ts.CallExpression): string {
+    if (ts.isIdentifier(call.expression) && call.expression.text === 'useStore' && call.arguments[0] && ts.isStringLiteral(call.arguments[0])) {
+      return call.arguments[0].text
+    }
+    return ''
   }
 
   private zeroInitForType(tsType: string, cType: string): string {
@@ -283,13 +303,23 @@ class CodeGen {
   }
 
   private registerHookState(
-    kind: 'state' | 'route',
+    kind: 'state' | 'route' | 'store',
     valueName: string,
     setterName: string,
-    tsType: string
+    tsType: string,
+    storeKey = ''
   ): HookState {
     if (kind === 'route') {
       const existing = this.hookStates.find(h => h.kind === 'route')
+      if (existing) {
+        this.identifierAliases.set(valueName, existing.valueSymbol)
+        this.hookStatesBySetter.set(setterName, existing)
+        return existing
+      }
+    }
+
+    if (kind === 'store' && storeKey.length > 0) {
+      const existing = this.hookStatesByStoreKey.get(storeKey)
       if (existing) {
         this.identifierAliases.set(valueName, existing.valueSymbol)
         this.hookStatesBySetter.set(setterName, existing)
@@ -308,10 +338,12 @@ class CodeGen {
       valueSymbol: kind === 'route' ? '_route_state' : `_hook_state_${id}`,
       initSymbol: kind === 'route' ? '_route_init' : `_hook_init_${id}`,
       applySymbol: kind === 'route' ? '_route_navigate' : `_hook_apply_${id}`,
+      storeKey,
     }
     this.hookStates.push(hook)
     this.identifierAliases.set(valueName, hook.valueSymbol)
     this.hookStatesBySetter.set(setterName, hook)
+    if (kind === 'store' && storeKey.length > 0) this.hookStatesByStoreKey.set(storeKey, hook)
     return hook
   }
 
@@ -1052,14 +1084,14 @@ class CodeGen {
       if (elems.length === 2 && decl.initializer) {
         const valueName = elems[0].name.getText()
         const setterName = elems[1].name.getText()
-        const kind = ts.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === 'useRoute'
-          ? 'route'
-          : 'state'
+        let kind: 'state' | 'route' | 'store' = 'state'
+        if (ts.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === 'useRoute') kind = 'route'
+        if (ts.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === 'useStore') kind = 'store'
         const tsType = this.inferHookTsType(decl.initializer)
-        const hook = this.registerHookState(kind, valueName, setterName, tsType)
+        const hook = this.registerHookState(kind, valueName, setterName, tsType, this.hookStoreKey(decl.initializer))
         this.varTypes.set(valueName, tsType)
         this.varTypes.set(setterName, 'void')
-        this.emitHookInitializer(hook, decl.initializer.arguments[0], out)
+        this.emitHookInitializer(hook, this.hookInitArg(decl.initializer), out)
         return
       }
     }

@@ -13,7 +13,7 @@ export function App() {
   if (route === 'arcade') content = <ArcadeScreen />
   if (route === 'play') content = <PlayScreen />
   if (route === 'develop') content = <DevelopScreen />
-  if (route.startsWith('game:')) content = <DetailScreen />
+  if (route === 'detail') content = <DetailScreen />
 
   return (
     <Window title="App Store" width={1400} height={900} dark subtitle="Apple Arcade">

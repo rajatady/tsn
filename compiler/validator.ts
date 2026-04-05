@@ -68,11 +68,25 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
         !!node.initializer &&
         ts.isCallExpression(node.initializer) &&
         ts.isIdentifier(node.initializer.expression) &&
-        (node.initializer.expression.text === 'useState' || node.initializer.expression.text === 'useRoute')
+        (node.initializer.expression.text === 'useState' || node.initializer.expression.text === 'useRoute' || node.initializer.expression.text === 'useStore')
       if (!ok) {
         errors.push({
           pos: node.getStart(),
           message: 'Array destructuring is only supported for hooks like const [state, setState] = useState(...)',
+        })
+      }
+    }
+
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === 'useStore'
+    ) {
+      const key = node.arguments[0]
+      if (!key || !ts.isStringLiteral(key)) {
+        errors.push({
+          pos: node.getStart(),
+          message: 'useStore(key, initial) requires a string literal key',
         })
       }
     }

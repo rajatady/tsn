@@ -1,4 +1,5 @@
-import { useRoute } from '../framework/react'
+import { useRoute, useStore } from '../framework/react'
+import { activeStorefrontRoute } from './navigation'
 
 function handleSidebarSearch(text: string) {
 }
@@ -11,28 +12,30 @@ interface NavItemProps {
 
 function NavItem({ icon, label, route }: NavItemProps) {
   const [currentRoute, navigate] = useRoute('discover')
+  const [returnRoute, setReturnRoute] = useStore<string>('app-store:return-route', 'discover')
+  const activeRoute: string = activeStorefrontRoute(currentRoute, returnRoute)
 
   if (route === 'discover') {
-    if (currentRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('discover')}>{label}</Button>
-    return <Button variant="sidebar" icon={icon} onClick={() => navigate('discover')}>{label}</Button>
+    if (activeRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => { setReturnRoute('discover'); navigate('discover') }}>{label}</Button>
+    return <Button variant="sidebar" icon={icon} onClick={() => { setReturnRoute('discover'); navigate('discover') }}>{label}</Button>
   }
 
   if (route === 'arcade') {
-    if (currentRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('arcade')}>{label}</Button>
-    return <Button variant="sidebar" icon={icon} onClick={() => navigate('arcade')}>{label}</Button>
+    if (activeRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => { setReturnRoute('arcade'); navigate('arcade') }}>{label}</Button>
+    return <Button variant="sidebar" icon={icon} onClick={() => { setReturnRoute('arcade'); navigate('arcade') }}>{label}</Button>
   }
 
   if (route === 'play') {
-    if (currentRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('play')}>{label}</Button>
-    return <Button variant="sidebar" icon={icon} onClick={() => navigate('play')}>{label}</Button>
+    if (activeRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => { setReturnRoute('play'); navigate('play') }}>{label}</Button>
+    return <Button variant="sidebar" icon={icon} onClick={() => { setReturnRoute('play'); navigate('play') }}>{label}</Button>
   }
 
   if (route === 'develop') {
-    if (currentRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('develop')}>{label}</Button>
-    return <Button variant="sidebar" icon={icon} onClick={() => navigate('develop')}>{label}</Button>
+    if (activeRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => { setReturnRoute('develop'); navigate('develop') }}>{label}</Button>
+    return <Button variant="sidebar" icon={icon} onClick={() => { setReturnRoute('develop'); navigate('develop') }}>{label}</Button>
   }
 
-  if (currentRoute === route) return <Button variant="sidebar-active" icon={icon}>{label}</Button>
+  if (activeRoute === route) return <Button variant="sidebar-active" icon={icon}>{label}</Button>
   return <Button variant="sidebar" icon={icon}>{label}</Button>
 }
 

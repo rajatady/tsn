@@ -1,4 +1,4 @@
-import { useRoute, useState } from '../../framework/react'
+import { useRoute, useState, useStore } from '../../framework/react'
 import {
   AppRow,
   InfoPairView,
@@ -7,43 +7,45 @@ import {
   ReviewCardView,
   SectionHeader,
 } from '../components'
-import { fameGames, gameFromRoute, type GameDetail, type StoreApp } from '../data'
+import { detailBaseFromAppId, fameGames, storeAppFromId, type GameDetail, type StoreApp } from '../data'
+import { goBackToStorefront } from '../store'
 
 function DetailTopBar() {
-  const [route, navigate] = useRoute('discover')
-  const game: GameDetail = gameFromRoute(route)
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const app: StoreApp = storeAppFromId(selectedAppId)
 
   return (
     <HStack className="gap-3">
-      <Button variant="ghost" icon="chevron.left" onClick={() => navigate('arcade')}>Back</Button>
+      <Button variant="ghost" icon="chevron.left" onClick={goBackToStorefront}>Back</Button>
       <Spacer />
       <HStack className="gap-2">
-        <Image src={game.icon} className="w-[22] h-[22] rounded-lg" />
-        <Text className="text-base font-bold">{game.title}</Text>
+        <Image src={app.icon} className="w-[22] h-[22] rounded-lg" />
+        <Text className="text-base font-bold">{app.title}</Text>
       </HStack>
       <Spacer />
-      <Button variant="get" onClick={() => navigate('arcade')}>Get</Button>
-      <Button variant="ghost" icon="square.and.arrow.up" onClick={() => navigate('arcade')}>Share</Button>
+      <Button variant="get">Get</Button>
+      <Button variant="ghost" icon="square.and.arrow.up">Share</Button>
     </HStack>
   )
 }
 
 function DetailSummary() {
-  const [route, navigate] = useRoute('discover')
-  const game: GameDetail = gameFromRoute(route)
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const app: StoreApp = storeAppFromId(selectedAppId)
+  const detail: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
     <Card className="rounded-xl">
       <HStack className="gap-5">
-        <Image src={game.icon} className="w-[104] h-[104] rounded-2xl" />
+        <Image src={app.icon} className="w-[104] h-[104] rounded-2xl" />
         <VStack className="flex-1 gap-1">
-          <Text className="text-xs text-zinc-400">Apple Arcade</Text>
-          <Text className="text-4xl font-bold">{game.title}</Text>
-          <Text className="text-lg text-zinc-400">{game.subtitle}</Text>
+          <Text className="text-xs text-zinc-400">{app.subtitle}</Text>
+          <Text className="text-4xl font-bold">{app.title}</Text>
+          <Text className="text-lg text-zinc-400">{app.caption}</Text>
         </VStack>
         <VStack className="gap-3">
-          <Button variant="get" onClick={() => navigate('arcade')}>Get</Button>
-          <Text className="text-sm text-zinc-400">{game.genre}</Text>
+          <Button variant="get">Get</Button>
+          <Text className="text-sm text-zinc-400">{detail.genre}</Text>
         </VStack>
       </HStack>
     </Card>
@@ -51,8 +53,8 @@ function DetailSummary() {
 }
 
 function MetricStrip() {
-  const [route, navigate] = useRoute('discover')
-  const game: GameDetail = gameFromRoute(route)
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const game: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
     <Card className="rounded-xl">
@@ -82,19 +84,19 @@ function PlatformRow() {
 }
 
 function AboutBlock() {
-  const [route, navigate] = useRoute('discover')
-  const game: GameDetail = gameFromRoute(route)
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const game: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
     <HStack className="gap-8">
       <VStack className="flex-1 gap-1">
-        <Text className="text-base font-bold">Experience slow living in the Japanese countryside.</Text>
+        <Text className="text-base font-bold">{game.tagline}</Text>
         <Text className="text-sm text-zinc-400">{game.summary}</Text>
       </VStack>
       <VStack className="gap-1">
         <Text className="text-sm text-zinc-400">DEVELOPER</Text>
         <Text className="text-base font-bold">{game.studio}</Text>
-        <Button variant="link" onClick={() => navigate('arcade')}>Support</Button>
+        <Button variant="link">Support</Button>
       </VStack>
     </HStack>
   )
@@ -102,7 +104,8 @@ function AboutBlock() {
 
 export function DetailScreen() {
   const [route, navigate] = useRoute('discover')
-  const game: GameDetail = gameFromRoute(route)
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const game: GameDetail = detailBaseFromAppId(selectedAppId)
   const [section, setSection] = useState('reviews')
   const moreGames: StoreApp[] = fameGames()
 

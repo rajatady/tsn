@@ -1020,6 +1020,14 @@ void ui_on_text_changed(UIHandle field, UITextChangedFn fn) {
 - (void)clicked:(id)sender { if (_fn) _fn(_tag); }
 @end
 
+@interface UIViewClickTarget : NSObject
+@property (nonatomic) UIClickFn fn;
+@property (nonatomic) int tag;
+@end
+@implementation UIViewClickTarget
+- (void)clicked:(id)sender { if (_fn) _fn(_tag); }
+@end
+
 UIHandle ui_button(const char *label, UIClickFn fn, int tag) {
     NSButton *b = [NSButton buttonWithTitle:[NSString stringWithUTF8String:label]
                                      target:nil action:nil];
@@ -1110,6 +1118,19 @@ void ui_button_set_style(UIHandle b, int style) {
                                  NSTextAlignmentCenter, 6, 12, 6, 12, NSFontWeightMedium);
             break;
     }
+}
+
+void ui_on_click(UIHandle v, UIClickFn fn, int tag) {
+    if (!fn) return;
+    NSView *view = (__bridge NSView *)v;
+    UIViewClickTarget *target = [UIViewClickTarget new];
+    target.fn = fn;
+    target.tag = tag;
+    NSClickGestureRecognizer *gesture = [[NSClickGestureRecognizer alloc] initWithTarget:target action:@selector(clicked:)];
+    gesture.buttonMask = 0x1;
+    [view addGestureRecognizer:gesture];
+    retain_persistent(target);
+    retain_persistent(gesture);
 }
 
 /* ─── Segmented Control ──────────────────────────────────────────── */

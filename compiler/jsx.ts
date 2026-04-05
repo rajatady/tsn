@@ -241,6 +241,22 @@ export class JsxEmitter {
     return map[name] ?? 0
   }
 
+  private clickTag(props: Map<string, ts.Node | null>, fallback: number): string {
+    const tag = props.get('tag')
+    if (!tag) return `${fallback}`
+    if (ts.isJsxExpression(tag) && tag.expression) return this.ctx.emitExpr(tag.expression)
+    return `${fallback}`
+  }
+
+  private emitOnClick(handle: string, props: Map<string, ts.Node | null>, push: (line: string) => void): void {
+    const onClick = props.get('onClick')
+    if (!onClick || !ts.isJsxExpression(onClick) || !onClick.expression) return
+    const fnRef = this.liftCallback(onClick.expression, 'UIClickFn')
+    const tagNum = this.jsxOnClickCounter++
+    const tagExpr = this.clickTag(props, tagNum)
+    push(`ui_on_click(${handle}, ${fnRef}, ${tagExpr});`)
+  }
+
   // ─── Main Element Emitter ──────────────────────────────────────
 
   emitElement(
@@ -284,6 +300,7 @@ export class JsxEmitter {
         const fn = tag === 'VStack' ? 'ui_vstack' : 'ui_hstack'
         create(`${fn}()`)
         if (tw) for (const c of tw.calls) push(c)
+        this.emitOnClick(handle, props, push)
         this.emitChildren(children, handle)
         return handle
       }
@@ -339,6 +356,7 @@ export class JsxEmitter {
         const src = this.propCStr(props, 'src') ?? '""'
         create(`ui_image(${src})`)
         if (tw) for (const c of tw.calls) push(c)
+        this.emitOnClick(handle, props, push)
         return handle
       }
 
@@ -359,6 +377,7 @@ export class JsxEmitter {
       case 'Card': {
         create(`ui_card()`)
         if (tw) for (const c of tw.calls) push(c)
+        this.emitOnClick(handle, props, push)
         this.emitChildren(children, handle)
         return handle
       }
@@ -400,7 +419,7 @@ export class JsxEmitter {
           fnRef = this.liftCallback(onClick.expression, 'UIClickFn')
           tagNum = this.jsxOnClickCounter++
         }
-        create(`ui_sidebar_item(${parent}, ${text}, ${icon}, ${tagNum}, ${fnRef})`)
+        create(`ui_sidebar_item(${parent}, ${text}, ${icon}, ${this.clickTag(props, tagNum)}, ${fnRef})`)
         return handle
       }
 
@@ -430,8 +449,8 @@ export class JsxEmitter {
           fnRef = this.liftCallback(onClick.expression, 'UIClickFn')
           tagNum = this.jsxOnClickCounter++
         }
-        if (icon) create(`ui_button_icon(${icon}, ${label}, ${fnRef}, ${tagNum})`)
-        else create(`ui_button(${label}, ${fnRef}, ${tagNum})`)
+        if (icon) create(`ui_button_icon(${icon}, ${label}, ${fnRef}, ${this.clickTag(props, tagNum)})`)
+        else create(`ui_button(${label}, ${fnRef}, ${this.clickTag(props, tagNum)})`)
         push(`ui_button_set_style(${handle}, ${variant});`)
         if (tw) for (const c of tw.calls) push(c)
         return handle

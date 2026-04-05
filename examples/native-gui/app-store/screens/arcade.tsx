@@ -21,6 +21,7 @@ import {
   type RankedApp,
   type StoreApp,
 } from '../data'
+import { openStoreApp } from '../store'
 
 function TopRail() {
   const [currentRoute, navigate] = useRoute('discover')
@@ -32,7 +33,7 @@ function TopRail() {
       <Spacer />
       <Text className="text-base font-bold">Arcade</Text>
       <Spacer />
-      <Button variant="primary" onClick={() => navigate('game:rural-life')}>Accept Offer</Button>
+      <Button variant="primary" onClick={openStoreApp} tag={1}>Accept Offer</Button>
     </HStack>
   )
 }
@@ -50,7 +51,7 @@ function Hero() {
           <Text className="text-sm text-zinc-400">A native AppKit storefront rebuilt to match the App Store cadence instead of wrapping screenshots.</Text>
         </VStack>
         <HStack className="gap-3">
-          <Button variant="primary" onClick={() => navigate('game:rural-life')}>Accept Offer</Button>
+          <Button variant="primary" onClick={openStoreApp} tag={1}>Accept Offer</Button>
           <Text className="text-sm text-zinc-400">1 month free, then Rs. 99.00/month.</Text>
         </HStack>
       </VStack>

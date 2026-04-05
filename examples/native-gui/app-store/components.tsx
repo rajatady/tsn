@@ -8,6 +8,7 @@ import type {
   RankedApp,
   StoreApp,
 } from './data'
+import { openStoreApp } from './store'
 
 interface SectionHeaderProps {
   title: string
@@ -64,43 +65,15 @@ export function SectionHeader({ title, action, route }: SectionHeaderProps) {
 }
 
 interface AppActionButtonProps {
-  label: string
-  route: string
+  app: StoreApp
 }
 
-function AppActionButton({ label, route }: AppActionButtonProps) {
-  const [currentRoute, navigate] = useRoute('discover')
-
-  if (route === 'game:dredge') {
-    if (label === 'Get') return <Button variant="get" onClick={() => navigate('game:dredge')}>Get</Button>
-    return <Button variant="ghost" onClick={() => navigate('game:dredge')}>{label}</Button>
+function AppActionButton({ app }: AppActionButtonProps) {
+  if (app.action === 'Get') {
+    return <Button variant="get" onClick={openStoreApp} tag={app.detailTag}>Get</Button>
   }
 
-  if (route === 'game:hello-kitty') {
-    if (label === 'Get') return <Button variant="get" onClick={() => navigate('game:hello-kitty')}>Get</Button>
-    return <Button variant="ghost" onClick={() => navigate('game:hello-kitty')}>{label}</Button>
-  }
-
-  if (route === 'develop') {
-    if (label === 'Get') return <Button variant="get" onClick={() => navigate('develop')}>Get</Button>
-    return <Button variant="ghost" onClick={() => navigate('develop')}>{label}</Button>
-  }
-
-  if (route === 'play') {
-    if (label === 'Get') return <Button variant="get" onClick={() => navigate('play')}>Get</Button>
-    return <Button variant="ghost" onClick={() => navigate('play')}>{label}</Button>
-  }
-
-  if (route === 'discover') {
-    if (label === 'Get') return <Button variant="get" onClick={() => navigate('discover')}>Get</Button>
-    return <Button variant="ghost" onClick={() => navigate('discover')}>{label}</Button>
-  }
-
-  if (label === 'Get') {
-    return <Button variant="get" onClick={() => navigate('game:rural-life')}>Get</Button>
-  }
-
-  return <Button variant="ghost" onClick={() => navigate('game:rural-life')}>{label}</Button>
+  return <Button variant="ghost" onClick={openStoreApp} tag={app.detailTag}>{app.action}</Button>
 }
 
 interface AppRowProps {
@@ -109,14 +82,14 @@ interface AppRowProps {
 
 export function AppRow({ app }: AppRowProps) {
   return (
-    <HStack className="gap-3">
+    <HStack className="gap-3" onClick={openStoreApp} tag={app.detailTag}>
       <Image src={app.icon} className="w-[52] h-[52] rounded-xl" />
       <VStack className="flex-1 gap-0">
         <Text className="text-xs text-zinc-400">{app.subtitle}</Text>
         <Text className="text-lg font-bold">{app.title}</Text>
         <Text className="text-sm text-zinc-400">{app.caption}</Text>
       </VStack>
-      <AppActionButton label={app.action} route={app.route} />
+      <AppActionButton app={app} />
     </HStack>
   )
 }
@@ -127,7 +100,7 @@ interface RankedAppRowProps {
 
 export function RankedAppRow({ item }: RankedAppRowProps) {
   return (
-    <HStack className="gap-4">
+    <HStack className="gap-4" onClick={openStoreApp} tag={item.app.detailTag}>
       <Image src={item.app.icon} className="w-[54] h-[54] rounded-xl" />
       <Text className="text-2xl font-bold">{item.rank}</Text>
       <VStack className="flex-1 gap-0">
@@ -135,7 +108,7 @@ export function RankedAppRow({ item }: RankedAppRowProps) {
         <Text className="text-lg font-bold">{item.app.title}</Text>
         <Text className="text-sm text-zinc-400">{item.app.caption}</Text>
       </VStack>
-      <AppActionButton label={item.app.action} route={item.app.route} />
+      <AppActionButton app={item.app} />
     </HStack>
   )
 }
