@@ -270,6 +270,11 @@ export class JsxEmitter {
         create(`ui_window(${title}, ${w}, ${h}, ${dark})`)
         const sub = this.propCStr(props, 'subtitle')
         if (sub) push(`ui_window_subtitle(${handle}, ${sub});`)
+        const titlebarTransparent = this.propBool(props, 'titlebarTransparent')
+        const fullsizeContent = this.propBool(props, 'fullsizeContent')
+        const immersive = this.propBool(props, 'immersive')
+        if (titlebarTransparent || immersive) push(`ui_window_titlebar_transparent(${handle});`)
+        if (fullsizeContent || immersive) push(`ui_window_fullsize_content(${handle});`)
         this.emitChildren(children, handle)
         return handle
       }

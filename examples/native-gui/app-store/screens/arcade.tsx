@@ -23,7 +23,7 @@ import {
 } from '../data'
 
 function TopRail() {
-  const [currentRoute, navigate] = useRoute('arcade')
+  const [currentRoute, navigate] = useRoute('discover')
 
   return (
     <HStack className="gap-3">
@@ -38,7 +38,7 @@ function TopRail() {
 }
 
 function Hero() {
-  const [currentRoute, navigate] = useRoute('arcade')
+  const [currentRoute, navigate] = useRoute('discover')
 
   return (
     <Card className="rounded-xl">

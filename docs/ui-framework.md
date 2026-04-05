@@ -41,7 +41,7 @@ void     ui_set_flex(UIHandle v, int flex);                // Flex grow factor
 void     ui_set_size(UIHandle v, int w, int h);            // -1 = auto
 void     ui_set_min_size(UIHandle v, int w, int h);
 void     ui_set_max_size(UIHandle v, int w, int h);
-void     ui_set_alignment(UIHandle v, int align);          // 0=leading 1=center 2=trailing
+void     ui_set_alignment(UIHandle v, int align);          // child self-alignment on cross-axis
 void     ui_add_child(UIHandle parent, UIHandle child);
 UIHandle ui_spacer(void);                                  // Flexible space filler
 UIHandle ui_divider(void);                                 // Horizontal line
@@ -53,6 +53,8 @@ The layout engine. Properties:
 - `direction`: 0 = vertical, 1 = horizontal
 - `flex`: grow factor (0 = fixed size)
 - `fixed_width`, `fixed_height`: explicit dimensions
+- `min_width/min_height`, `max_width/max_height`: constraints used to clamp the resolved frame
+- `alignment`: cross-axis child alignment (`leading`, `center`, `trailing`)
 - `padding_top/right/bottom/left`, `spacing`
 - `children`: NSMutableArray of child views
 
@@ -60,6 +62,7 @@ Layout algorithm:
 1. First pass: count fixed/flexible children, compute total fixed space
 2. Second pass: distribute remaining space among flex children
 3. Non-flex children use `naturalSize` (recursively computed content size)
+4. Child frames are clamped by min/max constraints and can be centered on the cross-axis
 
 ## Text & Labels
 
@@ -144,6 +147,7 @@ void     ui_sparkline_set_values(UIHandle spark, double *values, int count, int 
 ```c
 UIHandle ui_blur_view(int material);    // 0=sidebar 1=header 2=content ...
 UIHandle ui_scroll(void);
+void     ui_scroll_set_axis(UIHandle s, int axis); // 0=vertical 1=horizontal
 UIHandle ui_tab_view(void);
 UIHandle ui_tab(UIHandle tv, const char *label, const char *sf_symbol);
 ```

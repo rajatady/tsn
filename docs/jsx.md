@@ -378,6 +378,9 @@ Compile-time parsing. No CSS runtime. 1 Tailwind unit = 4 pixels.
 | `h-N` | Height = N * 4px |
 | `w-[200]` | Width = 200px (arbitrary) |
 | `h-[100]` | Height = 100px (arbitrary) |
+| `min-w-N`, `min-h-N` | Minimum size = N * 4px |
+| `max-w-N`, `max-h-N` | Maximum size = N * 4px |
+| `min-w-[460]`, `max-w-[1160]` | Arbitrary min/max size |
 
 ### Typography
 
@@ -424,6 +427,40 @@ Text colors use system color indices:
 | `rounded-md` | 6px |
 | `rounded-lg` | 12px |
 | `rounded-full` | 9999px |
+
+### Alignment & Overflow
+
+| Class | Effect |
+|-------|--------|
+| `mx-auto` | Center a stack on the cross-axis inside its parent |
+| `self-center` | Center a stack on the cross-axis |
+| `self-end` | Trailing alignment on the cross-axis |
+| `overflow-y-auto` | Vertical native `Scroll` |
+| `overflow-x-auto` | Horizontal native `Scroll` |
+
+The App Store-style centered content rail is now expressed with these classes instead of repeating one giant fixed width on every section:
+
+```tsx
+<Scroll className="flex-1 overflow-y-auto">
+  <VStack>
+    <VStack className="max-w-[1160] mx-auto gap-7 px-8 py-7">
+      {/* page sections */}
+    </VStack>
+  </VStack>
+</Scroll>
+```
+
+Horizontal shelves use a horizontal `Scroll` plus fixed-width children:
+
+```tsx
+<Scroll className="h-[238] overflow-x-auto">
+  <HStack className="gap-8">
+    <VStack className="w-[350] gap-0">
+      {/* shelf column */}
+    </VStack>
+  </HStack>
+</Scroll>
+```
 
 ## Top-Level Variables in JSX Mode
 

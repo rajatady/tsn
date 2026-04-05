@@ -147,6 +147,47 @@ export function parseTailwind(className: string, handle: string): TailwindResult
     if (wMatch) { result.width = px(parseInt(wMatch[1])); continue }
     if (cls.startsWith('w-[')) { result.width = parseArbitrary(cls); continue }
 
+    // Min/max size constraints
+    const minWMatch = cls.match(/^min-w-(\d+)$/)
+    if (minWMatch) {
+      result.calls.push(`ui_set_min_size(${handle}, ${px(parseInt(minWMatch[1]))}, -1);`)
+      continue
+    }
+    if (cls.startsWith('min-w-[')) {
+      result.calls.push(`ui_set_min_size(${handle}, ${parseArbitrary(cls)}, -1);`)
+      continue
+    }
+
+    const maxWMatch = cls.match(/^max-w-(\d+)$/)
+    if (maxWMatch) {
+      result.calls.push(`ui_set_max_size(${handle}, ${px(parseInt(maxWMatch[1]))}, -1);`)
+      continue
+    }
+    if (cls.startsWith('max-w-[')) {
+      result.calls.push(`ui_set_max_size(${handle}, ${parseArbitrary(cls)}, -1);`)
+      continue
+    }
+
+    const minHMatch = cls.match(/^min-h-(\d+)$/)
+    if (minHMatch) {
+      result.calls.push(`ui_set_min_size(${handle}, -1, ${px(parseInt(minHMatch[1]))});`)
+      continue
+    }
+    if (cls.startsWith('min-h-[')) {
+      result.calls.push(`ui_set_min_size(${handle}, -1, ${parseArbitrary(cls)});`)
+      continue
+    }
+
+    const maxHMatch = cls.match(/^max-h-(\d+)$/)
+    if (maxHMatch) {
+      result.calls.push(`ui_set_max_size(${handle}, -1, ${px(parseInt(maxHMatch[1]))});`)
+      continue
+    }
+    if (cls.startsWith('max-h-[')) {
+      result.calls.push(`ui_set_max_size(${handle}, -1, ${parseArbitrary(cls)});`)
+      continue
+    }
+
     // Text size
     const textMatch = cls.match(/^text-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl)$/)
     if (textMatch && textMatch[1] in TEXT_SIZES) {
@@ -182,6 +223,26 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       }
       const r = radii[roundMatch[2] || 'undefined'] || 8
       result.calls.push(`ui_set_corner_radius(${handle}, ${r});`)
+      continue
+    }
+
+    // Auto-centering / self alignment
+    if (cls === 'mx-auto' || cls === 'self-center') {
+      result.calls.push(`ui_set_alignment(${handle}, 1);`)
+      continue
+    }
+    if (cls === 'self-end') {
+      result.calls.push(`ui_set_alignment(${handle}, 2);`)
+      continue
+    }
+
+    // Scroll axis hints. These are meaningful on <Scroll>.
+    if (cls === 'overflow-x-auto') {
+      result.calls.push(`ui_scroll_set_axis(${handle}, 1);`)
+      continue
+    }
+    if (cls === 'overflow-y-auto') {
+      result.calls.push(`ui_scroll_set_axis(${handle}, 0);`)
       continue
     }
 

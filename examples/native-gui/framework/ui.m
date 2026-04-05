@@ -48,8 +48,29 @@ static void finish_render_cycle(void);
 @property int spacing;
 @property int flex;
 @property int fixed_width, fixed_height;
+@property int min_width, min_height;
+@property int max_width, max_height;
+@property int alignment;
 @property (nonatomic, strong) NSMutableArray<NSView *> *children;
 @end
+
+static CGFloat clamp_dimension(CGFloat value, int min_value, int max_value) {
+    if (min_value >= 0 && value < min_value) value = min_value;
+    if (max_value >= 0 && value > max_value) value = max_value;
+    return value;
+}
+
+static NSSize apply_stack_constraints(UIStackContainer *stack, NSSize size) {
+    size.width = clamp_dimension(size.width, stack.min_width, stack.max_width);
+    size.height = clamp_dimension(size.height, stack.min_height, stack.max_height);
+    return size;
+}
+
+static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size, int alignment) {
+    if (alignment == 1 && size < available) return base + floor((available - size) * 0.5);
+    if (alignment == 2 && size < available) return base + (available - size);
+    return base;
+}
 
 @implementation UIStackContainer
 - (instancetype)init {
@@ -58,6 +79,11 @@ static void finish_render_cycle(void);
     _spacing = 8;
     _fixed_width = -1;
     _fixed_height = -1;
+    _min_width = -1;
+    _min_height = -1;
+    _max_width = -1;
+    _max_height = -1;
+    _alignment = 0;
     return self;
 }
 - (BOOL)isFlipped { return YES; }
@@ -97,7 +123,7 @@ static void finish_render_cycle(void);
     if (_direction == 0) h += spacing_total;
     else w += spacing_total;
 
-    return NSMakeSize(w, h);
+    return apply_stack_constraints(self, NSMakeSize(w, h));
 }
 
 - (void)layout {
@@ -119,7 +145,7 @@ static void finish_render_cycle(void);
             else if (_direction == 1 && sc.fixed_width > 0) fixed_total += sc.fixed_width;
             else {
                 /* No fixed size, no flex — use natural (content) size */
-                NSSize ns = [sc naturalSize];
+                NSSize ns = apply_stack_constraints(sc, [sc naturalSize]);
                 fixed_total += (_direction == 0 ? ns.height : ns.width);
             }
         } else if ([child isKindOfClass:[NSVisualEffectView class]]) {
@@ -133,9 +159,12 @@ static void finish_render_cycle(void);
                 else if (_direction == 1 && inner.fixed_width > 0) fixed_total += inner.fixed_width;
                 else fixed_total += 100;
             } else fixed_total += 100;
-        } else if ([child isKindOfClass:[UISpacer class]] ||
-                   [child isKindOfClass:[NSScrollView class]]) {
-            /* Spacers and scroll views absorb remaining space — don't count as fixed */
+        } else if ([child isKindOfClass:[UISpacer class]]) {
+            /* Spacers absorb remaining space — don't count as fixed */
+        } else if ([child isKindOfClass:[NSScrollView class]]) {
+            CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
+            if (_direction == 0 && fh > 0) fixed_total += fh;
+            else if (_direction == 1 && fw > 0) fixed_total += fw;
         } else {
             NSSize intrinsic = child.intrinsicContentSize;
             CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
@@ -163,22 +192,44 @@ static void finish_render_cycle(void);
                 cw = (sc.fixed_width > 0) ? sc.fixed_width : avail_w;
                 ch = (sc.fixed_height > 0) ? sc.fixed_height : (sc.flex > 0 ? 0 : [sc naturalSize].height);
             }
+            cw = clamp_dimension(cw, sc.min_width, sc.max_width);
+            ch = clamp_dimension(ch, sc.min_height, sc.max_height);
         } else if ([child isKindOfClass:[NSScrollView class]]) {
-            /* Scroll views fill available space */
-            cw = avail_w;
-            ch = avail_h;
+            CGFloat fw = child.frame.size.width;
+            CGFloat fh = child.frame.size.height;
+            cw = (fw > 0) ? fw : avail_w;
+            ch = (fh > 0) ? fh : avail_h;
         } else {
             NSSize intrinsic = child.intrinsicContentSize;
             CGFloat frameW = child.frame.size.width;
             CGFloat frameH = child.frame.size.height;
-            /* Use intrinsic size, then frame size, then fallback */
-            cw = (_direction == 1) ? (intrinsic.width > 0 ? intrinsic.width : (frameW > 0 ? frameW : 60)) : avail_w;
-            ch = (_direction == 0) ? (intrinsic.height > 0 ? intrinsic.height : (frameH > 0 ? frameH : 24)) : avail_h;
+            /* Explicit frame sizes from Tailwind should win over intrinsic content size. */
+            if ([child isKindOfClass:[NSTextField class]]) {
+                NSTextField *field = (NSTextField *)child;
+                if (_direction == 1) {
+                    cw = (frameW > 0) ? frameW : (intrinsic.width > 0 ? intrinsic.width : 60);
+                    ch = (frameH > 0) ? frameH : [[field cell] cellSizeForBounds:NSMakeRect(0, 0, cw, CGFLOAT_MAX)].height;
+                } else {
+                    cw = (frameW > 0) ? frameW : avail_w;
+                    ch = (frameH > 0) ? frameH : [[field cell] cellSizeForBounds:NSMakeRect(0, 0, cw, CGFLOAT_MAX)].height;
+                }
+            } else if (_direction == 1) {
+                cw = (frameW > 0) ? frameW : (intrinsic.width > 0 ? intrinsic.width : 60);
+                ch = (frameH > 0) ? frameH : avail_h;
+            } else {
+                cw = (frameW > 0) ? frameW : avail_w;
+                ch = (frameH > 0) ? frameH : (intrinsic.height > 0 ? intrinsic.height : 24);
+            }
         }
 
         if (child_flex > 0 && nflex > 0) {
             CGFloat portion = flex_space * child_flex / nflex;
             if (_direction == 0) ch = portion; else cw = portion;
+            if ([child isKindOfClass:[UIStackContainer class]]) {
+                UIStackContainer *sc = (UIStackContainer *)child;
+                cw = clamp_dimension(cw, sc.min_width, sc.max_width);
+                ch = clamp_dimension(ch, sc.min_height, sc.max_height);
+            }
         }
 
         /* Spacer: takes remaining flex */
@@ -202,11 +253,35 @@ static void finish_render_cycle(void);
             }
         }
 
-        child.frame = NSMakeRect(x, y, cw, ch);
+        CGFloat child_x = x;
+        CGFloat child_y = y;
+        if ([child isKindOfClass:[UIStackContainer class]]) {
+            UIStackContainer *sc = (UIStackContainer *)child;
+            if (_direction == 0) child_x = child_cross_origin(_padding_left, avail_w, cw, sc.alignment);
+            else child_y = child_cross_origin(_padding_top, avail_h, ch, sc.alignment);
+        }
+
+        child.frame = NSMakeRect(child_x, child_y, cw, ch);
         /* Fill inner content of blur/scroll views only — don't clobber nested stack layouts */
         if ([child isKindOfClass:[NSVisualEffectView class]] ||
             [child isKindOfClass:[NSScrollView class]]) {
             for (NSView *sub in child.subviews) sub.frame = child.bounds;
+            if ([child isKindOfClass:[NSScrollView class]]) {
+                NSScrollView *sv = (NSScrollView *)child;
+                NSView *doc = sv.documentView;
+                if ([doc isKindOfClass:[UIStackContainer class]]) {
+                    UIStackContainer *stack = (UIStackContainer *)doc;
+                    BOOL horizontal = sv.hasHorizontalScroller && !sv.hasVerticalScroller;
+                    NSSize natural = [stack naturalSize];
+                    if (horizontal) {
+                        stack.fixed_height = ch;
+                        doc.frame = NSMakeRect(0, 0, natural.width > 0 ? natural.width : cw, ch);
+                    } else {
+                        stack.fixed_width = cw;
+                        doc.frame = NSMakeRect(0, 0, cw, natural.height > 0 ? natural.height : ch);
+                    }
+                }
+            }
         }
 
         if (_direction == 0) y += ch + _spacing;
@@ -620,6 +695,15 @@ void ui_replace_root(UIHandle root) {
     current.subtitle = subtitle;
     current.appearance = appearance;
     current.backgroundColor = background;
+    current.titlebarAppearsTransparent = next.titlebarAppearsTransparent;
+    NSWindowStyleMask currentMask = current.styleMask;
+    NSWindowStyleMask desiredMask = next.styleMask;
+    BOOL wantsFullSize = (desiredMask & NSWindowStyleMaskFullSizeContentView) != 0;
+    BOOL hasFullSize = (currentMask & NSWindowStyleMaskFullSizeContentView) != 0;
+    if (wantsFullSize != hasFullSize) {
+        if (wantsFullSize) current.styleMask = currentMask | NSWindowStyleMaskFullSizeContentView;
+        else current.styleMask = currentMask & ~NSWindowStyleMaskFullSizeContentView;
+    }
     [current setFrame:preservedFrame display:YES];
     [current makeKeyAndOrderFront:nil];
     g_inspect_window = current;
@@ -632,11 +716,10 @@ void ui_replace_root(UIHandle root) {
 UIHandle ui_window(const char *title, int w, int h, bool dark) {
     NSWindow *win = [[NSWindow alloc] initWithContentRect:NSMakeRect(200, 100, w, h)
         styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
-                  NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable |
-                  NSWindowStyleMaskFullSizeContentView
+                  NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable
         backing:NSBackingStoreBuffered defer:NO];
     win.title = [NSString stringWithUTF8String:title];
-    win.titlebarAppearsTransparent = YES;
+    win.titlebarAppearsTransparent = NO;
     win.minSize = NSMakeSize(600, 400);
     if (dark) {
         win.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
@@ -664,7 +747,10 @@ void ui_window_toolbar(UIHandle w, bool visible) { /* placeholder */ }
 void ui_window_titlebar_transparent(UIHandle w) {
     ((__bridge NSWindow *)w).titlebarAppearsTransparent = YES;
 }
-void ui_window_fullsize_content(UIHandle w) { /* already set */ }
+void ui_window_fullsize_content(UIHandle w) {
+    NSWindow *win = (__bridge NSWindow *)w;
+    win.styleMask |= NSWindowStyleMaskFullSizeContentView;
+}
 
 /* ─── Layout ─────────────────────────────────────────────────────── */
 
@@ -712,9 +798,30 @@ void ui_set_size(UIHandle v, int w, int h) {
     view.frame = frame;
 }
 
-void ui_set_min_size(UIHandle v, int w, int h) { /* placeholder */ }
-void ui_set_max_size(UIHandle v, int w, int h) { /* placeholder */ }
-void ui_set_alignment(UIHandle v, int a) { /* placeholder */ }
+void ui_set_min_size(UIHandle v, int w, int h) {
+    NSView *view = (__bridge NSView *)v;
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        UIStackContainer *s = (UIStackContainer *)view;
+        s.min_width = w;
+        s.min_height = h;
+    }
+}
+
+void ui_set_max_size(UIHandle v, int w, int h) {
+    NSView *view = (__bridge NSView *)v;
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        UIStackContainer *s = (UIStackContainer *)view;
+        s.max_width = w;
+        s.max_height = h;
+    }
+}
+
+void ui_set_alignment(UIHandle v, int a) {
+    NSView *view = (__bridge NSView *)v;
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        ((UIStackContainer *)view).alignment = a;
+    }
+}
 
 void ui_add_child(UIHandle parent, UIHandle child) {
     NSView *p = (__bridge NSView *)parent;
@@ -736,9 +843,16 @@ void ui_add_child(UIHandle parent, UIHandle child) {
             NSSize natural = [stack naturalSize];
             CGFloat width = sv.contentView.bounds.size.width > 0 ? sv.contentView.bounds.size.width : natural.width;
             CGFloat height = natural.height > 0 ? natural.height : sv.contentView.bounds.size.height;
-            stack.fixed_width = width;
-            c.frame = NSMakeRect(0, 0, width, height);
-            c.autoresizingMask = NSViewWidthSizable;
+            BOOL horizontal = sv.hasHorizontalScroller && !sv.hasVerticalScroller;
+            if (horizontal) {
+                if (sv.contentView.bounds.size.height > 0) stack.fixed_height = sv.contentView.bounds.size.height;
+                c.frame = NSMakeRect(0, 0, natural.width > 0 ? natural.width : width, sv.contentView.bounds.size.height > 0 ? sv.contentView.bounds.size.height : height);
+                c.autoresizingMask = NSViewHeightSizable;
+            } else {
+                stack.fixed_width = width;
+                c.frame = NSMakeRect(0, 0, width, height);
+                c.autoresizingMask = NSViewWidthSizable;
+            }
         }
     } else {
         [p addSubview:c];
@@ -781,6 +895,11 @@ UIHandle ui_text(const char *content, int size, bool bold) {
     t.font = [NSFont systemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
     t.drawsBackground = NO;
+    t.lineBreakMode = NSLineBreakByWordWrapping;
+    t.maximumNumberOfLines = 0;
+    [t setUsesSingleLineMode:NO];
+    [[t cell] setWraps:YES];
+    [t sizeToFit];
     retain_render(t);
     return (__bridge UIHandle)t;
 }
@@ -790,6 +909,11 @@ UIHandle ui_text_mono(const char *content, int size, bool bold) {
     t.font = [NSFont monospacedDigitSystemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
     t.drawsBackground = NO;
+    t.lineBreakMode = NSLineBreakByWordWrapping;
+    t.maximumNumberOfLines = 0;
+    [t setUsesSingleLineMode:NO];
+    [[t cell] setWraps:YES];
+    [t sizeToFit];
     retain_render(t);
     return (__bridge UIHandle)t;
 }
@@ -1231,6 +1355,18 @@ UIHandle ui_scroll(void) {
     return (__bridge UIHandle)sv;
 }
 
+void ui_scroll_set_axis(UIHandle s, int axis) {
+    NSScrollView *sv = (__bridge NSScrollView *)s;
+    if (![sv isKindOfClass:[NSScrollView class]]) return;
+    if (axis == 1) {
+        sv.hasHorizontalScroller = YES;
+        sv.hasVerticalScroller = NO;
+    } else {
+        sv.hasHorizontalScroller = NO;
+        sv.hasVerticalScroller = YES;
+    }
+}
+
 /* ─── Tab View ───────────────────────────────────────────────────── */
 UIHandle ui_tab_view(void) { return ui_vstack(); /* placeholder */ }
 UIHandle ui_tab(UIHandle tv, const char *l, const char *s) { return ui_vstack(); }
@@ -1371,9 +1507,11 @@ static NSString *take_screenshot(void) {
     if (!g_inspect_window) return @"No window";
     NSString *path = @"/tmp/strictts-screenshot.png";
 
-    /* Capture on main thread */
+    /* Capture on main thread — force layout first so scroll views render */
     dispatch_sync(dispatch_get_main_queue(), ^{
         NSView *contentView = g_inspect_window.contentView;
+        [contentView layoutSubtreeIfNeeded];
+        [contentView display];
         NSBitmapImageRep *rep = [contentView bitmapImageRepForCachingDisplayInRect:contentView.bounds];
         [contentView cacheDisplayInRect:contentView.bounds toBitmapImageRep:rep];
         NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];

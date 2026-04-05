@@ -32,7 +32,7 @@ void        ui_set_flex(UIHandle v, int flex);
 void        ui_set_size(UIHandle v, int w, int h);  /* -1 = auto */
 void        ui_set_min_size(UIHandle v, int w, int h);
 void        ui_set_max_size(UIHandle v, int w, int h);
-void        ui_set_alignment(UIHandle v, int align); /* 0=leading, 1=center, 2=trailing */
+void        ui_set_alignment(UIHandle v, int align); /* child self-alignment on cross-axis: 0=leading, 1=center, 2=trailing */
 void        ui_add_child(UIHandle parent, UIHandle child);
 UIHandle    ui_spacer(void);
 UIHandle    ui_divider(void);
@@ -120,6 +120,7 @@ void        ui_sparkline_set_values(UIHandle spark, double *values, int count, i
 
 /* ─── Scroll View ────────────────────────────────────────────────── */
 UIHandle    ui_scroll(void);
+void        ui_scroll_set_axis(UIHandle s, int axis); /* 0=vertical, 1=horizontal */
 
 /* ─── Tab View ───────────────────────────────────────────────────── */
 UIHandle    ui_tab_view(void);

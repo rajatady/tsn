@@ -16,7 +16,7 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, action, route }: SectionHeaderProps) {
-  const [currentRoute, navigate] = useRoute('arcade')
+  const [currentRoute, navigate] = useRoute('discover')
 
   if (action.length === 0) {
     return (
@@ -44,6 +44,16 @@ export function SectionHeader({ title, action, route }: SectionHeaderProps) {
     )
   }
 
+  if (route === 'discover') {
+    return (
+      <HStack className="gap-3">
+        <Text className="text-2xl font-bold">{title}</Text>
+        <Spacer />
+        <Button variant="link" onClick={() => navigate('discover')}>{action}</Button>
+      </HStack>
+    )
+  }
+
   return (
     <HStack className="gap-3">
       <Text className="text-2xl font-bold">{title}</Text>
@@ -59,7 +69,7 @@ interface AppActionButtonProps {
 }
 
 function AppActionButton({ label, route }: AppActionButtonProps) {
-  const [currentRoute, navigate] = useRoute('arcade')
+  const [currentRoute, navigate] = useRoute('discover')
 
   if (route === 'game:dredge') {
     if (label === 'Get') return <Button variant="get" onClick={() => navigate('game:dredge')}>Get</Button>
@@ -79,6 +89,11 @@ function AppActionButton({ label, route }: AppActionButtonProps) {
   if (route === 'play') {
     if (label === 'Get') return <Button variant="get" onClick={() => navigate('play')}>Get</Button>
     return <Button variant="ghost" onClick={() => navigate('play')}>{label}</Button>
+  }
+
+  if (route === 'discover') {
+    if (label === 'Get') return <Button variant="get" onClick={() => navigate('discover')}>Get</Button>
+    return <Button variant="ghost" onClick={() => navigate('discover')}>{label}</Button>
   }
 
   if (label === 'Get') {
@@ -158,8 +173,8 @@ interface EditorialCardProps {
 }
 
 export function EditorialCardView({ card, large }: EditorialCardProps) {
-  const [currentRoute, navigate] = useRoute('arcade')
-  let openStory: JSX.Element = <Button variant="ghost" onClick={() => navigate('arcade')}>Open Story</Button>
+  const [currentRoute, navigate] = useRoute('discover')
+  let openStory: JSX.Element = <Button variant="ghost" onClick={() => navigate('discover')}>Open Story</Button>
 
   if (card.route === 'develop') openStory = <Button variant="ghost" onClick={() => navigate('develop')}>Open Story</Button>
   if (card.route === 'play') openStory = <Button variant="ghost" onClick={() => navigate('play')}>Open Story</Button>

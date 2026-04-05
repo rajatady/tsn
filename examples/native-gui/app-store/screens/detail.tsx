@@ -10,7 +10,7 @@ import {
 import { fameGames, gameFromRoute, type GameDetail, type StoreApp } from '../data'
 
 function DetailTopBar() {
-  const [route, navigate] = useRoute('arcade')
+  const [route, navigate] = useRoute('discover')
   const game: GameDetail = gameFromRoute(route)
 
   return (
@@ -29,7 +29,7 @@ function DetailTopBar() {
 }
 
 function DetailSummary() {
-  const [route, navigate] = useRoute('arcade')
+  const [route, navigate] = useRoute('discover')
   const game: GameDetail = gameFromRoute(route)
 
   return (
@@ -51,7 +51,7 @@ function DetailSummary() {
 }
 
 function MetricStrip() {
-  const [route, navigate] = useRoute('arcade')
+  const [route, navigate] = useRoute('discover')
   const game: GameDetail = gameFromRoute(route)
 
   return (
@@ -82,7 +82,7 @@ function PlatformRow() {
 }
 
 function AboutBlock() {
-  const [route, navigate] = useRoute('arcade')
+  const [route, navigate] = useRoute('discover')
   const game: GameDetail = gameFromRoute(route)
 
   return (
@@ -101,7 +101,7 @@ function AboutBlock() {
 }
 
 export function DetailScreen() {
-  const [route, navigate] = useRoute('arcade')
+  const [route, navigate] = useRoute('discover')
   const game: GameDetail = gameFromRoute(route)
   const [section, setSection] = useState('reviews')
   const moreGames: StoreApp[] = fameGames()

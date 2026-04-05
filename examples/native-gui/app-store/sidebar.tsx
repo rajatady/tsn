@@ -10,7 +10,17 @@ interface NavItemProps {
 }
 
 function NavItem({ icon, label, route }: NavItemProps) {
-  const [currentRoute, navigate] = useRoute('arcade')
+  const [currentRoute, navigate] = useRoute('discover')
+
+  if (route === 'discover') {
+    if (currentRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('discover')}>{label}</Button>
+    return <Button variant="sidebar" icon={icon} onClick={() => navigate('discover')}>{label}</Button>
+  }
+
+  if (route === 'arcade') {
+    if (currentRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('arcade')}>{label}</Button>
+    return <Button variant="sidebar" icon={icon} onClick={() => navigate('arcade')}>{label}</Button>
+  }
 
   if (route === 'play') {
     if (currentRoute === route) return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('play')}>{label}</Button>
@@ -22,11 +32,8 @@ function NavItem({ icon, label, route }: NavItemProps) {
     return <Button variant="sidebar" icon={icon} onClick={() => navigate('develop')}>{label}</Button>
   }
 
-  if (currentRoute === route) {
-    return <Button variant="sidebar-active" icon={icon} onClick={() => navigate('arcade')}>{label}</Button>
-  }
-
-  return <Button variant="sidebar" icon={icon} onClick={() => navigate('arcade')}>{label}</Button>
+  if (currentRoute === route) return <Button variant="sidebar-active" icon={icon}>{label}</Button>
+  return <Button variant="sidebar" icon={icon}>{label}</Button>
 }
 
 export function AppStoreSidebar() {
@@ -35,10 +42,10 @@ export function AppStoreSidebar() {
       <Search placeholder="Search" onChange={handleSidebarSearch} className="w-[156]" />
 
       <VStack className="gap-1">
-        <NavItem icon="sparkle.magnifyingglass" label="Discover" route="arcade" />
+        <NavItem icon="sparkle.magnifyingglass" label="Discover" route="discover" />
         <NavItem icon="gamecontroller.fill" label="Arcade" route="arcade" />
-        <NavItem icon="paintbrush.pointed.fill" label="Create" route="arcade" />
-        <NavItem icon="paperplane.fill" label="Work" route="play" />
+        <NavItem icon="paintbrush.pointed.fill" label="Create" route="discover" />
+        <NavItem icon="paperplane.fill" label="Work" route="discover" />
         <NavItem icon="play.fill" label="Play" route="play" />
         <NavItem icon="hammer.fill" label="Develop" route="develop" />
       </VStack>

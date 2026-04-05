@@ -316,6 +316,75 @@ export function playCards(): EditorialCard[] {
   return cards
 }
 
+export function discoverFeatureCards(): EditorialCard[] {
+  const cards: EditorialCard[] = [
+    {
+      eyebrow: 'GET STARTED',
+      title: 'The best Safari extensions',
+      subtitle: 'Enhance your browser with these apps.',
+      image: developHeroImage,
+      route: 'discover',
+    },
+    {
+      eyebrow: 'GET STARTED',
+      title: 'Explore Apple Creator Studio',
+      subtitle: 'Powerful creativity apps and premium productivity features.',
+      image: developSpotlightImage,
+      route: 'discover',
+    },
+    {
+      eyebrow: "LET'S PLAY",
+      title: "Don't miss these amazing games",
+      subtitle: 'Download the latest and greatest on Mac.',
+      image: playCardTwoImage,
+      route: 'play',
+    },
+  ]
+  return cards
+}
+
+export function discoverLovedApps(): StoreApp[] {
+  const apps: StoreApp[] = [
+    { id: 'helm', title: 'Helm for App Store Connect', subtitle: 'Manage updates & beta testers', caption: 'Developer Tools', icon: iconDredge, action: 'Get', route: 'discover' },
+    { id: 'dropzone', title: 'Dropzone 5', subtitle: 'Streamline Your Workflow', caption: 'Utilities', icon: iconBloons, action: 'Get', route: 'discover' },
+    { id: 'craft', title: 'Craft: Notes, Documents, AI', subtitle: 'Task, Schedule & Reminder', caption: 'Productivity', icon: iconHelloKitty, action: 'Get', route: 'discover' },
+    { id: 'crimson', title: 'Crimson Desert', subtitle: 'Action', caption: 'Games', icon: iconCult, action: '₹ 3,999', route: 'discover' },
+    { id: 'wuthering', title: 'Wuthering Waves', subtitle: 'Waking of a World', caption: 'Games', icon: iconOceanhorn, action: 'Get', route: 'discover' },
+    { id: 'return-dark', title: 'Return to Dark Castle', subtitle: 'Action', caption: 'Games', icon: iconDredge, action: '₹ 1,999', route: 'discover' },
+    { id: 'prompt-three', title: 'Prompt 3', subtitle: 'The SSH app with speed & style', caption: 'Developer Tools', icon: iconDreamlight, action: 'Get', route: 'develop' },
+    { id: 'tabpilot', title: 'TabPilot', subtitle: 'Quick tab search for Safari', caption: 'Utilities', icon: iconPacman, action: '₹ 399', route: 'discover' },
+    { id: 'ratcheteer', title: 'Ratcheteer DX', subtitle: 'A lo-fi action-adventure', caption: 'Games', icon: iconLego, action: '₹ 1,299', route: 'discover' },
+  ]
+  return apps
+}
+
+export function discoverLatestGames(): EditorialCard[] {
+  const cards: EditorialCard[] = [
+    {
+      eyebrow: 'GAMES WE LOVE',
+      title: 'Draft your destiny in Blue Prince',
+      subtitle: 'Investigate a mysterious mansion by building it on the fly.',
+      image: playCardThreeImage,
+      route: 'play',
+    },
+    {
+      eyebrow: 'NEW GAME',
+      title: "Beat the king in Let's! Revolution!",
+      subtitle: 'Fight hidden foes on dangerous roads.',
+      image: playCardOneImage,
+      route: 'play',
+    },
+    {
+      eyebrow: 'WORLD PREMIERE',
+      title: 'Embark on a Bluey Adventure',
+      subtitle: 'Can you track down the elusive gold pen?',
+      image: playCardTwoImage,
+      route: 'play',
+    },
+  ]
+  return cards
+}
+
 export function developerApps(): StoreApp[] {
   const apps: StoreApp[] = [
     { id: 'bbedit', title: 'BBEdit', subtitle: 'Legendary text and code editor', caption: 'Developer Tools', icon: iconDredge, action: 'Get', route: 'develop' },
