@@ -16,6 +16,7 @@ typedef struct UIView_ *UIHandle;
 /* ─── App & Window ───────────────────────────────────────────────── */
 void        ui_init(void);
 void        ui_run(UIHandle root);
+void        ui_replace_root(UIHandle root);
 UIHandle    ui_window(const char *title, int w, int h, bool dark);
 void        ui_window_subtitle(UIHandle w, const char *sub);
 void        ui_window_toolbar(UIHandle w, bool visible);

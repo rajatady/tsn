@@ -626,20 +626,41 @@ export class JsxEmitter {
     // Arrow function: onClick={() => doSomething()}
     if (ts.isArrowFunction(expr)) {
       const name = `_jsx_cb_${this.jsxOnClickCounter++}`
-      if (fnType === 'UIClickFn') {
-        let body: string
-        if (ts.isBlock(expr.body)) {
-          const stmts: string[] = []
-          for (const s of expr.body.statements) {
-            if (ts.isExpressionStatement(s)) stmts.push(`    ${this.ctx.emitExpr(s.expression)};`)
-          }
-          body = stmts.join('\n')
-        } else {
-          body = `    ${this.ctx.emitExpr(expr.body)};`
-        }
-        this.ctx.lambdas.push(`static void ${name}(int _tag) {\n${body}\n}`)
+      const paramName = expr.parameters.length > 0 ? expr.parameters[0].name.getText() : ''
+      const prevType = paramName ? this.ctx.varTypes.get(paramName) : undefined
+
+      let prologue = ''
+      if (fnType === 'UIClickFn' && paramName) {
+        this.ctx.varTypes.set(paramName, 'number')
+        prologue = `    double ${paramName} = (double)_tag;\n`
       }
-      return name
+      if (fnType === 'UITextChangedFn' && paramName) {
+        this.ctx.varTypes.set(paramName, 'string')
+        prologue = `    Str ${paramName} = str_from(_text, (int)strlen(_text));\n`
+      }
+
+      let body: string
+      if (ts.isBlock(expr.body)) {
+        const stmts: string[] = []
+        for (const s of expr.body.statements) {
+          if (ts.isExpressionStatement(s)) stmts.push(`    ${this.ctx.emitExpr(s.expression)};`)
+        }
+        body = stmts.join('\n')
+      } else {
+        body = `    ${this.ctx.emitExpr(expr.body)};`
+      }
+
+      if (prevType) this.ctx.varTypes.set(paramName, prevType)
+      else if (paramName) this.ctx.varTypes.delete(paramName)
+
+      if (fnType === 'UIClickFn') {
+        this.ctx.lambdas.push(`static void ${name}(int _tag) {\n${prologue}${body}\n}`)
+        return name
+      }
+      if (fnType === 'UITextChangedFn') {
+        this.ctx.lambdas.push(`static void ${name}(const char *_text) {\n${prologue}${body}\n}`)
+        return name
+      }
     }
     return 'NULL'
   }

@@ -32,6 +32,10 @@ static NSColor *system_color(int idx) {
     }
 }
 
+static inline void retain_render(id obj);
+static inline void retain_persistent(id obj);
+static void finish_render_cycle(void);
+
 /* ─── Spacer (used in layout) ────────────────────────────────────── */
 @interface UISpacer : NSView @end
 @implementation UISpacer @end
@@ -358,7 +362,21 @@ typedef struct { char label[64]; double value; NSColor * __unsafe_unretained col
 /* ─── Global State ───────────────────────────────────────────────── */
 
 static NSApplication *g_app;
-static NSMutableArray *g_retained;  /* prevent ARC from releasing delegates etc. */
+static NSMutableArray *g_render_retained;      /* bridge ARC until views join the live hierarchy */
+static NSMutableArray *g_persistent_retained;  /* delegates, timers, callback targets */
+static NSWindow *g_root_window = nil;
+
+static inline void retain_render(id obj) {
+    if (obj) [g_render_retained addObject:obj];
+}
+
+static inline void retain_persistent(id obj) {
+    if (obj) [g_persistent_retained addObject:obj];
+}
+
+static void finish_render_cycle(void) {
+    [g_render_retained removeAllObjects];
+}
 static NSMutableDictionary *g_element_ids;  /* element_id → NSView for inspector lookup */
 
 /* ─── API Implementation ─────────────────────────────────────────── */
@@ -544,7 +562,8 @@ static void ts_error_overlay(const char *title, const char *message,
 void ui_init(void) {
     g_app = [NSApplication sharedApplication];
     g_app.activationPolicy = NSApplicationActivationPolicyRegular;
-    g_retained = [NSMutableArray new];
+    g_render_retained = [NSMutableArray new];
+    g_persistent_retained = [NSMutableArray new];
     g_element_ids = [NSMutableDictionary new];
 
     /* Register error overlay callback so runtime errors show in-app */
@@ -566,11 +585,45 @@ void ui_inspector_start(void);
 
 void ui_run(UIHandle root) {
     NSWindow *win = (__bridge NSWindow *)root;
+    g_root_window = win;
     g_inspect_window = win;  /* capture for inspector */
     [win makeKeyAndOrderFront:nil];
     [g_app activateIgnoringOtherApps:YES];
     ui_inspector_start();
+    finish_render_cycle();
     [g_app run];
+}
+
+void ui_replace_root(UIHandle root) {
+    NSWindow *next = (__bridge NSWindow *)root;
+    if (!g_root_window) {
+        g_root_window = next;
+        finish_render_cycle();
+        return;
+    }
+
+    NSWindow *current = g_root_window;
+    NSRect preservedFrame = current.frame;
+    NSString *title = next.title ?: current.title;
+    NSString *subtitle = next.subtitle ?: current.subtitle;
+    NSAppearance *appearance = next.appearance ?: current.appearance;
+    NSColor *background = next.backgroundColor ?: current.backgroundColor;
+    NSView *replacement = next.contentView;
+
+    replacement.frame = current.contentView.bounds;
+    replacement.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    current.contentView = replacement;
+    current.title = title;
+    current.subtitle = subtitle;
+    current.appearance = appearance;
+    current.backgroundColor = background;
+    [current setFrame:preservedFrame display:YES];
+    [current makeKeyAndOrderFront:nil];
+    g_inspect_window = current;
+
+    [next orderOut:nil];
+    [next close];
+    finish_render_cycle();
 }
 
 UIHandle ui_window(const char *title, int w, int h, bool dark) {
@@ -595,7 +648,7 @@ UIHandle ui_window(const char *title, int w, int h, bool dark) {
     root.frame = win.contentView.bounds;
     win.contentView = root;
 
-    [g_retained addObject:win];
+    retain_render(win);
     return (__bridge UIHandle)win;
 }
 
@@ -615,14 +668,14 @@ void ui_window_fullsize_content(UIHandle w) { /* already set */ }
 UIHandle ui_vstack(void) {
     UIStackContainer *s = [UIStackContainer new];
     s.direction = 0;
-    [g_retained addObject:s];
+    retain_render(s);
     return (__bridge UIHandle)s;
 }
 
 UIHandle ui_hstack(void) {
     UIStackContainer *s = [UIStackContainer new];
     s.direction = 1;
-    [g_retained addObject:s];
+    retain_render(s);
     return (__bridge UIHandle)s;
 }
 
@@ -680,14 +733,14 @@ void ui_add_child(UIHandle parent, UIHandle child) {
 
 UIHandle ui_spacer(void) {
     UISpacer *s = [UISpacer new];
-    [g_retained addObject:s];
+    retain_render(s);
     return (__bridge UIHandle)s;
 }
 
 UIHandle ui_divider(void) {
     NSBox *box = [NSBox new];
     box.boxType = NSBoxSeparator;
-    [g_retained addObject:box];
+    retain_render(box);
     return (__bridge UIHandle)box;
 }
 
@@ -703,7 +756,7 @@ UIHandle ui_blur_view(int material) {
         default: vev.material = NSVisualEffectMaterialContentBackground; break;
     }
     vev.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-    [g_retained addObject:vev];
+    retain_render(vev);
     return (__bridge UIHandle)vev;
 }
 
@@ -714,7 +767,7 @@ UIHandle ui_text(const char *content, int size, bool bold) {
     t.font = [NSFont systemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
     t.drawsBackground = NO;
-    [g_retained addObject:t];
+    retain_render(t);
     return (__bridge UIHandle)t;
 }
 
@@ -723,7 +776,7 @@ UIHandle ui_text_mono(const char *content, int size, bool bold) {
     t.font = [NSFont monospacedDigitSystemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
     t.drawsBackground = NO;
-    [g_retained addObject:t];
+    retain_render(t);
     return (__bridge UIHandle)t;
 }
 
@@ -756,7 +809,7 @@ UIHandle ui_symbol(const char *name, int size) {
     NSImageView *iv = [NSImageView imageViewWithImage:img];
     iv.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:size weight:NSFontWeightMedium];
     iv.contentTintColor = [NSColor colorWithWhite:0.7 alpha:1];
-    [g_retained addObject:iv];
+    retain_render(iv);
     return (__bridge UIHandle)iv;
 }
 
@@ -771,7 +824,7 @@ UIHandle ui_search_field(const char *placeholder) {
     NSSearchField *f = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 300, 28)];
     f.placeholderString = [NSString stringWithUTF8String:placeholder];
     f.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
-    [g_retained addObject:f];
+    retain_render(f);
     return (__bridge UIHandle)f;
 }
 
@@ -781,14 +834,14 @@ UIHandle ui_text_field(const char *placeholder) {
     f.drawsBackground = NO;
     f.bordered = YES;
     f.bezelStyle = NSTextFieldRoundedBezel;
-    [g_retained addObject:f];
+    retain_render(f);
     return (__bridge UIHandle)f;
 }
 
 void ui_on_text_changed(UIHandle field, UITextChangedFn fn) {
     UISearchDelegate *d = [UISearchDelegate new];
     d.callback = fn;
-    [g_retained addObject:d];
+    retain_persistent(d);
     if ([(__bridge NSView *)field isKindOfClass:[NSSearchField class]])
         ((NSSearchField *)(__bridge NSView *)field).delegate = d;
     else if ([(__bridge NSView *)field isKindOfClass:[NSTextField class]])
@@ -815,9 +868,9 @@ UIHandle ui_button(const char *label, UIClickFn fn, int tag) {
         t.tag = tag;
         b.target = t;
         b.action = @selector(clicked:);
-        [g_retained addObject:t];
+        retain_persistent(t);
     }
-    [g_retained addObject:b];
+    retain_render(b);
     return (__bridge UIHandle)b;
 }
 
@@ -832,9 +885,9 @@ UIHandle ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, 
         UIButtonTarget *t = [UIButtonTarget new];
         t.fn = fn; t.tag = tag;
         b.target = t; b.action = @selector(clicked:);
-        [g_retained addObject:t];
+        retain_persistent(t);
     }
-    [g_retained addObject:b];
+    retain_render(b);
     return (__bridge UIHandle)b;
 }
 
@@ -855,7 +908,7 @@ UIHandle ui_segmented(int count, const char **labels) {
     NSSegmentedControl *sc = [NSSegmentedControl segmentedControlWithLabels:arr
         trackingMode:NSSegmentSwitchTrackingSelectOne target:nil action:nil];
     sc.selectedSegment = 0;
-    [g_retained addObject:sc];
+    retain_render(sc);
     return (__bridge UIHandle)sc;
 }
 
@@ -865,7 +918,7 @@ void ui_segmented_on_change(UIHandle seg, UISegmentFn fn) { /* TODO */ }
 UIHandle ui_toggle(const char *label, bool initial) {
     NSSwitch *sw = [NSSwitch new];
     sw.state = initial ? NSControlStateValueOn : NSControlStateValueOff;
-    [g_retained addObject:sw];
+    retain_render(sw);
     return (__bridge UIHandle)sw;
 }
 void ui_toggle_on_change(UIHandle tog, UIToggleFn fn) { /* TODO */ }
@@ -877,7 +930,7 @@ UIHandle ui_progress(double value) {
     pi.minValue = 0; pi.maxValue = 1;
     if (value < 0) { pi.indeterminate = YES; [pi startAnimation:nil]; }
     else { pi.indeterminate = NO; pi.doubleValue = value; }
-    [g_retained addObject:pi];
+    retain_render(pi);
     return (__bridge UIHandle)pi;
 }
 
@@ -897,7 +950,7 @@ UIHandle ui_badge(const char *text, int sc) {
     t.wantsLayer = YES;
     t.layer.cornerRadius = 8;
     t.layer.masksToBounds = YES;
-    [g_retained addObject:t];
+    retain_render(t);
     return (__bridge UIHandle)t;
 }
 
@@ -909,7 +962,7 @@ UIHandle ui_card(void) {
     c.layer.backgroundColor = [NSColor colorWithWhite:0.12 alpha:1].CGColor;
     c.layer.cornerRadius = 12;
     c.padding_top = 12; c.padding_right = 12; c.padding_bottom = 12; c.padding_left = 12;
-    [g_retained addObject:c];
+    retain_render(c);
     return (__bridge UIHandle)c;
 }
 
@@ -925,7 +978,7 @@ UIHandle ui_stat(const char *value, const char *label, int sc) {
     sv.value_text = [NSString stringWithUTF8String:value];
     sv.label_text = [NSString stringWithUTF8String:label];
     sv.accent = system_color(sc);
-    [g_retained addObject:sv];
+    retain_render(sv);
     return (__bridge UIHandle)sv;
 }
 
@@ -943,8 +996,8 @@ UIHandle ui_sidebar(int width) {
     [vev addSubview:s];
     s.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
-    [g_retained addObject:vev];
-    [g_retained addObject:s];
+    retain_render(vev);
+    retain_render(s);
     return (__bridge UIHandle)vev;
 }
 
@@ -1013,13 +1066,13 @@ UIHandle ui_data_table(void) {
     mgr.table = tv;
     tv.dataSource = mgr;
     tv.delegate = mgr;
-    [g_retained addObject:mgr];
+    retain_persistent(mgr);
 
     sv.documentView = tv;
     tv.tag = (NSInteger)(__bridge void *)mgr;  /* stash manager ref */
 
-    [g_retained addObject:sv];
-    [g_retained addObject:tv];
+    retain_render(sv);
+    retain_render(tv);
     return (__bridge UIHandle)sv;
 }
 
@@ -1059,7 +1112,7 @@ UIHandle ui_bar_chart(int height) {
     UIBarChartView *c = [UIBarChartView new];
     c.fixed_height = height;
     c.bar_count = 0;
-    [g_retained addObject:c];
+    retain_render(c);
     return (__bridge UIHandle)c;
 }
 
@@ -1086,7 +1139,7 @@ UIHandle ui_scroll(void) {
     NSScrollView *sv = [NSScrollView new];
     sv.hasVerticalScroller = YES;
     sv.drawsBackground = NO;
-    [g_retained addObject:sv];
+    retain_render(sv);
     return (__bridge UIHandle)sv;
 }
 
@@ -1151,7 +1204,7 @@ void ui_animate(UIHandle v, double duration) {
 void ui_set_timer(double interval, UITimerFn fn) {
     UITimerTarget *t = [UITimerTarget new];
     t.fn = fn;
-    [g_retained addObject:t];
+    retain_persistent(t);
     [NSTimer scheduledTimerWithTimeInterval:interval target:t
         selector:@selector(fire:) userInfo:nil repeats:YES];
 }

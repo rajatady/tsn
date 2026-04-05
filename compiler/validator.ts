@@ -61,6 +61,22 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: '"var" is banned — use "let" or "const"' })
     }
 
+    // Ban: arbitrary array destructuring. The only supported tuple destructuring
+    // shape right now is React-style hooks like const [state, setState] = useState(...)
+    if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name)) {
+      const ok =
+        !!node.initializer &&
+        ts.isCallExpression(node.initializer) &&
+        ts.isIdentifier(node.initializer.expression) &&
+        (node.initializer.expression.text === 'useState' || node.initializer.expression.text === 'useRoute')
+      if (!ok) {
+        errors.push({
+          pos: node.getStart(),
+          message: 'Array destructuring is only supported for hooks like const [state, setState] = useState(...)',
+        })
+      }
+    }
+
     // Ban: computed property access with non-literal key
     if (ts.isElementAccessExpression(node)) {
       const arg = node.argumentExpression

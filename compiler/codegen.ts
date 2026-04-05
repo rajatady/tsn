@@ -59,6 +59,17 @@ interface ParamInfo {
   aliases: ParamAlias[]
 }
 
+interface HookState {
+  kind: 'state' | 'route'
+  sourceValueName: string
+  sourceSetterName: string
+  tsType: string
+  cType: string
+  valueSymbol: string
+  initSymbol: string
+  applySymbol: string
+}
+
 class CodeGen {
   private structs: StructDef[] = []
   private functions: string[] = []
@@ -75,6 +86,10 @@ class CodeGen {
   private funcLocalVars: Map<string, string> = new Map()
   private funcTopLevelVars: Set<string> = new Set()
   private funcDeclaredSoFar: Set<string> = new Set()  // tracks declaration order for return cleanup
+  private identifierAliases: Map<string, string> = new Map()
+  private hookStates: HookState[] = []
+  private hookStatesBySetter: Map<string, HookState> = new Map()
+  private jsxBootStmts: string[] = []
   // JSX support
   jsxStmts: string[] = []    // accumulated C statements from JSX emission
   jsxGlobals: string[] = []  // global variable declarations for JSX mode
@@ -236,6 +251,107 @@ class CodeGen {
     return { name, tsType, cType, aliases }
   }
 
+  private isHookCall(node: ts.Expression | undefined, kind?: 'state' | 'route'): node is ts.CallExpression {
+    if (!node || !ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return false
+    if (kind === 'state') return node.expression.text === 'useState'
+    if (kind === 'route') return node.expression.text === 'useRoute'
+    return node.expression.text === 'useState' || node.expression.text === 'useRoute'
+  }
+
+  private inferHookTsType(call: ts.CallExpression): string {
+    if (ts.isIdentifier(call.expression) && call.expression.text === 'useRoute') return 'string'
+    if (call.typeArguments?.length) return this.tsTypeName(call.typeArguments[0])
+    if (call.arguments.length > 0) return this.exprType(call.arguments[0]) ?? 'number'
+    return 'number'
+  }
+
+  private zeroInitForType(tsType: string, cType: string): string {
+    if (tsType === 'string') return '(Str){0}'
+    if (tsType === 'number') return '0'
+    if (tsType === 'boolean') return 'false'
+    if (tsType.endsWith('[]')) return `(${cType}){0}`
+    return `(${cType}){0}`
+  }
+
+  private retainForHookType(tsType: string, expr: string): string {
+    if (tsType === 'string') return `str_retain(${expr})`
+    if (tsType.endsWith('[]')) {
+      const inner = tsType.replace('[]', '')
+      return `${this.arrayTypeName(inner)}_retain(${expr})`
+    }
+    return expr
+  }
+
+  private registerHookState(
+    kind: 'state' | 'route',
+    valueName: string,
+    setterName: string,
+    tsType: string
+  ): HookState {
+    if (kind === 'route') {
+      const existing = this.hookStates.find(h => h.kind === 'route')
+      if (existing) {
+        this.identifierAliases.set(valueName, existing.valueSymbol)
+        this.hookStatesBySetter.set(setterName, existing)
+        return existing
+      }
+    }
+
+    const id = this.hookStates.length
+    const cType = this.tsTypeNameToC(tsType)
+    const hook: HookState = {
+      kind,
+      sourceValueName: valueName,
+      sourceSetterName: setterName,
+      tsType,
+      cType,
+      valueSymbol: kind === 'route' ? '_route_state' : `_hook_state_${id}`,
+      initSymbol: kind === 'route' ? '_route_init' : `_hook_init_${id}`,
+      applySymbol: kind === 'route' ? '_route_navigate' : `_hook_apply_${id}`,
+    }
+    this.hookStates.push(hook)
+    this.identifierAliases.set(valueName, hook.valueSymbol)
+    this.hookStatesBySetter.set(setterName, hook)
+    return hook
+  }
+
+  private emitHookInitializer(
+    hook: HookState,
+    initExpr: ts.Expression | undefined,
+    out: string[]
+  ): void {
+    const initial = initExpr ? this.retainForHookType(hook.tsType, this.emitExpr(initExpr)) : this.zeroInitForType(hook.tsType, hook.cType)
+    out.push(this.pad() + `if (!${hook.initSymbol}) {`)
+    this.indent++
+    out.push(this.pad() + `${hook.valueSymbol} = ${initial};`)
+    out.push(this.pad() + `${hook.initSymbol} = true;`)
+    this.indent--
+    out.push(this.pad() + `}`)
+  }
+
+  private emitHookSetterCall(hook: HookState, args: ts.NodeArray<ts.Expression>): string {
+    if (args.length === 0) return `${hook.applySymbol}(${hook.valueSymbol})`
+    const update = args[0]
+    if (ts.isArrowFunction(update) && update.parameters.length > 0) {
+      const paramName = update.parameters[0].name.getText()
+      const prevType = this.varTypes.get(paramName)
+      const prevAlias = this.identifierAliases.get(paramName)
+      this.varTypes.set(paramName, hook.tsType)
+      this.identifierAliases.set(paramName, hook.valueSymbol)
+      let nextExpr = hook.valueSymbol
+      if (ts.isBlock(update.body)) {
+        const ret = update.body.statements.find(s => ts.isReturnStatement(s)) as ts.ReturnStatement | undefined
+        nextExpr = ret?.expression ? this.emitExpr(ret.expression) : hook.valueSymbol
+      } else {
+        nextExpr = this.emitExpr(update.body)
+      }
+      if (prevType) this.varTypes.set(paramName, prevType); else this.varTypes.delete(paramName)
+      if (prevAlias) this.identifierAliases.set(paramName, prevAlias); else this.identifierAliases.delete(paramName)
+      return `${hook.applySymbol}(${nextExpr})`
+    }
+    return `${hook.applySymbol}(${this.emitExpr(update)})`
+  }
+
   /** Infer C type from a variable declaration's initializer */
   private inferVarType(d: ts.VariableDeclaration): string {
     if (!d.initializer) return 'double'
@@ -308,6 +424,8 @@ class CodeGen {
       if (this.builderVars.has(node.text)) {
         return `strbuf_to_str(&_b_${node.text})`
       }
+      const alias = this.identifierAliases.get(node.text)
+      if (alias) return alias
       return node.text
     }
 
@@ -387,6 +505,11 @@ class CodeGen {
   }
 
   private emitCall(node: ts.CallExpression): string {
+    if (ts.isIdentifier(node.expression)) {
+      const hookSetter = this.hookStatesBySetter.get(node.expression.text)
+      if (hookSetter) return this.emitHookSetterCall(hookSetter, node.arguments)
+    }
+
     if (ts.isPropertyAccessExpression(node.expression)) {
       const obj = node.expression.expression
       const method = node.expression.name.text
@@ -921,6 +1044,25 @@ class CodeGen {
   }
 
   private emitVarDecl(decl: ts.VariableDeclaration, out: string[]): void {
+    if (ts.isArrayBindingPattern(decl.name) && this.isHookCall(decl.initializer)) {
+      const elems = decl.name.elements.filter((e): e is ts.BindingElement =>
+        !ts.isOmittedExpression(e) && ts.isIdentifier(e.name)
+      )
+      if (elems.length === 2 && decl.initializer) {
+        const valueName = elems[0].name.getText()
+        const setterName = elems[1].name.getText()
+        const kind = ts.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === 'useRoute'
+          ? 'route'
+          : 'state'
+        const tsType = this.inferHookTsType(decl.initializer)
+        const hook = this.registerHookState(kind, valueName, setterName, tsType)
+        this.varTypes.set(valueName, tsType)
+        this.varTypes.set(setterName, 'void')
+        this.emitHookInitializer(hook, decl.initializer.arguments[0], out)
+        return
+      }
+    }
+
     const name = decl.name.getText()
     const tsType = this.tsTypeName(decl.type)
     const cType = this.tsTypeToC(decl.type)
@@ -1168,6 +1310,7 @@ class CodeGen {
     this.funcLocalVars.clear()
     this.funcTopLevelVars.clear()
     this.funcDeclaredSoFar.clear()
+    this.identifierAliases.clear()
 
     const retInfo = this.inferFunctionReturnType(node)
     const retCType = retInfo.cType
@@ -1188,7 +1331,7 @@ class CodeGen {
       for (const s of node.body.statements) {
         if (ts.isVariableStatement(s)) {
           for (const d of s.declarationList.declarations)
-            this.funcTopLevelVars.add(d.name.getText())
+            if (ts.isIdentifier(d.name)) this.funcTopLevelVars.add(d.name.text)
         }
       }
     }
@@ -1348,6 +1491,7 @@ class CodeGen {
       for (const s of entryFile.statements) {
         if (!ts.isVariableStatement(s)) continue
         for (const d of s.declarationList.declarations) {
+          if (!ts.isIdentifier(d.name)) continue
           const name = d.name.getText()
           const cType = d.type ? this.tsTypeToC(d.type) : this.inferVarType(d)
           this.jsxGlobals.push(`${cType} ${name};`)
@@ -1355,31 +1499,31 @@ class CodeGen {
         }
       }
 
-      // main() body — init library globals, then entry globals, then JSX
+      // main() boot path — init library globals, then entry globals, then one-time expressions
       this.indent = 1
-      this.withStmtSink(this.jsxStmts, () => {
-        this.jsxStmts.push(this.pad() + 'ui_init();')
-        this.jsxStmts.push(this.pad() + 'UIHandle _jsx_root = NULL;')
+      this.jsxBootStmts = []
+      this.withStmtSink(this.jsxBootStmts, () => {
+        this.jsxBootStmts.push(this.pad() + 'ui_init();')
 
-        // Initialize library globals (non-entry files, in dependency order)
         for (const sf of sourceFiles) {
           if (sf === entryFile) continue
           this.sourceFile = sf
           this.sourceFileName = sf.fileName
           for (const s of sf.statements) {
-            if (!ts.isVariableStatement(s)) continue
-            if (this.isSkippable(s)) continue
+            if (!ts.isVariableStatement(s) || this.isSkippable(s)) continue
             for (const d of s.declarationList.declarations) {
-              if (d.initializer) {
+              if (d.initializer && ts.isIdentifier(d.name)) {
                 const name = d.name.getText()
-                const val = this.emitExpr(d.initializer)
-                this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+                const cType = d.type ? this.tsTypeToC(d.type) : this.inferVarType(d)
+                const val = ts.isObjectLiteralExpression(d.initializer)
+                  ? `(${cType})${this.emitObjLit(d.initializer)}`
+                  : this.emitExpr(d.initializer)
+                this.jsxBootStmts.push(this.pad() + `${name} = ${val};`)
               }
             }
           }
         }
 
-        // Initialize entry file globals and JSX
         this.sourceFile = entryFile
         this.sourceFileName = entryFile.fileName
         for (const s of entryFile.statements) {
@@ -1387,10 +1531,13 @@ class CodeGen {
 
           if (ts.isVariableStatement(s)) {
             for (const d of s.declarationList.declarations) {
-              if (d.initializer) {
+              if (d.initializer && ts.isIdentifier(d.name)) {
                 const name = d.name.getText()
-                const val = this.emitExpr(d.initializer)
-                this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+                const cType = d.type ? this.tsTypeToC(d.type) : this.inferVarType(d)
+                const val = ts.isObjectLiteralExpression(d.initializer)
+                  ? `(${cType})${this.emitObjLit(d.initializer)}`
+                  : this.emitExpr(d.initializer)
+                this.jsxBootStmts.push(this.pad() + `${name} = ${val};`)
               }
             }
             continue
@@ -1398,17 +1545,40 @@ class CodeGen {
 
           if (ts.isExpressionStatement(s)) {
             const expr = s.expression
-            if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
-              const rendered = this.emitExpr(expr)
-              if (rendered) this.jsxStmts.push(this.pad() + `_jsx_root = ${rendered};`)
-            } else {
-              this.jsxStmts.push(this.pad() + `${this.emitExpr(expr)};`)
-            }
+            if (!(ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)))
+              this.jsxBootStmts.push(this.pad() + `${this.emitExpr(expr)};`)
           }
         }
-        this.jsxStmts.push(this.pad() + 'if (_jsx_root) ui_run(_jsx_root);')
         this.indent = 0
       })
+
+      const renderBody: string[] = []
+      this.indent = 1
+      this.withStmtSink(renderBody, () => {
+        renderBody.push(this.pad() + 'UIHandle _jsx_root = NULL;')
+        this.sourceFile = entryFile
+        this.sourceFileName = entryFile.fileName
+        for (const s of entryFile.statements) {
+          if (!ts.isExpressionStatement(s)) continue
+          const expr = s.expression
+          if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
+            const rendered = this.emitExpr(expr)
+            if (rendered) renderBody.push(this.pad() + `_jsx_root = ${rendered};`)
+          }
+        }
+        renderBody.push(this.pad() + 'return _jsx_root;')
+        this.indent = 0
+      })
+
+      this.functions.push(`static UIHandle _ts_render_root(void) {\n${renderBody.join('\n')}\n}`)
+      if (this.hookStates.length > 0) {
+        this.functions.push(
+          `static void _ts_rerender(void) {\n` +
+          `    UIHandle _jsx_root = _ts_render_root();\n` +
+          `    if (_jsx_root) ui_replace_root(_jsx_root);\n` +
+          `}`
+        )
+      }
     }
 
     // Build output
@@ -1465,6 +1635,14 @@ class CodeGen {
       L.push('')
     }
 
+    if (this.hookStates.length) {
+      for (const hook of this.hookStates) {
+        L.push(`bool ${hook.initSymbol} = false;`)
+        L.push(`${hook.cType} ${hook.valueSymbol} = ${this.zeroInitForType(hook.tsType, hook.cType)};`)
+      }
+      L.push('')
+    }
+
     // Forward declarations (use typedef names, not struct X)
     for (const [name, sig] of this.funcSigs) {
       if (name === 'main') continue
@@ -1473,6 +1651,29 @@ class CodeGen {
       L.push(`${fixType(sig.returnCType)} ${name}(${ps});`)
     }
     if (this.funcSigs.size) L.push('')
+
+    if (this.hasJsx && this.hookStates.length) {
+      L.push('static void _ts_rerender(void);')
+      L.push('')
+      for (const hook of this.hookStates) {
+        const nextValue = hook.tsType === 'string'
+          ? `str_retain(_next)`
+          : hook.tsType.endsWith('[]')
+            ? `${this.arrayTypeName(hook.tsType.replace('[]', ''))}_retain(_next)`
+            : '_next'
+        const releaseLines = this.getReleaseForType('_old', hook.tsType)
+        const body: string[] = []
+        body.push(`static void ${hook.applySymbol}(${hook.cType} _next) {`)
+        body.push(`    ${hook.cType} _old = ${hook.valueSymbol};`)
+        body.push(`    ${hook.valueSymbol} = ${nextValue};`)
+        body.push(`    ${hook.initSymbol} = true;`)
+        for (const line of releaseLines) body.push(`    ${line}`)
+        body.push('    _ts_rerender();')
+        body.push('}')
+        L.push(body.join('\n'))
+        L.push('')
+      }
+    }
 
     // Lambdas
     for (const l of this.lambdas) { L.push(l); L.push('') }
@@ -1484,11 +1685,13 @@ class CodeGen {
     }
 
     // C main
-    if (this.hasJsx && this.jsxStmts.length > 0) {
+    if (this.hasJsx && hasTopLevelJsx) {
       // JSX app — main() contains ui_init + JSX tree + ui_run
       L.push('int main(int argc, char **argv) {')
       L.push('    ts_install_crash_handler(argv[0]);')
-      for (const s of this.jsxStmts) L.push(s)
+      for (const s of this.jsxBootStmts) L.push(s)
+      L.push('    UIHandle _jsx_root = _ts_render_root();')
+      L.push('    if (_jsx_root) ui_run(_jsx_root);')
       L.push('    return 0;')
       L.push('}')
     } else if (this.funcSigs.has('main')) {

@@ -42,6 +42,11 @@ build_case "incident-tracker release" "examples/native-gui/incident-tracker.tsx"
 build_case "incident-tracker debug" "examples/native-gui/incident-tracker.tsx" --debug
 
 echo ""
+echo "━━━ app-store ━━━"
+build_case "app-store release" "examples/native-gui/app-store.tsx"
+build_case "app-store debug" "examples/native-gui/app-store.tsx" --debug
+
+echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "Results: ${GREEN}${PASS} passed${NC}, ${RED}${FAIL} failed${NC}"
 
