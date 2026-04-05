@@ -55,27 +55,52 @@ Located in `examples/native-gui/dashboard.tsx`. A full interactive macOS applica
 - KPI stat cards (total, active, avg salary, performance, departments)
 - Status bar
 
+### File Structure (multi-file imports)
+
+```
+examples/native-gui/
+├── dashboard.tsx              Entry point: UI + state + event handlers (165 lines)
+│   import { Employee } from './lib/types'
+│   import { generateEmployees } from './lib/data'
+│   import { fuzzyScore } from './lib/search'
+│   import { deptForTag } from './lib/lookups'
+│
+└── lib/
+    ├── types.ts               Employee interface (12 lines)
+    ├── rand.ts                PRNG: nextRand, randIndex (16 lines)
+    ├── lookups.ts             Name/dept/role/status tables (80 lines)
+    ├── data.ts                makeEmployee, generateEmployees (40 lines)
+    │   import { Employee } from './types'
+    │   import { nextRand, randIndex } from './rand'
+    │   import { firstName, lastName, ... } from './lookups'
+    │
+    └── search.ts              fuzzyScore (25 lines)
+```
+
+All 6 files resolve and merge into a single `build/dashboard.c`.
+
 ### Architecture
 
 ```
 dashboard.tsx
     │
-    ├── Data Model: interface Employee { name, department, role, salary, performance, status }
+    ├── lib/types.ts: interface Employee { name, department, role, salary, performance, status }
     │
-    ├── Lookup Functions: firstName(i), lastName(i), deptName(i), roleName(i), statusName(i)
+    ├── lib/lookups.ts: firstName(i), lastName(i), deptName(i), roleName(i), statusName(i)
     │   (chains of if-statements, workaround for no array literals)
     │
-    ├── PRNG: nextRand(seed), randIndex(seed, max)
+    ├── lib/rand.ts: nextRand(seed), randIndex(seed, max)
     │   (modulo-based, avoids bitwise AND on doubles)
     │
-    ├── Data Generation: makeEmployee(seed) → Employee, generateEmployees(n) → Employee[]
+    ├── lib/data.ts: makeEmployee(seed) → Employee, generateEmployees(n) → Employee[]
+    │   (imports types, rand, lookups)
+    │
+    ├── lib/search.ts: fuzzyScore(text, query) with consecutive bonus
     │
     ├── Global State: employees, searchText, deptFilterIdx, filteredCount
     │
     ├── Filtering: matchesFilter(e), countFiltered(), nthFilteredEmployee(n)
     │   (no mutable index array — scans on demand)
-    │
-    ├── Fuzzy Search: fuzzyScore(text, query) with consecutive bonus
     │
     ├── Table Cell Callback: tableCellFn(row, col) → string
     │

@@ -44,10 +44,11 @@ strictts build dashboard.tsx --debug
 strictts dev dashboard.tsx
 ```
 
-- Watches source file for changes (100ms debounce)
+- Watches ALL resolved source files for changes (100ms debounce)
+- Re-resolves imports on each change (picks up new files)
 - Recompiles automatically with debug flags
 - Kills previous binary and relaunches on successful compile
-- Shows compile time and binary size per rebuild
+- Shows which file changed and compile time per rebuild
 - Detects crash signals and reports them (SIGSEGV, SIGABRT)
 - For UI apps: saves and restores window geometry across restarts
 

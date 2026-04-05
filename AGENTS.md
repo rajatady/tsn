@@ -21,19 +21,26 @@ Read these before making changes:
 
 ```
 compiler/
-├── index.ts          Entry point. Parse → validate → codegen → clang → binary.
-├── validator.ts      Rejects banned features (any, eval, classes, async, etc.)
-├── codegen.ts        Core AST→C generator. Type mappings, expressions, statements, functions.
+├── index.ts          Entry point. Resolve → validate → codegen → clang → binary.
+├── resolver.ts       Multi-file import resolution. Follows imports, topological sort.
+├── validator.ts      Rejects banned features (any, eval, classes, async, bare imports).
+├── codegen.ts        Core AST→C generator. Accepts sourceFiles[], merges all into one .c.
 ├── jsx.ts            JSX elements → ui_*() C calls. Component map, callback wrappers.
 ├── tailwind.ts       Compile-time Tailwind className → C ui_set_*() calls.
-├── dev.ts            Watch mode dev server. Recompiles + relaunches on file change.
+├── dev.ts            Watch mode dev server. Watches all resolved files, recompiles on change.
 ├── inspect.ts        Inspector CLI client. Sends commands to running app via Unix socket.
 ├── runtime/
 │   ├── runtime.h     Str type, StrBuf, DEFINE_ARRAY, refcounting, print functions.
 │   ├── crash.h       SIGSEGV/SIGABRT handler. backtrace() + atos → TypeScript stack trace.
 │   └── debug.h       Bounds checking macros (ARRAY_GET/ARRAY_SET). Error overlay callback.
 examples/native-gui/
-├── dashboard.tsx     Reference TSX app: 50K employee dashboard with search, filter, table.
+├── dashboard.tsx     Entry point: UI + state + handlers (imports from lib/).
+├── lib/
+│   ├── types.ts      Employee interface.
+│   ├── rand.ts       PRNG functions.
+│   ├── lookups.ts    Name/dept/role lookup tables.
+│   ├── data.ts       Employee generation (imports types, rand, lookups).
+│   └── search.ts     Fuzzy search scoring.
 ├── framework/
 │   ├── ui.h          C API for ~60 AppKit components.
 │   ├── ui.m          AppKit implementation. Layout engine, inspector, error overlay.

@@ -6,32 +6,58 @@
 .ts/.tsx source
     │
     ▼
-[1] Parse ─── TypeScript API creates AST
-    │         (ts.createSourceFile with ScriptKind.TSX for .tsx)
+[1] Resolve ── Follow imports recursively (compiler/resolver.ts)
+    │           import { X } from './lib/types' → resolve to absolute path
+    │           Returns files in dependency order (leaves first, entry last)
     ▼
-[2] Validate ─ Reject banned features (any, eval, classes, async, etc.)
+[2] Parse ──── TypeScript API creates AST for each resolved file
+    │           (ts.createSourceFile with ScriptKind.TSX for .tsx)
+    ▼
+[3] Validate ─ Reject banned features in ALL resolved files
     │
     ▼
-[3] Codegen ── Emit C code with #line directives
-    │           Pass 1: interfaces → structs
-    │           Pass 1.5: collect function signatures (forward refs)
-    │           Pass 2: functions → C functions
-    │           Pass 3: top-level statements → main()
+[4] Codegen ── Emit C code with #line directives
+    │           Pass 1: interfaces → structs (ALL files)
+    │           Pass 1.5: collect function signatures (ALL files)
+    │           Pass 2: functions → C functions (ALL files)
+    │           Pass 2.5: library globals (non-entry files)
+    │           Pass 3: entry file top-level statements → main()
     │           JSX mode: globals + ui_init() + JSX tree + ui_run()
     ▼
-[4] Compile ── clang with platform-specific flags
+[5] Compile ── clang with platform-specific flags
     │           CLI: clang -O2 -o binary source.c -lm
     │           UI:  clang -O2 -fobjc-arc -framework Cocoa -framework QuartzCore
     │                      source.c ui.m -I framework -I runtime
     ▼
-    Native ARM64 binary
+    Native ARM64 binary (single .c file, all modules merged)
 ```
 
 ## Pass Details
 
+### Module Resolution
+
+The resolver (`compiler/resolver.ts`) follows `import` declarations recursively:
+
+1. Parse the entry file
+2. For each `import ... from './path'`: resolve to absolute path (tries `.ts`, `.tsx`, `/index.ts`)
+3. Recursively resolve that file's imports (depth-first)
+4. Track visited files to prevent cycles
+5. Return all files in dependency order (leaves first, entry last)
+
+All resolved files are merged into a single C output. The `export` keyword is stripped — C has a flat namespace.
+
+```
+dashboard.tsx → lib/data.ts → lib/types.ts (leaf)
+                             → lib/rand.ts (leaf)
+                             → lib/lookups.ts (leaf)
+              → lib/search.ts (leaf)
+
+Resolution order: types.ts → rand.ts → lookups.ts → data.ts → search.ts → dashboard.tsx
+```
+
 ### Pass 1: Interfaces
 
-Every `interface` declaration becomes a C `typedef struct`:
+Every `interface` declaration from ALL files becomes a C `typedef struct`:
 
 ```typescript
 interface Employee { name: string; salary: number }

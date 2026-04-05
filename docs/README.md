@@ -6,7 +6,7 @@ StrictTS compiles a strict subset of TypeScript to native ARM64 binaries via C. 
 
 | Document | What it covers |
 |----------|---------------|
-| [Language Reference](./language.md) | The StrictTS subset: what's allowed, what's banned, type mappings |
+| [Language Reference](./language.md) | The StrictTS subset: what's allowed, what's banned, type mappings, imports |
 | [Standard Library](./stdlib.md) | String methods, array methods, Math, console.log, JSON.parse |
 | [JSX & Components](./jsx.md) | TSX syntax, component catalog, props, callbacks, Tailwind classes |
 | [Runtime Internals](./runtime.md) | Str type, reference counting, StrBuf, DEFINE_ARRAY |

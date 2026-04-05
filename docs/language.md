@@ -146,6 +146,7 @@ These features are rejected at validation time with clear error messages:
 | `async` / `await` | Future work |
 | `try` / `catch` | Future work |
 | Generators / `yield` | Future work |
+| Bare imports (`'lodash'`) | Only relative imports (`./path`) supported |
 
 ## Idioms
 
@@ -185,6 +186,36 @@ function firstName(i: number): string {
   return "Unknown"
 }
 ```
+
+### Imports
+
+Standard TypeScript relative imports. All imported files are merged into a single C output at compile time — no runtime module system.
+
+```typescript
+// lib/types.ts
+export interface Employee {
+  name: string
+  salary: number
+}
+
+// lib/search.ts
+import { Employee } from './types'
+
+export function findEmployee(name: string, list: Employee[]): Employee {
+  // ...
+}
+
+// app.tsx
+import { Employee } from './lib/types'
+import { findEmployee } from './lib/search'
+```
+
+**Rules:**
+- Only relative imports (`./path`, `../path`) — bare imports like `'lodash'` are rejected
+- Resolution tries: `.ts`, `.tsx`, `/index.ts`, `/index.tsx`
+- Circular imports are detected and rejected with a clear error
+- `export` keyword is stripped — C has a flat namespace, everything is visible
+- Re-exports work: `export { X } from './other'`
 
 ### Semicolons before JSX
 
