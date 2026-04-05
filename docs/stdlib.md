@@ -9,13 +9,16 @@ All string operations are zero-allocation when possible (slices share the source
 | Method | Signature | Notes |
 |--------|-----------|-------|
 | `s.slice(start, end?)` | `(number, number?) => string` | Returns substring. Shares source refcount. |
-| `s.indexOf(needle)` | `(string) => number` | Returns -1 if not found |
+| `s.indexOf(needle, fromIndex?)` | `(string, number?) => number` | Returns -1 if not found |
 | `s.startsWith(prefix)` | `(string) => boolean` | memcmp-based |
 | `s.endsWith(suffix)` | `(string) => boolean` | memcmp-based |
 | `s.includes(needle)` | `(string) => boolean` | Linear scan |
+| `s.split(sep)` | `(string) => string[]` | Splits into `StrArr` slices |
 | `s.trim()` | `() => string` | Zero-copy slice when trimming whitespace |
 | `s.trimStart()` | `() => string` | Trims leading ASCII whitespace |
 | `s.trimEnd()` | `() => string` | Trims trailing ASCII whitespace |
+| `s.toLowerCase()` | `() => string` | ASCII lowercasing |
+| `s.toUpperCase()` | `() => string` | ASCII uppercasing |
 | `s.length` | `number` (property) | Direct field access, O(1) |
 
 ### String Concatenation
@@ -34,6 +37,16 @@ if (s.slice(i, i + 1) === "x")     // optimized to: str_at(s, i) == 'x'
 
 Single-character comparisons are automatically optimized to direct char access.
 
+### Split
+
+```typescript
+const fields = line.split("|")
+const lines = input.split("\n")
+```
+
+`split()` returns `string[]` and reuses string slices where possible. Empty
+separators split into single-character strings.
+
 ### String Conversion
 
 ```typescript
@@ -51,12 +64,23 @@ const s2: string = String(3.14)     // "3.14"
 | `arr.sort(fn)` | `((T, T) => number) => T[]` | In-place via C qsort |
 | `arr.indexOf(value)` | `(T) => number` | Inline scan, string-aware equality |
 | `arr.includes(value)` | `(T) => boolean` | Inline scan, early exit |
+| `arr.findIndex(fn)` | `((T) => boolean) => number` | Inline scan with early exit |
+| `arr.some(fn)` | `((T) => boolean) => boolean` | Stops at first match |
+| `arr.every(fn)` | `((T) => boolean) => boolean` | Stops at first failure |
 | `arr.join(sep?)` | `(?string) => string` | Stack `StrBuf`, heap finalization |
 | `arr.length` | `number` (property) | Direct field access, O(1) |
 | `arr[i]` | `T` | Bounds-checked in debug mode |
 
 Because array headers are passed by value, helpers that call `push()` should
 return the updated array and let the caller rebind it.
+
+### Predicate Queries
+
+```typescript
+const hasErrors = logs.some(log => log.status >= 500)
+const allHealthy = services.every(name => serviceErrorCount(logs, name) === 0)
+const firstSlow = logs.findIndex(log => log.latencyMs >= 900)
+```
 
 ### Filter
 

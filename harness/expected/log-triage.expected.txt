@@ -1,0 +1,11 @@
+=== LOG TRIAGE ===
+Total lines: 4
+Actionable: 3
+Errors: 2
+Warnings: 1
+
+Hot services: checkout, auth, queue
+
+[ERROR] checkout@iad :: Payment timeout retry storm on card capture :: page, latency, payments
+[WARN] auth@fra :: Token refresh backlog after deploy :: auth, queue, release
+[ERROR] queue@sin :: Worker queue latency above SLO :: page, latency, queue

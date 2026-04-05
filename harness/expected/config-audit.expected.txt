@@ -1,0 +1,9 @@
+=== CONFIG AUDIT ===
+Environment: PRODUCTION
+Required complete: true
+First missing required key: none
+Audit logging enabled: true
+Secure cookies enabled: true
+Risky flags present: true
+Origins production-safe: true
+Feature flags: search_v2, incident_mode, alpha_banner

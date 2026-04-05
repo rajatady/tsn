@@ -6,6 +6,40 @@ function emitArrayEq(innerType: string, elemExpr: string, valueExpr: string): st
   return `${elemExpr} == ${valueExpr}`
 }
 
+function emitPredicateMethod(
+  ctx: StdlibEmitterContext,
+  objExpr: string,
+  innerType: string,
+  elemCType: string,
+  method: string,
+  fn: ts.Expression
+): string | null {
+  const callback = ctx.emitPredicateCallback(fn, innerType)
+  if (!callback) return null
+  const id = ctx.nextTempId()
+  const { paramName, body } = callback
+
+  if (method === 'some') {
+    return `({ bool _some${id} = false; for (int _i${id} = 0; _i${id} < ${objExpr}.len; _i${id}++) { ` +
+      `${elemCType} ${paramName} = ${objExpr}.data[_i${id}]; ` +
+      `if (${body}) { _some${id} = true; break; } } _some${id}; })`
+  }
+
+  if (method === 'every') {
+    return `({ bool _every${id} = true; for (int _i${id} = 0; _i${id} < ${objExpr}.len; _i${id}++) { ` +
+      `${elemCType} ${paramName} = ${objExpr}.data[_i${id}]; ` +
+      `if (!(${body})) { _every${id} = false; break; } } _every${id}; })`
+  }
+
+  if (method === 'findIndex') {
+    return `({ int _find${id} = -1; for (int _i${id} = 0; _i${id} < ${objExpr}.len; _i${id}++) { ` +
+      `${elemCType} ${paramName} = ${objExpr}.data[_i${id}]; ` +
+      `if (${body}) { _find${id} = _i${id}; break; } } _find${id}; })`
+  }
+
+  return null
+}
+
 export function emitArrayMethod(
   ctx: StdlibEmitterContext,
   objExpr: string,
@@ -54,6 +88,9 @@ export function emitArrayMethod(
       `Str _rjoin${id} = strbuf_to_heap_str(&_join${id}); strbuf_free(&_join${id}); _rjoin${id}; })`
   }
 
+  if ((method === 'some' || method === 'every' || method === 'findIndex') && args.length > 0) {
+    return emitPredicateMethod(ctx, objExpr, innerType, elemCType, method, args[0])
+  }
+
   return null
 }
-

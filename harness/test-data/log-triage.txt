@@ -1,0 +1,4 @@
+2026-04-05T10:01:00Z level=ERROR service=checkout region=iad msg=Payment timeout retry storm on card capture
+2026-04-05T10:02:11Z level=WARN service=auth region=fra msg=Token refresh backlog after deploy
+2026-04-05T10:03:44Z level=INFO service=search region=iad msg=Cache warmed successfully
+2026-04-05T10:04:55Z level=ERROR service=queue region=sin msg=Worker queue latency above SLO

@@ -70,7 +70,7 @@ function messageValue(line: string): string {
 
 function classifyTags(level: string, service: string, message: string): string[] {
   const tags: string[] = [];
-  const lowered: string = message;
+  const lowered: string = message.toLowerCase();
   if (level === "ERROR") tags.push("page");
   if (lowered.includes("timeout") || lowered.includes("latency")) tags.push("latency");
   if (lowered.includes("payment") || service === "checkout") tags.push("payments");

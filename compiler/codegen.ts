@@ -139,6 +139,22 @@ class CodeGen {
     return id
   }
 
+  emitPredicateCallback(fnExpr: ts.Expression, paramType: string): { paramName: string; body: string } | null {
+    if (!ts.isArrowFunction(fnExpr) || fnExpr.parameters.length === 0) return null
+    const paramName = fnExpr.parameters[0].name.getText()
+    const prev = this.varTypes.get(paramName)
+    this.varTypes.set(paramName, paramType)
+    let body: string
+    if (ts.isBlock(fnExpr.body)) {
+      const ret = fnExpr.body.statements.find(s => ts.isReturnStatement(s)) as ts.ReturnStatement | undefined
+      body = ret?.expression ? this.emitExpr(ret.expression) : 'true'
+    } else {
+      body = this.emitExpr(fnExpr.body)
+    }
+    if (prev) this.varTypes.set(paramName, prev); else this.varTypes.delete(paramName)
+    return { paramName, body }
+  }
+
   /** Infer C type from a variable declaration's initializer */
   private inferVarType(d: ts.VariableDeclaration): string {
     if (!d.initializer) return 'double'
@@ -521,21 +537,12 @@ class CodeGen {
 
   private emitFilter(call: ts.CallExpression, objExpr: string, arrType: string): string {
     const fn = call.arguments[0]
-    if (!ts.isArrowFunction(fn)) return `/* unsupported filter */${objExpr}`
-    const paramName = fn.parameters[0].name.getText()
     const innerType = arrType.replace('[]', '')
     const elemCType = this.arrayCElemType(arrType)
     const arrTypeName = this.arrayTypeName(innerType)
-    const prev = this.varTypes.get(paramName)
-    this.varTypes.set(paramName, innerType)
-    let cond: string
-    if (ts.isBlock(fn.body)) {
-      const ret = fn.body.statements.find(s => ts.isReturnStatement(s)) as ts.ReturnStatement | undefined
-      cond = ret?.expression ? this.emitExpr(ret.expression) : 'true'
-    } else {
-      cond = this.emitExpr(fn.body)
-    }
-    if (prev) this.varTypes.set(paramName, prev); else this.varTypes.delete(paramName)
+    const callback = this.emitPredicateCallback(fn, innerType)
+    if (!callback) return `/* unsupported filter */${objExpr}`
+    const { paramName, body: cond } = callback
     const id = this.lambdaCounter++
     return `({ ${arrTypeName} _r${id} = ${arrTypeName}_new(); ` +
       `for (int _i${id} = 0; _i${id} < ${objExpr}.len; _i${id}++) { ` +
@@ -611,9 +618,10 @@ class CodeGen {
         const m = node.expression.name.text
         if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Math') return 'number'
         if (m === 'filter' || m === 'slice') return this.exprType(node.expression.expression)
-        if (m === 'trim' || m === 'trimStart' || m === 'trimEnd' || m === 'join') return 'string'
-        if (m === 'indexOf') return 'number'
-        if (m === 'includes' || m === 'startsWith' || m === 'endsWith') return 'boolean'
+        if (m === 'split') return 'string[]'
+        if (m === 'trim' || m === 'trimStart' || m === 'trimEnd' || m === 'join' || m === 'toLowerCase' || m === 'toUpperCase') return 'string'
+        if (m === 'indexOf' || m === 'findIndex') return 'number'
+        if (m === 'includes' || m === 'startsWith' || m === 'endsWith' || m === 'some' || m === 'every') return 'boolean'
       }
     }
     if (ts.isPropertyAccessExpression(node)) {

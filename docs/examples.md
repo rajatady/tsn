@@ -59,6 +59,39 @@ Compile it with:
 strictts build examples/log-triage.ts
 ```
 
+## CLI Example: Config Audit
+
+Located in [examples/config-audit.ts](../examples/config-audit.ts). This validates deployment-style env/config input and reports whether the config is production-ready.
+
+It uses:
+
+- `split()` for line parsing and key/value extraction
+- `toUpperCase()` / `toLowerCase()` for normalization
+- `some()` / `every()` / `findIndex()` for policy checks
+
+## CLI Example: Access Log Summary
+
+Located in [examples/access-log-summary.ts](../examples/access-log-summary.ts). This summarizes pipe-delimited access logs and reports whether critical services stayed healthy.
+
+It uses:
+
+- `split()` for record parsing
+- `toUpperCase()` / `toLowerCase()` for normalization
+- `some()` / `every()` / `findIndex()` for health checks
+
+## Harnesses
+
+```bash
+# Existing benchmark-oriented target correctness
+bash harness/correctness.sh
+
+# Real-world CLI example correctness
+bash harness/examples-correctness.sh
+
+# Native GUI build smoke tests
+bash harness/gui-builds.sh
+```
+
 ## Native GUI: HR Dashboard
 
 Located in `examples/native-gui/dashboard.tsx`. A full interactive macOS application written in 100% TypeScript.

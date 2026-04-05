@@ -1,0 +1,8 @@
+2026-04-05T10:01:00Z|GET|/health|200|35|api
+2026-04-05T10:01:02Z|POST|/checkout|502|920|checkout
+2026-04-05T10:01:05Z|GET|/api/orders|200|120|api
+2026-04-05T10:01:09Z|GET|/api/orders|200|640|api
+2026-04-05T10:01:11Z|POST|/auth/login|200|85|auth
+2026-04-05T10:01:14Z|GET|/checkout|200|980|checkout
+2026-04-05T10:01:17Z|GET|/health|200|32|api
+2026-04-05T10:01:20Z|GET|/api/orders|503|870|api

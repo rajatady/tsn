@@ -1,0 +1,6 @@
+=== ACCESS LOG SUMMARY ===
+Total requests: 8
+5xx present: true
+Critical services healthy: false
+First slow request index: 1
+Top paths: /api/orders, /health, /checkout

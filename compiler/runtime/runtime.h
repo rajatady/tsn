@@ -132,13 +132,19 @@ static inline char str_at(Str s, int i) {
     return (i >= 0 && i < s.len) ? s.data[i] : '\0';
 }
 
-static inline int str_indexOf(Str s, Str needle) {
-    if (needle.len == 0) return 0;
-    if (needle.len > s.len) return -1;
-    for (int i = 0; i <= s.len - needle.len; i++) {
+static inline int str_indexOf_from(Str s, Str needle, int start) {
+    if (start < 0) start = 0;
+    if (start > s.len) return needle.len == 0 ? s.len : -1;
+    if (needle.len == 0) return start;
+    if (needle.len > s.len - start) return -1;
+    for (int i = start; i <= s.len - needle.len; i++) {
         if (memcmp(s.data + i, needle.data, needle.len) == 0) return i;
     }
     return -1;
+}
+
+static inline int str_indexOf(Str s, Str needle) {
+    return str_indexOf_from(s, needle, 0);
 }
 
 static inline bool str_startsWith(Str s, Str p) {
@@ -175,6 +181,28 @@ static inline Str str_trim(Str s) {
     while (start < s.len && str_is_space(s.data[start])) start++;
     while (end > start && str_is_space(s.data[end - 1])) end--;
     return str_slice(s, start, end);
+}
+
+static inline Str str_lower_ascii(Str s) {
+    if (s.len == 0) return str_lit("");
+    char *buf = (char *)rc_alloc(s.len + 1);
+    for (int i = 0; i < s.len; i++) {
+        char c = s.data[i];
+        buf[i] = (c >= 'A' && c <= 'Z') ? (char)(c + 32) : c;
+    }
+    buf[s.len] = '\0';
+    return (Str){ buf, buf, s.len, 0 };
+}
+
+static inline Str str_upper_ascii(Str s) {
+    if (s.len == 0) return str_lit("");
+    char *buf = (char *)rc_alloc(s.len + 1);
+    for (int i = 0; i < s.len; i++) {
+        char c = s.data[i];
+        buf[i] = (c >= 'a' && c <= 'z') ? (char)(c - 32) : c;
+    }
+    buf[s.len] = '\0';
+    return (Str){ buf, buf, s.len, 0 };
 }
 
 /* ─── StrBuf: stack-based string builder ─────────────────────────── */
@@ -295,6 +323,25 @@ static inline Str num_to_str(double n) {
 
 DEFINE_ARRAY(StrArr, Str)
 DEFINE_ARRAY(DoubleArr, double)
+
+static inline StrArr str_split(Str s, Str sep) {
+    StrArr out = StrArr_new();
+    if (sep.len == 0) {
+        for (int i = 0; i < s.len; i++) StrArr_push(&out, str_slice(s, i, i + 1));
+        return out;
+    }
+    int start = 0;
+    while (start <= s.len) {
+        int idx = str_indexOf_from(s, sep, start);
+        if (idx < 0) {
+            StrArr_push(&out, str_slice(s, start, s.len));
+            break;
+        }
+        StrArr_push(&out, str_slice(s, start, idx));
+        start = idx + sep.len;
+    }
+    return out;
+}
 
 /* Deep release for StrArr — releases each string, then the array */
 static inline void StrArr_release_deep(StrArr *a) {
