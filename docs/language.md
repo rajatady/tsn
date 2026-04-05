@@ -11,6 +11,7 @@ Every value has a known type at compile time. No `any`, no `unknown`, no type as
 | `number` | `double` | 8 bytes | All numbers are 64-bit floats |
 | `string` | `Str` | 24 bytes | Value type with optional refcount |
 | `boolean` | `bool` | 1 byte | `true` / `false` |
+| `JSX.Element` | `UIHandle` | pointer-sized | Native view/window handle returned by TSX components |
 | `void` | `void` | 0 | Return type only |
 | `T[]` | `TArr` | 12 bytes | Refcounted dynamic array |
 | `interface T` | `struct T` | Sum of fields | Passed by value |

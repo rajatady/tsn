@@ -23,9 +23,11 @@ export interface CodeGenContext {
   hasJsx: boolean
   funcSigs: Map<string, FuncSig>
   pad(): string
+  pushJsxStmt(line: string): void
   emitExpr(node: ts.Node): string
   exprType(node: ts.Node): string
   arrayCElemType(tsType: string): string
+  getStructFields(name: string): Array<{ name: string; tsType: string; cType: string }> | undefined
   varTypes: Map<string, string>
 }
 
@@ -33,7 +35,7 @@ export class JsxEmitter {
   private ctx: CodeGenContext
   private jsxCounter = 0
   private jsxOnClickCounter = 0
-  private jsxParentDeclared = false
+  private parentStack: string[] = []
 
   constructor(ctx: CodeGenContext) {
     this.ctx = ctx
@@ -87,6 +89,23 @@ export class JsxEmitter {
     return '""'
   }
 
+  private exprToCStr(expr: ts.Expression): string {
+    const type = this.ctx.exprType(expr)
+    const emitted = this.ctx.emitExpr(expr)
+    if (type === 'string') return `ts_str_cstr(${emitted})`
+    if (type === 'number') return `ts_str_cstr(num_to_str(${emitted}))`
+    if (type === 'boolean') return `(${emitted} ? "true" : "false")`
+    return '""'
+  }
+
+  private propCStr(props: Map<string, ts.Node | null>, key: string): string | null {
+    const val = props.get(key)
+    if (!val) return null
+    if (ts.isStringLiteral(val)) return JSON.stringify(val.text)
+    if (ts.isJsxExpression(val) && val.expression) return this.exprToCStr(val.expression)
+    return null
+  }
+
   private textContent(children: readonly ts.JsxChild[]): string {
     const parts: string[] = []
     for (const child of children) {
@@ -98,6 +117,102 @@ export class JsxEmitter {
     return parts.join(' ')
   }
 
+  private textArg(children: readonly ts.JsxChild[]): string {
+    const text = this.textContent(children)
+    if (text.length > 0) return JSON.stringify(text)
+
+    const exprChildren = children.filter((child): child is ts.JsxExpression =>
+      ts.isJsxExpression(child) && !!child.expression
+    )
+    if (exprChildren.length === 1) return this.exprToCStr(exprChildren[0].expression!)
+    return '""'
+  }
+
+  private currentParent(): string | null {
+    return this.parentStack.length > 0 ? this.parentStack[this.parentStack.length - 1] : null
+  }
+
+  private emitTextNodeHandle(text: string): string {
+    const handle = `_j${this.jsxCounter++}`
+    this.ctx.pushJsxStmt(this.ctx.pad() + `UIHandle ${handle} = ui_text(${JSON.stringify(text)}, 14, false);`)
+    this.ctx.pushJsxStmt(this.ctx.pad() + `ui_set_id(${handle}, "${handle}");`)
+    return handle
+  }
+
+  private emitChildHandle(child: ts.JsxChild): string | null {
+    if (ts.isJsxText(child)) {
+      const text = child.text.trim()
+      if (text.length === 0) return null
+      return this.emitTextNodeHandle(text)
+    }
+    if (ts.isJsxElement(child)) return this.emitElement(child.openingElement, child.children)
+    if (ts.isJsxSelfClosingElement(child)) return this.emitElement(child, [])
+    if (ts.isJsxFragment(child)) return this.emitFragment(child.children)
+    if (ts.isJsxExpression(child) && child.expression) return this.ctx.emitExpr(child.expression)
+    return null
+  }
+
+  private emitChildrenProp(children: readonly ts.JsxChild[]): string | null {
+    const renderable = children.filter(child => !(ts.isJsxText(child) && child.text.trim().length === 0))
+    if (renderable.length === 0) return null
+    const child = renderable[0]
+    if (renderable.length === 1 &&
+        !(ts.isJsxExpression(child) &&
+          child.expression &&
+          ts.isCallExpression(child.expression) &&
+          ts.isPropertyAccessExpression(child.expression.expression) &&
+          child.expression.expression.name.text === 'map')) {
+      return this.emitChildHandle(child)
+    }
+    return this.emitFragment(renderable)
+  }
+
+  private emitPropValue(tsType: string, value: ts.Node | null): string | null {
+    if (value === null) return tsType === 'boolean' ? 'true' : null
+    if (ts.isStringLiteral(value)) {
+      if (tsType === 'string') return `str_lit(${JSON.stringify(value.text)})`
+      return JSON.stringify(value.text)
+    }
+    if (ts.isJsxExpression(value) && value.expression) {
+      const expr = value.expression
+      const exprType = this.ctx.exprType(expr)
+      const emitted = this.ctx.emitExpr(expr)
+      if (tsType === 'string') {
+        if (exprType === 'string') return emitted
+        if (exprType === 'number') return `num_to_str(${emitted})`
+        if (exprType === 'boolean') return `(${emitted} ? str_lit("true") : str_lit("false"))`
+      }
+      return emitted
+    }
+    return null
+  }
+
+  private emitComponentCall(tag: string, props: Map<string, ts.Node | null>, children: readonly ts.JsxChild[]): string | null {
+    const sig = this.ctx.funcSigs.get(tag)
+    if (!sig || (sig.returnType !== 'JSX.Element' && sig.returnCType !== 'UIHandle')) return null
+    if (sig.params.length === 0) return `${tag}()`
+    if (sig.params.length !== 1) return null
+
+    const param = sig.params[0]
+    const fields = this.ctx.getStructFields(param.tsType)
+    if (!fields) return null
+
+    const assignments: string[] = []
+    for (const field of fields) {
+      if (field.name === 'children') {
+        const childExpr = this.emitChildrenProp(children)
+        if (childExpr) assignments.push(`.${field.name} = ${childExpr}`)
+        continue
+      }
+
+      if (!props.has(field.name)) continue
+      const value = this.emitPropValue(field.tsType, props.get(field.name) ?? null)
+      if (value) assignments.push(`.${field.name} = ${value}`)
+    }
+
+    return `${tag}((${param.cType}){ ${assignments.join(', ')} })`
+  }
+
   private colorIndex(name: string): number {
     const map: Record<string, number> = {
       'label': 0, 'secondary': 1, 'tertiary': 2,
@@ -106,6 +221,20 @@ export class JsxEmitter {
       'indigo': 11, 'cyan': 12,
     }
     return map[name] ?? 3
+  }
+
+  private buttonStyle(name: string): number {
+    const map: Record<string, number> = {
+      'default': 0,
+      'secondary': 0,
+      'outline': 0,
+      'ghost': 3,
+      'link': 3,
+      'destructive': 2,
+      'primary': 1,
+      'accent': 1,
+    }
+    return map[name] ?? 0
   }
 
   // ─── Main Element Emitter ──────────────────────────────────────
@@ -120,25 +249,24 @@ export class JsxEmitter {
     const handle = `_j${this.jsxCounter++}`
     const className = this.propStr(props, 'className')
     const tw = className ? parseTailwind(className, handle) : null
-    const S = this.ctx.jsxStmts
     const pad = () => this.ctx.pad()
+    const push = (line: string) => this.ctx.pushJsxStmt(pad() + line)
     /** Emit UIHandle creation + ui_set_id registration */
     const create = (call: string) => {
-      S.push(pad() + `UIHandle ${handle} = ${call};`)
-      S.push(pad() + `ui_set_id(${handle}, "${handle}");`)
+      push(`UIHandle ${handle} = ${call};`)
+      push(`ui_set_id(${handle}, "${handle}");`)
     }
 
     switch (tag) {
       case 'Window': {
-        const title = this.propStr(props, 'title')
+        const title = this.propCStr(props, 'title') ?? '""'
         const w = this.propNum(props, 'width', 1200)
         const h = this.propNum(props, 'height', 780)
         const dark = this.propBool(props, 'dark')
-        create(`ui_window(${JSON.stringify(title)}, ${w}, ${h}, ${dark})`)
-        const sub = this.propStr(props, 'subtitle')
-        if (sub) S.push(pad() + `ui_window_subtitle(${handle}, ${JSON.stringify(sub)});`)
+        create(`ui_window(${title}, ${w}, ${h}, ${dark})`)
+        const sub = this.propCStr(props, 'subtitle')
+        if (sub) push(`ui_window_subtitle(${handle}, ${sub});`)
         this.emitChildren(children, handle)
-        S.push(pad() + `ui_run(${handle});`)
         return handle
       }
 
@@ -146,17 +274,17 @@ export class JsxEmitter {
       case 'HStack': {
         const fn = tag === 'VStack' ? 'ui_vstack' : 'ui_hstack'
         create(`${fn}()`)
-        if (tw) for (const c of tw.calls) S.push(pad() + c)
+        if (tw) for (const c of tw.calls) push(c)
         this.emitChildren(children, handle)
         return handle
       }
 
       case 'Text': {
-        const text = this.textContent(children)
+        const text = this.textArg(children)
         const size = tw?.textSize || 14
         const bold = tw?.textBold || false
-        create(`ui_text(${JSON.stringify(text)}, ${size}, ${bold})`)
-        if (tw) for (const c of tw.calls) S.push(pad() + c)
+        create(`ui_text(${text}, ${size}, ${bold})`)
+        if (tw) for (const c of tw.calls) push(c)
         return handle
       }
 
@@ -165,14 +293,26 @@ export class JsxEmitter {
         return handle
 
       case 'Search': {
-        const placeholder = this.propStr(props, 'placeholder')
-        create(`ui_search_field(${JSON.stringify(placeholder)})`)
+        const placeholder = this.propCStr(props, 'placeholder') ?? '""'
+        create(`ui_search_field(${placeholder})`)
         const onChange = props.get('onChange')
         if (onChange && ts.isJsxExpression(onChange) && onChange.expression) {
           const wrapName = this.liftCallback(onChange.expression, 'UITextChangedFn')
-          S.push(pad() + `ui_on_text_changed(${handle}, ${wrapName});`)
+          push(`ui_on_text_changed(${handle}, ${wrapName});`)
         }
-        if (tw) for (const c of tw.calls) S.push(pad() + c)
+        if (tw) for (const c of tw.calls) push(c)
+        return handle
+      }
+
+      case 'Input': {
+        const placeholder = this.propCStr(props, 'placeholder') ?? '""'
+        create(`ui_text_field(${placeholder})`)
+        const onChange = props.get('onChange')
+        if (onChange && ts.isJsxExpression(onChange) && onChange.expression) {
+          const wrapName = this.liftCallback(onChange.expression, 'UITextChangedFn')
+          push(`ui_on_text_changed(${handle}, ${wrapName});`)
+        }
+        if (tw) for (const c of tw.calls) push(c)
         return handle
       }
 
@@ -183,27 +323,43 @@ export class JsxEmitter {
         return handle
       }
 
+      case 'Card': {
+        create(`ui_card()`)
+        if (tw) for (const c of tw.calls) push(c)
+        this.emitChildren(children, handle)
+        return handle
+      }
+
       case 'SidebarSection': {
-        const title = this.propStr(props, 'title')
-        S.push(pad() + `ui_sidebar_section(_jsx_parent, ${JSON.stringify(title)});`)
+        const title = this.propCStr(props, 'title') ?? '""'
+        const parent = this.currentParent()
+        if (!parent) return ''
+        push(`ui_sidebar_section(${parent}, ${title});`)
         for (const child of children) {
           if (ts.isJsxText(child) && child.text.trim().length === 0) continue
           if (ts.isJsxElement(child))
             this.emitElement(child.openingElement, child.children)
           if (ts.isJsxSelfClosingElement(child))
             this.emitElement(child, [])
-          if (ts.isJsxExpression(child) && child.expression &&
-              ts.isCallExpression(child.expression) &&
-              ts.isPropertyAccessExpression(child.expression.expression) &&
-              child.expression.expression.name.text === 'map')
-            this.emitJsxMap(child.expression, '_jsx_parent')
+          if (ts.isJsxExpression(child) && child.expression) {
+            if (ts.isCallExpression(child.expression) &&
+                ts.isPropertyAccessExpression(child.expression.expression) &&
+                child.expression.expression.name.text === 'map') {
+              this.emitJsxMap(child.expression, parent)
+            } else {
+              const expr = this.ctx.emitExpr(child.expression)
+              push(`ui_add_child(${parent}, ${expr});`)
+            }
+          }
         }
         return ''  // section doesn't produce a view
       }
 
       case 'SidebarItem': {
-        const icon = this.propStr(props, 'icon')
-        const text = this.textContent(children)
+        const parent = this.currentParent()
+        if (!parent) return '((UIHandle)0)'
+        const icon = this.propCStr(props, 'icon') ?? '""'
+        const text = this.textArg(children)
         const onClick = props.get('onClick')
         let fnRef = 'NULL'
         let tagNum = 0
@@ -211,32 +367,49 @@ export class JsxEmitter {
           fnRef = this.liftCallback(onClick.expression, 'UIClickFn')
           tagNum = this.jsxOnClickCounter++
         }
-        create(`ui_sidebar_item(_jsx_parent, ${JSON.stringify(text)}, ${JSON.stringify(icon)}, ${tagNum}, ${fnRef})`)
+        create(`ui_sidebar_item(${parent}, ${text}, ${icon}, ${tagNum}, ${fnRef})`)
         return handle
       }
 
       case 'Stat': {
-        const valueStr = this.propStr(props, 'value')
-        const value = valueStr ? JSON.stringify(valueStr) : this.propExpr(props, 'value')
-        const label = this.propStr(props, 'label')
+        const value = this.propCStr(props, 'value') ?? '""'
+        const label = this.propCStr(props, 'label') ?? '""'
         const color = this.colorIndex(this.propStr(props, 'color'))
-        create(`ui_stat(${value}, ${JSON.stringify(label)}, ${color})`)
+        create(`ui_stat(${value}, ${label}, ${color})`)
         return handle
       }
 
       case 'Badge': {
-        const text = this.propStr(props, 'text') || this.textContent(children)
+        const text = this.propCStr(props, 'text') ?? this.textArg(children)
         const color = this.colorIndex(this.propStr(props, 'color'))
-        create(`ui_badge(${JSON.stringify(text)}, ${color})`)
+        create(`ui_badge(${text}, ${color})`)
+        return handle
+      }
+
+      case 'Button': {
+        const label = this.propCStr(props, 'text') ?? this.textArg(children)
+        const icon = this.propCStr(props, 'icon')
+        const variant = this.buttonStyle(this.propStr(props, 'variant'))
+        const onClick = props.get('onClick')
+        let fnRef = 'NULL'
+        let tagNum = 0
+        if (onClick && ts.isJsxExpression(onClick) && onClick.expression) {
+          fnRef = this.liftCallback(onClick.expression, 'UIClickFn')
+          tagNum = this.jsxOnClickCounter++
+        }
+        if (icon) create(`ui_button_icon(${icon}, ${label}, ${fnRef}, ${tagNum})`)
+        else create(`ui_button(${label}, ${fnRef}, ${tagNum})`)
+        push(`ui_button_set_style(${handle}, ${variant});`)
+        if (tw) for (const c of tw.calls) push(c)
         return handle
       }
 
       case 'BarChart': {
-        const title = this.propStr(props, 'title')
+        const title = this.propCStr(props, 'title')
         const h = tw && tw.height > 0 ? tw.height : 180
         create(`ui_bar_chart(${h})`)
-        if (title) S.push(pad() + `ui_bar_chart_set_title(${handle}, ${JSON.stringify(title)});`)
-        if (tw) for (const c of tw.calls) S.push(pad() + c)
+        if (title) push(`ui_bar_chart_set_title(${handle}, ${title});`)
+        if (tw) for (const c of tw.calls) push(c)
         return handle
       }
 
@@ -246,17 +419,17 @@ export class JsxEmitter {
         if (colsProp && ts.isJsxExpression(colsProp) && colsProp.expression)
           this.emitTableColumns(handle, colsProp.expression)
         const rowHeight = this.propNum(props, 'rowHeight', 26)
-        S.push(pad() + `ui_data_table_set_row_height(${handle}, ${rowHeight});`)
+        push(`ui_data_table_set_row_height(${handle}, ${rowHeight});`)
         if (this.propBool(props, 'alternating'))
-          S.push(pad() + `ui_data_table_set_alternating(${handle}, true);`)
+          push(`ui_data_table_set_alternating(${handle}, true);`)
         // cellFn prop — wrap TypeScript function for C callback
         const cellFnProp = props.get('cellFn')
         if (cellFnProp && ts.isJsxExpression(cellFnProp) && cellFnProp.expression) {
           const wrapName = this.liftCallback(cellFnProp.expression, 'UITableCellFn')
           const rows = this.propNum(props, 'rows', 500)
-          S.push(pad() + `ui_data_table_set_data(${handle}, ${rows}, ${wrapName}, NULL);`)
+          push(`ui_data_table_set_data(${handle}, ${rows}, ${wrapName}, NULL);`)
           // Generate refreshTable() — stores handle globally, callable from TS
-          S.push(pad() + `_g_table = ${handle};`)
+          push(`_g_table = ${handle};`)
           this.ctx.lambdas.push(
             `static UIHandle _g_table = NULL;\n` +
             `void refreshTable(double rows) {\n` +
@@ -264,7 +437,7 @@ export class JsxEmitter {
             `}`
           )
         }
-        if (tw) for (const c of tw.calls) S.push(pad() + c)
+        if (tw) for (const c of tw.calls) push(c)
         return handle
       }
 
@@ -276,9 +449,12 @@ export class JsxEmitter {
         create(`ui_divider()`)
         return handle
 
-      default:
-        S.push(pad() + `/* Unknown JSX: <${tag}> */`)
+      default: {
+        const component = this.emitComponentCall(tag, props, children)
+        if (component) return component
+        push(`/* Unknown JSX: <${tag}> */`)
         return '((UIHandle)0)'
+      }
     }
     // Should be unreachable — all cases return above
   }
@@ -286,12 +462,7 @@ export class JsxEmitter {
   // ─── Children ──────────────────────────────────────────────────
 
   private emitChildren(children: readonly ts.JsxChild[], parentHandle: string): void {
-    if (!this.jsxParentDeclared) {
-      this.ctx.jsxStmts.push(this.ctx.pad() + `UIHandle _jsx_parent = ${parentHandle};`)
-      this.jsxParentDeclared = true
-    } else {
-      this.ctx.jsxStmts.push(this.ctx.pad() + `_jsx_parent = ${parentHandle};`)
-    }
+    this.parentStack.push(parentHandle)
 
     for (const child of children) {
       if (ts.isJsxText(child) && child.text.trim().length === 0) continue
@@ -299,13 +470,13 @@ export class JsxEmitter {
 
       if (ts.isJsxElement(child)) {
         const h = this.emitElement(child.openingElement, child.children)
-        if (h) this.ctx.jsxStmts.push(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
+        if (h) this.ctx.pushJsxStmt(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
         continue
       }
 
       if (ts.isJsxSelfClosingElement(child)) {
         const h = this.emitElement(child, [])
-        if (h) this.ctx.jsxStmts.push(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
+        if (h) this.ctx.pushJsxStmt(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
         continue
       }
 
@@ -317,19 +488,20 @@ export class JsxEmitter {
           continue
         }
         const expr = this.ctx.emitExpr(child.expression)
-        this.ctx.jsxStmts.push(this.ctx.pad() + `ui_add_child(${parentHandle}, ${expr});`)
+        this.ctx.pushJsxStmt(this.ctx.pad() + `ui_add_child(${parentHandle}, ${expr});`)
       }
     }
+    this.parentStack.pop()
   }
 
   /** Emit ui_set_id() for inspector element lookup */
   private emitSetId(handle: string): void {
-    this.ctx.jsxStmts.push(this.ctx.pad() + `ui_set_id(${handle}, "${handle}");`)
+    this.ctx.pushJsxStmt(this.ctx.pad() + `ui_set_id(${handle}, "${handle}");`)
   }
 
   emitFragment(children: readonly ts.JsxChild[]): string {
     const handle = `_j${this.jsxCounter++}`
-    this.ctx.jsxStmts.push(this.ctx.pad() + `UIHandle ${handle} = ui_vstack(); /* fragment */`)
+    this.ctx.pushJsxStmt(this.ctx.pad() + `UIHandle ${handle} = ui_vstack(); /* fragment */`)
     this.emitSetId(handle)
     this.emitChildren(children, handle)
     return handle
@@ -347,9 +519,9 @@ export class JsxEmitter {
     const elemCType = this.ctx.arrayCElemType(arrType)
 
     const idx = `_mi${this.jsxCounter++}`
-    this.ctx.jsxStmts.push(this.ctx.pad() + `for (int ${idx} = 0; ${idx} < ${arr}.len; ${idx}++) {`)
+    this.ctx.pushJsxStmt(this.ctx.pad() + `for (int ${idx} = 0; ${idx} < ${arr}.len; ${idx}++) {`)
     this.ctx.indent++
-    this.ctx.jsxStmts.push(this.ctx.pad() + `${elemCType} ${param} = ${arr}.data[${idx}];`)
+    this.ctx.pushJsxStmt(this.ctx.pad() + `${elemCType} ${param} = ${arr}.data[${idx}];`)
 
     const prevType = this.ctx.varTypes.get(param)
     this.ctx.varTypes.set(param, arrType.replace('[]', ''))
@@ -359,17 +531,17 @@ export class JsxEmitter {
 
     if (ts.isJsxElement(inner)) {
       const h = this.emitElement(inner.openingElement, inner.children)
-      if (h) this.ctx.jsxStmts.push(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
+      if (h) this.ctx.pushJsxStmt(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
     } else if (ts.isJsxSelfClosingElement(inner)) {
       const h = this.emitElement(inner, [])
-      if (h) this.ctx.jsxStmts.push(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
+      if (h) this.ctx.pushJsxStmt(this.ctx.pad() + `ui_add_child(${parentHandle}, ${h});`)
     }
 
     if (prevType) this.ctx.varTypes.set(param, prevType)
     else this.ctx.varTypes.delete(param)
 
     this.ctx.indent--
-    this.ctx.jsxStmts.push(this.ctx.pad() + `}`)
+    this.ctx.pushJsxStmt(this.ctx.pad() + `}`)
   }
 
   // ─── Callback Wrappers ─────────────────────────────────────────
@@ -486,10 +658,10 @@ export class JsxEmitter {
           if (name === 'title' && ts.isStringLiteral(prop.initializer)) title = prop.initializer.text
           if (name === 'width' && ts.isNumericLiteral(prop.initializer)) width = parseInt(prop.initializer.text)
         }
-        this.ctx.jsxStmts.push(this.ctx.pad() + `ui_data_table_add_column(${handle}, ${JSON.stringify(id)}, ${JSON.stringify(title)}, ${width});`)
+        this.ctx.pushJsxStmt(this.ctx.pad() + `ui_data_table_add_column(${handle}, ${JSON.stringify(id)}, ${JSON.stringify(title)}, ${width});`)
       }
     } else if (ts.isIdentifier(expr)) {
-      this.ctx.jsxStmts.push(this.ctx.pad() + `/* Table columns from: ${expr.text} */`)
+      this.ctx.pushJsxStmt(this.ctx.pad() + `/* Table columns from: ${expr.text} */`)
     }
   }
 }

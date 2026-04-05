@@ -5,6 +5,7 @@
  *   number       → double
  *   string       → Str  (16 bytes, by value, zero alloc)
  *   boolean      → bool
+ *   JSX.Element  → UIHandle
  *   T[]          → TArr (typed dynamic array via DEFINE_ARRAY macro)
  *   interface T  → struct T
  *   function     → C function
@@ -44,6 +45,20 @@ interface FuncSig {
   returnCType: string
 }
 
+interface ParamAlias {
+  name: string
+  tsType: string
+  cType: string
+  accessExpr: string
+}
+
+interface ParamInfo {
+  name: string
+  tsType: string
+  cType: string
+  aliases: ParamAlias[]
+}
+
 class CodeGen {
   private structs: StructDef[] = []
   private functions: string[] = []
@@ -65,6 +80,7 @@ class CodeGen {
   jsxGlobals: string[] = []  // global variable declarations for JSX mode
   hasJsx = false              // track if source uses JSX (for includes/linking)
   private jsxEmitter: JsxEmitter
+  private activeStmtSink: string[] | null = null
   // Source mapping
   private sourceFile: ts.SourceFile | null = null
   private sourceFileName = ''
@@ -75,27 +91,24 @@ class CodeGen {
 
   // ─── Type Resolution ────────────────────────────────────────────
 
-  private tsTypeToC(typeNode: ts.TypeNode | undefined, fallback = 'double'): string {
-    if (!typeNode) return fallback
-    if (ts.isTypeReferenceNode(typeNode)) {
-      const name = typeNode.typeName.getText()
-      if (name === 'Array' && typeNode.typeArguments?.length) {
-        const inner = this.tsTypeName(typeNode.typeArguments[0])
-        return this.arrayTypeName(inner)
-      }
-      return name  // use typedef name, not struct X
-    }
-    if (ts.isArrayTypeNode(typeNode)) {
-      const inner = this.tsTypeName(typeNode.elementType)
+  private tsTypeNameToC(tsType: string, fallback = 'double'): string {
+    if (tsType.endsWith('[]')) {
+      const inner = tsType.slice(0, -2)
       return this.arrayTypeName(inner)
     }
-    switch (typeNode.getText()) {
+    switch (tsType) {
       case 'number': return 'double'
       case 'string': return 'Str'
       case 'boolean': return 'bool'
       case 'void': return 'void'
-      default: return fallback
+      case 'JSX.Element': return 'UIHandle'
+      default: return tsType || fallback
     }
+  }
+
+  private tsTypeToC(typeNode: ts.TypeNode | undefined, fallback = 'double'): string {
+    if (!typeNode) return fallback
+    return this.tsTypeNameToC(this.tsTypeName(typeNode), fallback)
   }
 
   private tsTypeName(typeNode: ts.TypeNode | undefined): string {
@@ -117,6 +130,7 @@ class CodeGen {
       case 'string': this.arrayTypes.add('Str'); return 'StrArr'
       case 'number': this.arrayTypes.add('double'); return 'DoubleArr'
       case 'boolean': this.arrayTypes.add('bool'); return 'BoolArr'
+      case 'JSX.Element': this.arrayTypes.add('UIHandle'); return 'UIHandleArr'
       default:
         this.arrayTypes.add(innerTsType)
         return `${innerTsType}Arr`
@@ -129,7 +143,26 @@ class CodeGen {
       case 'string': return 'Str'
       case 'number': return 'double'
       case 'boolean': return 'bool'
+      case 'JSX.Element': return 'UIHandle'
       default: return inner
+    }
+  }
+
+  pushJsxStmt(line: string): void {
+    ;(this.activeStmtSink ?? this.jsxStmts).push(line)
+  }
+
+  getStructFields(name: string): Array<{ name: string; tsType: string; cType: string }> | undefined {
+    return this.structs.find(s => s.name === name)?.fields
+  }
+
+  private withStmtSink<T>(sink: string[], fn: () => T): T {
+    const prev = this.activeStmtSink
+    this.activeStmtSink = sink
+    try {
+      return fn()
+    } finally {
+      this.activeStmtSink = prev
     }
   }
 
@@ -153,6 +186,54 @@ class CodeGen {
     }
     if (prev) this.varTypes.set(paramName, prev); else this.varTypes.delete(paramName)
     return { paramName, body }
+  }
+
+  private inferFunctionReturnType(node: ts.FunctionDeclaration): { tsType: string; cType: string } {
+    if (node.type) {
+      const tsType = this.tsTypeName(node.type)
+      return { tsType, cType: this.tsTypeNameToC(tsType, 'void') }
+    }
+
+    let inferred = 'void'
+    const visit = (child: ts.Node): void => {
+      if (inferred !== 'void') return
+      if (ts.isReturnStatement(child) && child.expression) {
+        const expr = this.unwrapParens(child.expression)
+        if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
+          inferred = 'JSX.Element'
+          return
+        }
+        inferred = this.exprType(expr) ?? 'void'
+        return
+      }
+      ts.forEachChild(child, visit)
+    }
+    if (node.body) visit(node.body)
+    return { tsType: inferred, cType: this.tsTypeNameToC(inferred, 'void') }
+  }
+
+  private describeParameter(p: ts.ParameterDeclaration, index: number): ParamInfo {
+    const tsType = this.tsTypeName(p.type)
+    const cType = this.tsTypeNameToC(tsType)
+    const name = ts.isIdentifier(p.name) ? p.name.text : `_arg${index}`
+    const aliases: ParamAlias[] = []
+
+    if (ts.isObjectBindingPattern(p.name)) {
+      const fields = this.getStructFields(tsType) ?? []
+      for (const elem of p.name.elements) {
+        const aliasName = elem.name.getText()
+        const propName = elem.propertyName ? elem.propertyName.getText() : aliasName
+        const field = fields.find(f => f.name === propName)
+        aliases.push({
+          name: aliasName,
+          tsType: field?.tsType ?? 'number',
+          cType: field?.cType ?? 'double',
+          accessExpr: `${name}.${propName}`,
+        })
+      }
+    }
+
+    return { name, tsType, cType, aliases }
   }
 
   /** Infer C type from a variable declaration's initializer */
@@ -187,6 +268,12 @@ class CodeGen {
       if (sig) return sig.returnType
     }
     return 'number'
+  }
+
+  private unwrapParens<T extends ts.Node>(node: T): ts.Node {
+    let current: ts.Node = node
+    while (ts.isParenthesizedExpression(current)) current = current.expression
+    return current
   }
 
   // ─── Struct Generation ──────────────────────────────────────────
@@ -610,9 +697,11 @@ class CodeGen {
   // ─── Type Inference ─────────────────────────────────────────────
 
   exprType(node: ts.Node): string | undefined {
+    node = this.unwrapParens(node)
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) return 'string'
     if (ts.isNumericLiteral(node)) return 'number'
     if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword) return 'boolean'
+    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return 'JSX.Element'
     if (ts.isIdentifier(node)) return this.varTypes.get(node.text)
     if (ts.isCallExpression(node)) {
       if (ts.isIdentifier(node.expression)) {
@@ -1080,15 +1169,17 @@ class CodeGen {
     this.funcTopLevelVars.clear()
     this.funcDeclaredSoFar.clear()
 
-    const retCType = this.tsTypeToC(node.type, 'void')
-    const retType = this.tsTypeName(node.type)
+    const retInfo = this.inferFunctionReturnType(node)
+    const retCType = retInfo.cType
+    const retType = retInfo.tsType
     const params: FuncSig['params'] = []
     const paramStrs: string[] = []
-    for (const p of node.parameters) {
-      const pn = p.name.getText(), pct = this.tsTypeToC(p.type), pt = this.tsTypeName(p.type)
-      params.push({ name: pn, tsType: pt, cType: pct })
-      paramStrs.push(`${pct} ${pn}`)
-      this.varTypes.set(pn, pt)
+    const paramInfos = node.parameters.map((p, index) => this.describeParameter(p, index))
+    for (const info of paramInfos) {
+      params.push({ name: info.name, tsType: info.tsType, cType: info.cType })
+      paramStrs.push(`${info.cType} ${info.name}`)
+      this.varTypes.set(info.name, info.tsType)
+      for (const alias of info.aliases) this.varTypes.set(alias.name, alias.tsType)
     }
     this.funcSigs.set(name, { name, params, returnType: retType, returnCType: retCType })
 
@@ -1103,11 +1194,16 @@ class CodeGen {
     }
 
     const body: string[] = []
-    if (node.body) {
+    if (node.body) this.withStmtSink(body, () => {
       this.indent = 1
-      for (const s of node.body.statements) this.emitStmt(s, body)
+      for (const info of paramInfos) {
+        for (const alias of info.aliases) {
+          body.push(this.pad() + `${alias.cType} ${alias.name} = ${alias.accessExpr};`)
+        }
+      }
+      for (const s of node.body!.statements) this.emitStmt(s, body)
       this.indent = 0
-    }
+    })
     const ps = paramStrs.length ? paramStrs.join(', ') : 'void'
     const fnLine = this.srcLine(node)
     this.functions.push(`${fnLine}${retCType} ${name}(${ps}) {\n${body.join('\n')}\n}`)
@@ -1191,14 +1287,12 @@ class CodeGen {
       for (const s of sf.statements) {
         if (ts.isFunctionDeclaration(s) && s.name && s.body) {
           const name = s.name.text
-          const retType = this.tsTypeName(s.type)
-          const retCType = this.tsTypeToC(s.type, 'void')
-          const params = s.parameters.map(p => ({
-            name: p.name.getText(),
-            tsType: this.tsTypeName(p.type),
-            cType: this.tsTypeToC(p.type),
-          }))
-          this.funcSigs.set(name, { name, params, returnType: retType, returnCType: retCType })
+          const retInfo = this.inferFunctionReturnType(s)
+          const params = s.parameters.map((p, index) => {
+            const info = this.describeParameter(p, index)
+            return { name: info.name, tsType: info.tsType, cType: info.cType }
+          })
+          this.funcSigs.set(name, { name, params, returnType: retInfo.tsType, returnCType: retInfo.cType })
         }
       }
     }
@@ -1263,54 +1357,58 @@ class CodeGen {
 
       // main() body — init library globals, then entry globals, then JSX
       this.indent = 1
-      this.jsxStmts.push(this.pad() + 'ui_init();')
+      this.withStmtSink(this.jsxStmts, () => {
+        this.jsxStmts.push(this.pad() + 'ui_init();')
+        this.jsxStmts.push(this.pad() + 'UIHandle _jsx_root = NULL;')
 
-      // Initialize library globals (non-entry files, in dependency order)
-      for (const sf of sourceFiles) {
-        if (sf === entryFile) continue
-        this.sourceFile = sf
-        this.sourceFileName = sf.fileName
-        for (const s of sf.statements) {
-          if (!ts.isVariableStatement(s)) continue
-          if (this.isSkippable(s)) continue
-          for (const d of s.declarationList.declarations) {
-            if (d.initializer) {
-              const name = d.name.getText()
-              const val = this.emitExpr(d.initializer)
-              this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+        // Initialize library globals (non-entry files, in dependency order)
+        for (const sf of sourceFiles) {
+          if (sf === entryFile) continue
+          this.sourceFile = sf
+          this.sourceFileName = sf.fileName
+          for (const s of sf.statements) {
+            if (!ts.isVariableStatement(s)) continue
+            if (this.isSkippable(s)) continue
+            for (const d of s.declarationList.declarations) {
+              if (d.initializer) {
+                const name = d.name.getText()
+                const val = this.emitExpr(d.initializer)
+                this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+              }
             }
           }
         }
-      }
 
-      // Initialize entry file globals and JSX
-      this.sourceFile = entryFile
-      this.sourceFileName = entryFile.fileName
-      for (const s of entryFile.statements) {
-        if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || this.isSkippable(s)) continue
+        // Initialize entry file globals and JSX
+        this.sourceFile = entryFile
+        this.sourceFileName = entryFile.fileName
+        for (const s of entryFile.statements) {
+          if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || this.isSkippable(s)) continue
 
-        if (ts.isVariableStatement(s)) {
-          for (const d of s.declarationList.declarations) {
-            if (d.initializer) {
-              const name = d.name.getText()
-              const val = this.emitExpr(d.initializer)
-              this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+          if (ts.isVariableStatement(s)) {
+            for (const d of s.declarationList.declarations) {
+              if (d.initializer) {
+                const name = d.name.getText()
+                const val = this.emitExpr(d.initializer)
+                this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+              }
+            }
+            continue
+          }
+
+          if (ts.isExpressionStatement(s)) {
+            const expr = s.expression
+            if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
+              const rendered = this.emitExpr(expr)
+              if (rendered) this.jsxStmts.push(this.pad() + `_jsx_root = ${rendered};`)
+            } else {
+              this.jsxStmts.push(this.pad() + `${this.emitExpr(expr)};`)
             }
           }
-          continue
         }
-
-        if (ts.isExpressionStatement(s)) {
-          const expr = s.expression
-          if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
-            this.emitExpr(expr)
-          } else {
-            this.jsxStmts.push(this.pad() + `${this.emitExpr(expr)};`)
-          }
-          continue
-        }
-      }
-      this.indent = 0
+        this.jsxStmts.push(this.pad() + 'if (_jsx_root) ui_run(_jsx_root);')
+        this.indent = 0
+      })
     }
 
     // Build output

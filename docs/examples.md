@@ -129,11 +129,13 @@ Located in `examples/native-gui/dashboard.tsx`. A full interactive macOS applica
 
 ```
 examples/native-gui/
-├── dashboard.tsx              Entry point: UI + state + event handlers (165 lines)
-│   import { Employee } from './lib/types'
-│   import { generateEmployees } from './lib/data'
-│   import { fuzzyScore } from './lib/search'
-│   import { deptForTag } from './lib/lookups'
+├── dashboard.tsx              Thin entry point: init + <App />
+├── dashboard/
+│   ├── app.tsx                Window composition
+│   ├── components.tsx         Header, stats, toolbar, footer
+│   ├── sidebar.tsx            Department navigation
+│   ├── table.tsx              Native table definition
+│   └── state.ts               Filtering, handlers, refreshTable usage
 │
 └── lib/
     ├── types.ts               Employee interface (12 lines)
@@ -147,12 +149,22 @@ examples/native-gui/
     └── search.ts              fuzzyScore (25 lines)
 ```
 
-All 6 files resolve and merge into a single `build/dashboard.c`.
+All of these files resolve and merge into a single `build/dashboard.c`.
 
 ### Architecture
 
 ```
 dashboard.tsx
+    │
+    ├── dashboard/app.tsx: App() root window
+    │
+    ├── dashboard/components.tsx: Header, metrics, toolbar, footer
+    │
+    ├── dashboard/sidebar.tsx: Sidebar sections and items
+    │
+    ├── dashboard/table.tsx: <Table> columns + cellFn wiring
+    │
+    ├── dashboard/state.ts: filtering logic, event handlers, refreshTable
     │
     ├── lib/types.ts: interface Employee { name, department, role, salary, performance, status }
     │
@@ -167,17 +179,7 @@ dashboard.tsx
     │
     ├── lib/search.ts: fuzzyScore(text, query) with consecutive bonus
     │
-    ├── Global State: employees, searchText, deptFilterIdx, filteredCount
-    │
-    ├── Filtering: matchesFilter(e), countFiltered(), nthFilteredEmployee(n)
-    │   (no mutable index array — scans on demand)
-    │
-    ├── Table Cell Callback: tableCellFn(row, col) → string
-    │
-    ├── Event Handlers: onSearch(text), onDeptClick(tag)
-    │   (update state → applyFilters → refreshTable)
-    │
-    └── JSX: Window → HStack → [Sidebar, VStack → [Header, Stats, Table, StatusBar]]
+    └── App(): Window → HStack → [Sidebar, VStack → [Header, Stats, Table, StatusBar]]
 ```
 
 ### Key Patterns
@@ -203,9 +205,9 @@ const tc: string = text.slice(i, i + 1) // not just: const tc = text.slice(...)
 declare function refreshTable(rows: number): void
 ```
 
-**Semicolon before JSX:**
+**Semicolon before JSX root:**
 ```typescript
-initFilters();   // semicolon required before <Window>
+initFilters();   // semicolon required before <App />
 ```
 
 ### Compiling and Running
@@ -239,6 +241,9 @@ Located in [examples/native-gui/incident-tracker.tsx](../examples/native-gui/inc
 - `includes()` for issue filtering
 - `indexOf()` to split project keys like `OPS-104`
 - `join()` to render tag arrays in the table
+- named function components with `return (...)`
+- a top-level `<App />` root instead of one giant inline window tree
+- a per-app folder with `app.tsx`, `components.tsx`, `sidebar.tsx`, `table.tsx`, `data.ts`, and `state.ts`
 
 Compile it with:
 

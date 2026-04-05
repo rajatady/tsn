@@ -26,6 +26,45 @@ UIHandle _j1 = ui_text("Hello", 24, true);
 ui_add_child(_j0, _j1);
 ```
 
+## Function Components
+
+StrictTS now supports named React-style function components that return JSX. The normal `return (...)` form is supported, including destructured props and a top-level `<App />` root.
+
+```tsx
+interface HeaderProps {
+  title: string
+  children: JSX.Element
+}
+
+function Header({ title, children }: HeaderProps) {
+  return (
+    <HStack className="gap-3">
+      <Text className="text-2xl font-bold">{title}</Text>
+      <Spacer />
+      {children}
+    </HStack>
+  )
+}
+
+function App() {
+  return (
+    <Window title="Example" width={900} height={600} dark>
+      <Header title="Incidents">
+        <Search placeholder="Search..." onChange={onSearch} />
+      </Header>
+    </Window>
+  )
+}
+
+<App />
+```
+
+Notes:
+- Function components compile to real C functions returning `UIHandle`
+- `children` should be typed as `JSX.Element`
+- Top-level `<App />` is allowed, so the entry file does not need one giant inline `<Window>`
+- Hooks like `useState()` are not part of this slice yet
+
 ## Component Catalog
 
 ### Window
@@ -111,6 +150,20 @@ Search field with text change callback.
 | `onChange` | `(text: string) => void` | Called on every keystroke |
 | `className` | string | Tailwind classes |
 
+### Input
+
+Plain text input field.
+
+```tsx
+<Input placeholder="Ticket title" onChange={onTitleChange} className="w-[240]" />
+```
+
+| Prop | Type | Notes |
+|------|------|-------|
+| `placeholder` | string | Placeholder text |
+| `onChange` | `(text: string) => void` | Called on text change |
+| `className` | string | Tailwind classes |
+
 ### Sidebar
 
 Fixed-width sidebar with sections and items.
@@ -194,6 +247,32 @@ Colored pill label.
 ```tsx
 <Badge text="Active" color="green" />
 <Badge text="Remote" color="blue" />
+```
+
+### Button
+
+Native button with optional icon and variant mapping.
+
+```tsx
+<Button onClick={onReset}>Reset</Button>
+<Button variant="ghost" icon="arrow.clockwise" onClick={onReset}>Refresh</Button>
+```
+
+| Prop | Type | Notes |
+|------|------|-------|
+| `onClick` | `(tag?: number) => void` | Click handler |
+| `variant` | string | `default`, `secondary`, `outline`, `ghost`, `link`, `destructive`, `primary`, `accent` |
+| `icon` | string | Optional SF Symbol name |
+| `text` | string | Optional label prop; text children also work |
+
+### Card
+
+Rounded container that behaves like a layout stack.
+
+```tsx
+<Card className="rounded-lg">
+  <Text>Summary</Text>
+</Card>
 ```
 
 ### BarChart
@@ -348,7 +427,7 @@ Text colors use system color indices:
 
 ## Top-Level Variables in JSX Mode
 
-When a file contains JSX, top-level `const`/`let` declarations become C globals (not inside `main()`). This lets functions reference them:
+When a file contains JSX, top-level `const`/`let` declarations become C globals (not inside `main()`). This lets functions and components reference them:
 
 ```typescript
 const employees: Employee[] = generateEmployees(50000)   // global
@@ -358,9 +437,15 @@ function onSearch(text: string): void {
   searchText = text   // can access because it's global
 }
 
-<Window title="App" ...>
-  ...
-</Window>
+function App() {
+  return (
+    <Window title="App" ...>
+      ...
+    </Window>
+  )
+}
+
+<App />
 ```
 
 ## Element IDs

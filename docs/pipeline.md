@@ -99,7 +99,7 @@ A function named `main` is renamed to `ts_main` to avoid conflicting with the C 
 
 **JSX mode** (has `<Window>` etc.):
 - Top-level variables become C globals (declaration before functions, initialization in `main()`)
-- `main()` calls `ui_init()`, initializes globals, then emits JSX tree statements
+- `main()` calls `ui_init()`, initializes globals, emits the JSX tree, captures the root `UIHandle`, then calls `ui_run()` once
 - JSX elements emit `ui_*()` calls accumulated in `jsxStmts`
 
 ### Output Assembly

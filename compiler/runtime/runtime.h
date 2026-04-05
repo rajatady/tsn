@@ -96,6 +96,30 @@ static inline Str str_dup(const char *s, int len) {
     return str_rc_new(s, len);
 }
 
+/* Temporary C-string bridge for native UI calls.
+ * UI functions consume the string immediately, so a small rotating
+ * scratch buffer is enough for dynamic JSX props.
+ */
+static inline const char *ts_str_cstr(Str s) {
+    enum { TS_TMP_CSTR_SLOTS = 8 };
+    static char *slots[TS_TMP_CSTR_SLOTS] = {0};
+    static int caps[TS_TMP_CSTR_SLOTS] = {0};
+    static int next_slot = 0;
+
+    int slot = next_slot;
+    next_slot = (next_slot + 1) % TS_TMP_CSTR_SLOTS;
+
+    if (caps[slot] < s.len + 1) {
+        if (slots[slot]) free(slots[slot]);
+        slots[slot] = (char *)malloc(s.len + 1);
+        caps[slot] = s.len + 1;
+    }
+
+    memcpy(slots[slot], s.data, s.len);
+    slots[slot][s.len] = '\0';
+    return slots[slot];
+}
+
 /* ─── Str refcount ops ───────────────────────────────────────────── */
 
 static inline Str str_retain(Str s) {
