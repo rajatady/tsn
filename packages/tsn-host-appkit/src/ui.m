@@ -8,6 +8,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
+#include <dlfcn.h>
 #include "ui.h"
 #include "runtime.h"
 
@@ -35,6 +36,14 @@ static NSColor *system_color(int idx) {
 static inline void retain_render(id obj);
 static inline void retain_persistent(id obj);
 static void finish_render_cycle(void);
+
+typedef CGImageRef (*CGWindowListCreateImageFn)(CGRect, uint32_t, uint32_t, uint32_t);
+
+static CGImageRef capture_window_image(CGWindowID windowID) {
+    CGWindowListCreateImageFn fn = (CGWindowListCreateImageFn)dlsym(RTLD_DEFAULT, "CGWindowListCreateImage");
+    if (!fn) return NULL;
+    return fn(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageNominalResolution);
+}
 
 /* ─── Spacer (used in layout) ────────────────────────────────────── */
 @interface UISpacer : NSView @end
@@ -1010,6 +1019,18 @@ void ui_on_text_changed(UIHandle field, UITextChangedFn fn) {
         /* TODO: NSTextField delegate */;
 }
 
+void ui_text_input_set_value(UIHandle field, const char *text) {
+    NSView *view = (__bridge NSView *)field;
+    NSString *value = text ? [NSString stringWithUTF8String:text] : @"";
+    if ([view isKindOfClass:[NSSearchField class]]) {
+        ((NSSearchField *)view).stringValue = value;
+        return;
+    }
+    if ([view isKindOfClass:[NSTextField class]]) {
+        ((NSTextField *)view).stringValue = value;
+    }
+}
+
 /* ─── Button ─────────────────────────────────────────────────────── */
 
 @interface UIButtonTarget : NSObject
@@ -1528,13 +1549,26 @@ static NSString *take_screenshot(void) {
     if (!g_inspect_window) return @"No window";
     NSString *path = @"/tmp/strictts-screenshot.png";
 
-    /* Capture on main thread — force layout first so scroll views render */
+    /* Capture the actual composed window rather than caching the content view.
+       This keeps inspector screenshots aligned with what the user sees onscreen. */
     dispatch_sync(dispatch_get_main_queue(), ^{
-        NSView *contentView = g_inspect_window.contentView;
-        [contentView layoutSubtreeIfNeeded];
-        [contentView display];
-        NSBitmapImageRep *rep = [contentView bitmapImageRepForCachingDisplayInRect:contentView.bounds];
-        [contentView cacheDisplayInRect:contentView.bounds toBitmapImageRep:rep];
+        [g_inspect_window.contentView layoutSubtreeIfNeeded];
+        [g_inspect_window displayIfNeeded];
+        [g_inspect_window.contentView displayIfNeeded];
+        CGWindowID windowID = (CGWindowID)g_inspect_window.windowNumber;
+        CGImageRef image = capture_window_image(windowID);
+
+        if (!image) {
+            NSView *contentView = g_inspect_window.contentView;
+            NSBitmapImageRep *fallback = [contentView bitmapImageRepForCachingDisplayInRect:contentView.bounds];
+            [contentView cacheDisplayInRect:contentView.bounds toBitmapImageRep:fallback];
+            NSData *fallbackPng = [fallback representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+            [fallbackPng writeToFile:path atomically:YES];
+            return;
+        }
+
+        NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithCGImage:image];
+        CGImageRelease(image);
         NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
         [png writeToFile:path atomically:YES];
     });

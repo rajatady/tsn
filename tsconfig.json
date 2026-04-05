@@ -4,10 +4,22 @@
     "module": "Node16",
     "moduleResolution": "Node16",
     "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@tsn/core": ["packages/tsn-core/src/index.ts"],
+      "@tsn/layout": ["packages/tsn-layout/src/index.ts"],
+      "@tsn/style": ["packages/tsn-style/src/index.ts"],
+      "@tsn/ui": ["packages/tsn-ui/src/index.ts"],
+      "@tsn/tailwind": ["packages/tsn-tailwind/src/index.ts"],
+      "@tsn/compiler-core": ["packages/tsn-compiler-core/src/index.ts"],
+      "@tsn/compiler-ui": ["packages/tsn-compiler-ui/src/index.ts"],
+      "@tsn/host-appkit": ["packages/tsn-host-appkit/src/index.ts"],
+      "@tsn/testing": ["packages/tsn-testing/src/index.ts"]
+    },
     "strict": true,
     "outDir": "./dist",
     "rootDir": ".",
     "skipLibCheck": true
   },
-  "include": ["compiler/**/*.ts"]
+  "include": ["compiler/**/*.ts", "packages/**/*.ts"]
 }

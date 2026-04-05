@@ -1,4 +1,4 @@
-import { useRoute } from '../framework/react'
+import { useRoute } from '../../../packages/tsn-ui/src/react'
 import { AppStoreSidebar } from './sidebar'
 import { DiscoverScreen } from './screens/discover'
 import { ArcadeScreen } from './screens/arcade'

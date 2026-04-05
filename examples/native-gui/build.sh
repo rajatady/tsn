@@ -8,7 +8,7 @@
 # For now, dashboard.c is hand-maintained to match dashboard.ts.
 # Once the compiler supports ui_* bindings, this becomes:
 #   node ../../compiler/index.ts dashboard.ts
-#   clang ... build/dashboard.c framework/ui.m -o build/dashboard
+#   clang ... build/dashboard.c ../../packages/tsn-host-appkit/src/ui.m -o build/dashboard
 #
 
 set -e
@@ -19,12 +19,13 @@ echo "=== StrictTS Native Dashboard Build ==="
 echo ""
 
 # Build
-echo "Compiling dashboard.c + framework/ui.m → dashboard..."
+echo "Compiling dashboard.c + packages/tsn-host-appkit/src/ui.m → dashboard..."
 clang -O2 -fobjc-arc \
     -framework Cocoa \
     -framework QuartzCore \
     dashboard.c \
-    framework/ui.m \
+    ../../packages/tsn-host-appkit/src/ui.m \
+    -I ../../packages/tsn-host-appkit/src \
     -o ../../build/dashboard
 
 SIZE=$(ls -lh ../../build/dashboard | awk '{print $5}')

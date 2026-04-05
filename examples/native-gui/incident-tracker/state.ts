@@ -1,3 +1,4 @@
+import { useStore } from '../../../packages/tsn-ui/src/react'
 import { Issue, seedIssues } from './data'
 
 const issues: Issue[] = seedIssues()
@@ -88,6 +89,8 @@ export function tableCellFn(row: number, col: number): string {
 
 export function onSearch(text: string): void {
   searchText = text.trim()
+  const [query, setQuery] = useStore<string>('incident-tracker:query', "")
+  setQuery(searchText)
   applyFilters()
   refreshTable(filteredCount)
 }
@@ -101,10 +104,14 @@ export function onStatusClick(tag: number): void {
 export function onResetClick(): void {
   searchText = ""
   statusFilterTag = 0
+  const [query, setQuery] = useStore<string>('incident-tracker:query', "")
+  setQuery("")
   applyFilters()
   refreshTable(filteredCount)
 }
 
 export function initIncidentTracker(): void {
+  const [query, setQuery] = useStore<string>('incident-tracker:query', "")
+  setQuery("")
   applyFilters()
 }

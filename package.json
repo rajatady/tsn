@@ -2,6 +2,9 @@
   "name": "strictts-native",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "description": "Compile strict TypeScript to native binaries via C",
   "type": "module",
   "scripts": {

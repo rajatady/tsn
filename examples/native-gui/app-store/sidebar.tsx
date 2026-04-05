@@ -1,4 +1,4 @@
-import { useRoute, useStore } from '../framework/react'
+import { useRoute, useStore } from '../../../packages/tsn-ui/src/react'
 import { activeStorefrontRoute } from './navigation'
 
 function handleSidebarSearch(text: string) {

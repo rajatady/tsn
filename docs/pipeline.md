@@ -148,16 +148,16 @@ clang -O0 -g -DSTRICTTS_DEBUG -o build/app build/app.c -lm -I compiler/runtime
 ### UI App (Release)
 ```bash
 clang -O2 -fobjc-arc -framework Cocoa -framework QuartzCore \
-  build/app.c examples/native-gui/framework/ui.m \
-  -I examples/native-gui/framework -I compiler/runtime \
+  build/app.c packages/tsn-host-appkit/src/ui.m \
+  -I packages/tsn-host-appkit/src -I compiler/runtime \
   -o build/app
 ```
 
 ### UI App (Debug)
 ```bash
 clang -O0 -g -DSTRICTTS_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore \
-  build/app.c examples/native-gui/framework/ui.m \
-  -I examples/native-gui/framework -I compiler/runtime \
+  build/app.c packages/tsn-host-appkit/src/ui.m \
+  -I packages/tsn-host-appkit/src -I compiler/runtime \
   -o build/app
 ```
 

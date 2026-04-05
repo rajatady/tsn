@@ -1,4 +1,4 @@
-import { useRoute, useState, useStore } from '../../framework/react'
+import { useRoute, useState, useStore } from '../../../../packages/tsn-ui/src/react'
 import {
   AppRow,
   InfoPairView,

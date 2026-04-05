@@ -63,6 +63,7 @@ UIHandle    ui_text_field(const char *placeholder);
 UIHandle    ui_search_field(const char *placeholder);
 typedef void (*UITextChangedFn)(const char *text);
 void        ui_on_text_changed(UIHandle field, UITextChangedFn fn);
+void        ui_text_input_set_value(UIHandle field, const char *text);
 
 /* ─── Buttons ────────────────────────────────────────────────────── */
 typedef void (*UIClickFn)(int tag);

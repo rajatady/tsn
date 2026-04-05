@@ -64,8 +64,8 @@ examples/native-gui/
 
 1. Add the tag name to the switch in `compiler/jsx.ts` `emitElement()`
 2. Use `create(...)` to emit the UIHandle (auto-registers element ID)
-3. Add the C function to `examples/native-gui/framework/ui.h`
-4. Implement in `examples/native-gui/framework/ui.m`
+3. Add the C function to `packages/tsn-host-appkit/src/ui.h`
+4. Implement in `packages/tsn-host-appkit/src/ui.m`
 5. Document in `docs/jsx.md` and `docs/ui-framework.md`
 
 ### Adding a Tailwind class

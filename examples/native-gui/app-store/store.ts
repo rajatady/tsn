@@ -1,4 +1,4 @@
-import { useRoute, useStore } from '../framework/react'
+import { useRoute, useStore } from '../../../packages/tsn-ui/src/react'
 import { activeStorefrontRoute } from './navigation'
 import { storeAppFromTag, type StoreApp } from './data'
 

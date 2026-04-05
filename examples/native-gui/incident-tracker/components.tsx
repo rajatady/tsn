@@ -1,3 +1,4 @@
+import { useStore } from '../../../packages/tsn-ui/src/react'
 import { onResetClick, onSearch } from './state'
 
 interface MetricProps {
@@ -42,10 +43,11 @@ export function TrackerPane({ children }: TrackerPaneProps) {
 }
 
 export function IncidentHeader() {
+  const [query, _setQuery] = useStore<string>('incident-tracker:query', "")
   return (
     <PanelHeader title="Incident Tracker"
                  subtitle="Filter by status, project key, assignee, or tags">
-      <Search placeholder="Search OPS, Maya, security, latency..." onChange={onSearch} className="w-[320]" />
+      <Search value={query} placeholder="Search OPS, Maya, security, latency..." onChange={onSearch} className="w-[320]" />
       <Button variant="ghost" onClick={onResetClick}>Reset</Button>
     </PanelHeader>
   )

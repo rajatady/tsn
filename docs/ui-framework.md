@@ -1,6 +1,6 @@
 # Native UI Framework
 
-The UI framework (`examples/native-gui/framework/ui.h` + `ui.m`) wraps macOS AppKit with a C API. TypeScript developers never call these directly — the JSX compiler generates the calls. This reference is for extending the framework.
+The native AppKit host (`packages/tsn-host-appkit/src/ui.h` + `ui.m`) wraps macOS AppKit with a C API. TypeScript developers never call these directly — the JSX compiler generates the calls. This reference is for extending the host framework.
 
 ## Architecture
 

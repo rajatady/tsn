@@ -1,5 +1,6 @@
 /* ─── Inspector (Dev Tools) ──────────────────────────────────────── */
 
+#include <dlfcn.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -67,16 +68,38 @@ static void dump_tree(NSView *view, int depth, NSMutableString *out) {
     }
 }
 
+typedef CGImageRef (*CGWindowListCreateImageFn)(CGRect, uint32_t, uint32_t, uint32_t);
+
+static CGImageRef capture_window_image(CGWindowID windowID) {
+    CGWindowListCreateImageFn fn = (CGWindowListCreateImageFn)dlsym(RTLD_DEFAULT, "CGWindowListCreateImage");
+    if (!fn) return NULL;
+    return fn(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageNominalResolution);
+}
+
 /* Take a screenshot of the window */
 static NSString *take_screenshot(void) {
     if (!g_inspect_window) return @"No window";
     NSString *path = @"/tmp/strictts-screenshot.png";
 
-    /* Capture on main thread */
+    /* Capture the composed window so inspector screenshots match the live app. */
     dispatch_sync(dispatch_get_main_queue(), ^{
-        NSView *contentView = g_inspect_window.contentView;
-        NSBitmapImageRep *rep = [contentView bitmapImageRepForCachingDisplayInRect:contentView.bounds];
-        [contentView cacheDisplayInRect:contentView.bounds toBitmapImageRep:rep];
+        [g_inspect_window.contentView layoutSubtreeIfNeeded];
+        [g_inspect_window displayIfNeeded];
+        [g_inspect_window.contentView displayIfNeeded];
+        CGWindowID windowID = (CGWindowID)g_inspect_window.windowNumber;
+        CGImageRef image = capture_window_image(windowID);
+
+        if (!image) {
+            NSView *contentView = g_inspect_window.contentView;
+            NSBitmapImageRep *fallback = [contentView bitmapImageRepForCachingDisplayInRect:contentView.bounds];
+            [contentView cacheDisplayInRect:contentView.bounds toBitmapImageRep:fallback];
+            NSData *fallbackPng = [fallback representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+            [fallbackPng writeToFile:path atomically:YES];
+            return;
+        }
+
+        NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithCGImage:image];
+        CGImageRelease(image);
         NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
         [png writeToFile:path atomically:YES];
     });

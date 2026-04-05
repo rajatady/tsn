@@ -1,4 +1,4 @@
-import { useRoute } from '../../framework/react'
+import { useRoute } from '../../../../packages/tsn-ui/src/react'
 import { arcadeHeroImage } from '../assets'
 import {
   AppRow,

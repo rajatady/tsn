@@ -1,0 +1,4 @@
+export { buildStrictTS } from './build.js'
+export { generateC, generateCSingle } from './codegen.js'
+export { resolveModules } from './resolver.js'
+export { validate } from './validator.js'
