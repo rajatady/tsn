@@ -185,3 +185,66 @@ This means:
 - lldb/gdb resolve to TypeScript source
 - Stack traces in crash handler show TypeScript source
 - Bounds check errors report TypeScript source location
+
+## HTTP Server Benchmark
+
+StrictTS has two different HTTP workloads now:
+
+- [targets/http-router.ts](../targets/http-router.ts) is the original in-process router benchmark.
+- [harness/run-http-server-bench.sh](../harness/run-http-server-bench.sh) is the real HTTP/1.1 socket benchmark.
+
+The real server benchmark compares three implementations on the same mixed route set:
+
+- [targets/http-server-bun.ts](../targets/http-server-bun.ts)
+- [harness/http-server-strictts.c](../harness/http-server-strictts.c) plus the generated `build/http-router.c`
+- [baselines/http-server.c](../baselines/http-server.c)
+
+### Run The Full Benchmark
+
+```bash
+bash harness/run-http-server-bench.sh
+```
+
+Environment variables:
+
+- `HTTP_SERVER_WORKERS` controls server workers.
+- `HTTP_BENCH_CONCURRENCY` controls benchmark client concurrency.
+- `HTTP_BENCH_REQUESTS` controls measured request count.
+- `HTTP_BENCH_WARMUP` controls warmup request count.
+
+Example:
+
+```bash
+HTTP_SERVER_WORKERS=12 \
+HTTP_BENCH_CONCURRENCY=256 \
+HTTP_BENCH_REQUESTS=100000 \
+HTTP_BENCH_WARMUP=10000 \
+bash harness/run-http-server-bench.sh
+```
+
+### Run One Server Directly
+
+```bash
+# Bun
+HTTP_SERVER_PORT=4101 bun targets/http-server-bun.ts
+
+# StrictTS+C
+npx tsx compiler/index.ts targets/http-router.ts
+clang -O2 -pthread -I compiler/runtime -o build/http-server-strictts harness/http-server-strictts.c -lm
+HTTP_SERVER_PORT=4102 HTTP_SERVER_WORKERS=4 ./build/http-server-strictts
+
+# Hand C
+clang -O2 -pthread -o build/baseline-http-server baselines/http-server.c
+HTTP_SERVER_PORT=4103 HTTP_SERVER_WORKERS=4 ./build/baseline-http-server
+```
+
+Consume the running server with regular HTTP requests:
+
+```bash
+curl http://127.0.0.1:4102/
+curl http://127.0.0.1:4102/users/42
+curl "http://127.0.0.1:4102/search?q=hello&page=2&limit=20"
+curl http://127.0.0.1:4102/api/v1/health
+```
+
+The benchmark driver used by the harness is the native C client in [harness/http-server-bench.c](../harness/http-server-bench.c), not the older Python prototype.

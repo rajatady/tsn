@@ -12,13 +12,6 @@ interface Route {
   paramNames: string[];
 }
 
-interface MatchResult {
-  matched: boolean;
-  handler: string;
-  params: string[];   // parallel arrays since no dynamic keys
-  paramValues: string[];
-}
-
 interface QueryParam {
   key: string;
   value: string;
@@ -131,62 +124,44 @@ function collectParamNames(parts: string[]): string[] {
   return paramNames;
 }
 
-function matchRoute(route: Route, req: ParsedRequest): MatchResult {
-  const noMatch: MatchResult = {
-    matched: false,
-    handler: "",
-    params: [],
-    paramValues: [],
-  };
-
-  if (route.method !== req.method) {
-    return noMatch;
-  }
-
-  if (route.parts.length !== req.pathParts.length) {
-    return noMatch;
-  }
-
-  const paramValues: string[] = [];
-
-  let i: number = 0;
-  while (i < route.parts.length) {
-    const pp: string = route.parts[i];
-    const rp: string = req.pathParts[i];
-
-    if (pp.startsWith(":")) {
-      paramValues.push(rp);
-    } else if (pp !== rp) {
-      return noMatch;
-    }
-    i = i + 1;
-  }
-
-  const result: MatchResult = {
-    matched: true,
-    handler: route.handler,
-    params: route.paramNames,
-    paramValues: paramValues,
-  };
-  return result;
-}
-
 // ─── Router ─────────────────────────────────────────────────────────
 
 function findRoute(routes: Route[], req: ParsedRequest): Response {
   let i: number = 0;
   while (i < routes.length) {
-    const result: MatchResult = matchRoute(routes[i], req);
-    if (result.matched) {
+    if (routes[i].method === req.method && routes[i].parts.length === req.pathParts.length) {
+      let matched: boolean = true;
+      let j: number = 0;
+      while (j < routes[i].parts.length) {
+        const routePart: string = routes[i].parts[j];
+        if (!routePart.startsWith(":") && routePart !== req.pathParts[j]) {
+          matched = false;
+          break;
+        }
+        j = j + 1;
+      }
+
+      if (matched) {
+        const paramValues: string[] = [];
+        j = 0;
+        while (j < routes[i].parts.length) {
+          const routePart: string = routes[i].parts[j];
+          if (routePart.startsWith(":")) {
+            paramValues.push(req.pathParts[j]);
+          }
+          j = j + 1;
+        }
+
       const resp: Response = {
         status: 200,
         body: "OK",
-        handler: result.handler,
-        params: result.params,
-        paramValues: result.paramValues,
+        handler: routes[i].handler,
+        params: routes[i].paramNames,
+        paramValues: paramValues,
         queryParams: req.queryParams,
       };
       return resp;
+      }
     }
     i = i + 1;
   }
