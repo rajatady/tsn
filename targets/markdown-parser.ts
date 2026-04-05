@@ -175,47 +175,21 @@ function parseInline(text: string): string {
 }
 
 function findChar(text: string, ch: string, start: number): number {
-  let i: number = start;
-  while (i < text.length) {
-    if (text.slice(i, i + 1) === ch) {
-      return i;
-    }
-    i = i + 1;
-  }
-  return -1;
+  const rest: string = text.slice(start)
+  const idx: number = rest.indexOf(ch)
+  if (idx === -1) return -1
+  return start + idx
 }
 
 function findPattern(text: string, pattern: string, start: number): number {
-  let i: number = start;
-  while (i <= text.length - pattern.length) {
-    if (text.slice(i, i + pattern.length) === pattern) {
-      return i;
-    }
-    i = i + 1;
-  }
-  return -1;
+  const rest: string = text.slice(start)
+  const idx: number = rest.indexOf(pattern)
+  if (idx === -1) return -1
+  return start + idx
 }
 
 function trimString(s: string): string {
-  let start: number = 0;
-  while (start < s.length) {
-    const ch: string = s.slice(start, start + 1);
-    if (ch === " " || ch === "\t") {
-      start = start + 1;
-    } else {
-      break;
-    }
-  }
-  let end: number = s.length;
-  while (end > start) {
-    const ch: string = s.slice(end - 1, end);
-    if (ch === " " || ch === "\t") {
-      end = end - 1;
-    } else {
-      break;
-    }
-  }
-  return s.slice(start, end);
+  return s.trim()
 }
 
 // ─── HTML Generator ─────────────────────────────────────────────────

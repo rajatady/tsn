@@ -72,7 +72,7 @@ export class JsxEmitter {
     if (!props.has(key)) return false
     const val = props.get(key)
     if (val === null) return true  // <Component dark /> → true
-    if (ts.isJsxExpression(val) && val.expression) {
+    if (val && ts.isJsxExpression(val) && val.expression) {
       if (val.expression.kind === ts.SyntaxKind.FalseKeyword) return false
     }
     return true

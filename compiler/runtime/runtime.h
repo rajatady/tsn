@@ -153,6 +153,30 @@ static inline bool str_includes(Str s, Str needle) {
     return str_indexOf(s, needle) >= 0;
 }
 
+static inline bool str_is_space(char c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+static inline Str str_trim_start(Str s) {
+    int start = 0;
+    while (start < s.len && str_is_space(s.data[start])) start++;
+    return str_slice(s, start, s.len);
+}
+
+static inline Str str_trim_end(Str s) {
+    int end = s.len;
+    while (end > 0 && str_is_space(s.data[end - 1])) end--;
+    return str_slice(s, 0, end);
+}
+
+static inline Str str_trim(Str s) {
+    int start = 0;
+    int end = s.len;
+    while (start < s.len && str_is_space(s.data[start])) start++;
+    while (end > start && str_is_space(s.data[end - 1])) end--;
+    return str_slice(s, start, end);
+}
+
 /* ─── StrBuf: stack-based string builder ─────────────────────────── */
 
 typedef struct {

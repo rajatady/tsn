@@ -22,7 +22,10 @@ case "${1:-}" in
   run)
     shift
     npx tsx "$DIR/compiler/index.ts" "$@"
-    BINARY="build/$(basename "${1}" | sed 's/\.\(ts\|tsx\)$//')"
+    BASE="$(basename "${1}")"
+    BASE="${BASE%.tsx}"
+    BASE="${BASE%.ts}"
+    BINARY="build/$BASE"
     "./$BINARY"
     ;;
   inspect)

@@ -50,6 +50,10 @@ function greet(name: string): string {
 
 All parameters should have type annotations. Return type is inferred but recommended.
 
+Arrays and structs are passed by value. If a helper may grow an array with
+`push()`, return the updated array and reassign it at the callsite instead of
+assuming the callee can update the caller's array header in place.
+
 ### Interfaces (Structs)
 
 ```typescript
@@ -124,6 +128,14 @@ Compiles to StrBuf append chain. Zero-alloc for stack-sized results.
 ```typescript
 const s: string = String(42)      // "42"
 const s2: string = String(3.14)   // "3.14"
+```
+
+Whitespace trimming is also supported:
+
+```typescript
+const clean = raw.trim()
+const left = raw.trimStart()
+const right = raw.trimEnd()
 ```
 
 ## What's Banned

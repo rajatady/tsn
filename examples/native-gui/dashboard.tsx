@@ -29,7 +29,9 @@ function matchesFilter(e: Employee): boolean {
   if (searchText.length > 0) {
     const s1 = fuzzyScore(e.name, searchText)
     const s2 = fuzzyScore(e.role, searchText)
-    if (s1 <= 0 && s2 <= 0) return false
+    const deptMatch = e.department.includes(searchText)
+    const statusMatch = e.status.includes(searchText)
+    if (s1 <= 0 && s2 <= 0 && !deptMatch && !statusMatch) return false
   }
   return true
 }
@@ -83,7 +85,7 @@ function tableCellFn(row: number, col: number): string {
 declare function refreshTable(rows: number): void
 
 function onSearch(text: string): void {
-  searchText = text
+  searchText = text.trim()
   applyFilters()
   const show = filteredCount > 500 ? 500 : filteredCount
   refreshTable(show)

@@ -23,6 +23,8 @@
 
 import * as ts from 'typescript'
 import { JsxEmitter, type CodeGenContext } from './jsx.js'
+import { emitStringMethod } from './stdlib/strings.js'
+import { emitArrayMethod } from './stdlib/arrays.js'
 
 interface StructField {
   name: string
@@ -109,7 +111,7 @@ class CodeGen {
     return typeNode.getText()
   }
 
-  private arrayTypeName(innerTsType: string): string {
+  arrayTypeName(innerTsType: string): string {
     // Person[] → PersonArr, string[] → StrArr, number[] → DoubleArr
     switch (innerTsType) {
       case 'string': this.arrayTypes.add('Str'); return 'StrArr'
@@ -129,6 +131,12 @@ class CodeGen {
       case 'boolean': return 'bool'
       default: return inner
     }
+  }
+
+  nextTempId(): number {
+    const id = this.lambdaCounter
+    this.lambdaCounter = this.lambdaCounter + 1
+    return id
   }
 
   /** Infer C type from a variable declaration's initializer */
@@ -298,22 +306,13 @@ class CodeGen {
 
       // String methods
       if (objType === 'string') {
-        if (method === 'slice') {
-          const a = node.arguments.map(n => this.emitExpr(n))
-          return a.length === 1
-            ? `str_slice(${objExpr}, (int)(${a[0]}), ${objExpr}.len)`
-            : `str_slice(${objExpr}, (int)(${a[0]}), (int)(${a[1]}))`
-        }
-        if (method === 'indexOf') return `str_indexOf(${objExpr}, ${this.emitExpr(node.arguments[0])})`
-        if (method === 'startsWith') return `str_startsWith(${objExpr}, ${this.emitExpr(node.arguments[0])})`
-        if (method === 'endsWith') return `str_endsWith(${objExpr}, ${this.emitExpr(node.arguments[0])})`
-        if (method === 'includes') return `str_includes(${objExpr}, ${this.emitExpr(node.arguments[0])})`
+        const emitted = emitStringMethod(this, objExpr, method, node.arguments)
+        if (emitted) return emitted
       }
 
       // Array methods
       if (objType?.endsWith('[]')) {
         const innerType = objType.replace('[]', '')
-        const elemCType = this.arrayCElemType(objType)
         const arrTypeName = this.arrayTypeName(innerType)
 
         if (method === 'push') {
@@ -326,12 +325,8 @@ class CodeGen {
           if (innerType === 'string') val = `str_retain(${val})`
           return `${arrTypeName}_push(&${objExpr}, ${val})`
         }
-        if (method === 'slice') {
-          const a = node.arguments.map(n => this.emitExpr(n))
-          return a.length === 1
-            ? `${arrTypeName}_slice(&${objExpr}, (int)(${a[0]}), ${objExpr}.len)`
-            : `${arrTypeName}_slice(&${objExpr}, (int)(${a[0]}), (int)(${a[1]}))`
-        }
+        const emitted = emitArrayMethod(this, objExpr, objType, method, node.arguments)
+        if (emitted) return emitted
         if (method === 'filter') return this.emitFilter(node, objExpr, objType)
         if (method === 'sort') return this.emitSort(node, objExpr, objType)
       }
@@ -616,6 +611,9 @@ class CodeGen {
         const m = node.expression.name.text
         if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Math') return 'number'
         if (m === 'filter' || m === 'slice') return this.exprType(node.expression.expression)
+        if (m === 'trim' || m === 'trimStart' || m === 'trimEnd' || m === 'join') return 'string'
+        if (m === 'indexOf') return 'number'
+        if (m === 'includes' || m === 'startsWith' || m === 'endsWith') return 'boolean'
       }
     }
     if (ts.isPropertyAccessExpression(node)) {
@@ -1314,12 +1312,18 @@ class CodeGen {
     // Simple approach: emit ALL structs, then ALL arrays.
     // Structs with array-type fields use forward-declared array types.
 
-    // Topological sort: structs → arrays → structs-with-arrays
-    // Separate structs into those with and without array-type fields
+    // Topological sort: structs that only depend on runtime/builtin arrays
+    // first, then custom DEFINE_ARRAY macros, then structs that depend on
+    // those custom array typedefs.
     const simpleStructs: StructDef[] = []
     const complexStructs: StructDef[] = []
     for (const s of this.structs) {
-      if (s.fields.some(f => f.cType.endsWith('Arr'))) complexStructs.push(s)
+      const needsCustomArrayType = s.fields.some(f =>
+        f.cType.endsWith('Arr') &&
+        f.cType !== 'StrArr' &&
+        f.cType !== 'DoubleArr'
+      )
+      if (needsCustomArrayType) complexStructs.push(s)
       else simpleStructs.push(s)
     }
 

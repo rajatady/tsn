@@ -42,6 +42,23 @@ Demonstrates: StrBuf optimization (string builder detection in loops), char-by-c
 strictts run targets/csv-tool.ts
 ```
 
+## CLI Example: Log Triage
+
+Located in [examples/log-triage.ts](../examples/log-triage.ts). This is a native stdin-driven operations tool that turns raw log lines into an actionable summary.
+
+It uses the newer stdlib paths directly in a non-UI workload:
+
+- `trim()` to normalize incoming lines and messages
+- `includes()` to classify incidents and actionable warnings
+- `indexOf()` to parse `level=`, `service=`, `region=`, and `msg=` fields
+- `join()` to print hot service lists and per-entry tag labels
+
+Compile it with:
+
+```bash
+strictts build examples/log-triage.ts
+```
+
 ## Native GUI: HR Dashboard
 
 Located in `examples/native-gui/dashboard.tsx`. A full interactive macOS application written in 100% TypeScript.
@@ -160,6 +177,22 @@ strictts dev examples/native-gui/dashboard.tsx
 | Debug (-O0 -g) | ~180 KB |
 
 No framework overhead. No JS engine. No Electron.
+
+## Native GUI: Incident Tracker
+
+Located in [examples/native-gui/incident-tracker.tsx](../examples/native-gui/incident-tracker.tsx). This is a smaller operational UI that exercises newer stdlib paths inside a real TSX app:
+
+- `trim()` on search input
+- `includes()` for issue filtering
+- `indexOf()` to split project keys like `OPS-104`
+- `join()` to render tag arrays in the table
+
+Compile it with:
+
+```bash
+strictts build examples/native-gui/incident-tracker.tsx
+strictts build examples/native-gui/incident-tracker.tsx --debug
+```
 
 ## Correctness Tests
 

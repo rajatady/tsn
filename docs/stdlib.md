@@ -13,6 +13,9 @@ All string operations are zero-allocation when possible (slices share the source
 | `s.startsWith(prefix)` | `(string) => boolean` | memcmp-based |
 | `s.endsWith(suffix)` | `(string) => boolean` | memcmp-based |
 | `s.includes(needle)` | `(string) => boolean` | Linear scan |
+| `s.trim()` | `() => string` | Zero-copy slice when trimming whitespace |
+| `s.trimStart()` | `() => string` | Trims leading ASCII whitespace |
+| `s.trimEnd()` | `() => string` | Trims trailing ASCII whitespace |
 | `s.length` | `number` (property) | Direct field access, O(1) |
 
 ### String Concatenation
@@ -46,8 +49,14 @@ const s2: string = String(3.14)     // "3.14"
 | `arr.slice(start, end?)` | `(number, number?) => T[]` | Creates new array (copies elements) |
 | `arr.filter(fn)` | `((T) => boolean) => T[]` | Inline loop, new array |
 | `arr.sort(fn)` | `((T, T) => number) => T[]` | In-place via C qsort |
+| `arr.indexOf(value)` | `(T) => number` | Inline scan, string-aware equality |
+| `arr.includes(value)` | `(T) => boolean` | Inline scan, early exit |
+| `arr.join(sep?)` | `(?string) => string` | Stack `StrBuf`, heap finalization |
 | `arr.length` | `number` (property) | Direct field access, O(1) |
 | `arr[i]` | `T` | Bounds-checked in debug mode |
+
+Because array headers are passed by value, helpers that call `push()` should
+return the updated array and let the caller rebind it.
 
 ### Filter
 
@@ -64,6 +73,15 @@ const sorted = scores.sort((a, b) => b - a)  // descending
 ```
 
 Lifts the comparator to a top-level C function, calls `qsort()`.
+
+### Join
+
+```typescript
+const line = names.join(", ")
+```
+
+For `string[]`, `number[]`, and `boolean[]`, this lowers to a single stack `StrBuf`
+append loop with one heap allocation for the final result.
 
 ## console.log
 
