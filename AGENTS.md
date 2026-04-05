@@ -57,6 +57,7 @@ examples/native-gui/
 5. **Variables used by functions need explicit type annotations** — the compiler defaults to `double`.
 6. **Semicolons before top-level JSX** — without them, `<` is parsed as less-than.
 7. **`declare function` for compiler-generated functions** — e.g., `refreshTable` is auto-generated when `<Table>` has `cellFn`.
+8. **For HTTP server changes, test the real socket benchmark too**: `bash harness/run-http-server-bench.sh`
 
 ## Common Tasks
 
@@ -96,6 +97,16 @@ npx tsx compiler/index.ts targets/json-pipeline.ts
 npx tsx compiler/index.ts targets/http-router.ts
 npx tsx compiler/index.ts targets/markdown-parser.ts
 
+# Real HTTP server benchmark (Bun vs StrictTS+C vs hand C)
+bash harness/run-http-server-bench.sh
+
+# Heavier HTTP server benchmark
+HTTP_SERVER_WORKERS=12 \
+HTTP_BENCH_CONCURRENCY=256 \
+HTTP_BENCH_REQUESTS=100000 \
+HTTP_BENCH_WARMUP=10000 \
+bash harness/run-http-server-bench.sh
+
 # Compile dashboard (release + debug)
 npx tsx compiler/index.ts examples/native-gui/dashboard.tsx
 npx tsx compiler/index.ts examples/native-gui/dashboard.tsx --debug
@@ -105,3 +116,12 @@ npx tsx compiler/inspect.ts tree
 npx tsx compiler/inspect.ts find "Engineering"
 npx tsx compiler/inspect.ts get _j0 frame
 ```
+
+## HTTP Server Notes
+
+- `targets/http-router.ts` is still the in-process router benchmark target.
+- The real networked benchmark lives in `harness/run-http-server-bench.sh`.
+- The Bun server entrypoint is `targets/http-server-bun.ts`.
+- The StrictTS server is the generated router wrapped by `harness/http-server-strictts.c`.
+- The hand-written native baseline is `baselines/http-server.c`.
+- If you change the server shell or routing path, verify with both `curl` and the harness, not just the old CLI benchmark.

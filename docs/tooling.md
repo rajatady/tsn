@@ -185,3 +185,102 @@ This means:
 - lldb/gdb resolve to TypeScript source
 - Stack traces in crash handler show TypeScript source
 - Bounds check errors report TypeScript source location
+
+## HTTP Server Benchmark
+
+StrictTS has two different HTTP workloads now:
+
+- [targets/http-router.ts](../targets/http-router.ts) is the original in-process router benchmark.
+- [harness/run-http-server-bench.sh](../harness/run-http-server-bench.sh) is the real HTTP/1.1 socket benchmark.
+
+The real server benchmark compares three implementations on the same mixed route set:
+
+- [targets/http-server-bun.ts](../targets/http-server-bun.ts)
+- [harness/http-server-strictts.c](../harness/http-server-strictts.c) plus the generated `build/http-router.c`
+- [baselines/http-server.c](../baselines/http-server.c)
+
+### How You Author The Server
+
+The Bun example is the closest thing here to an Express-style authoring experience. The whole server lives in TypeScript in [targets/http-server-bun.ts](../targets/http-server-bun.ts):
+
+```ts
+const port = Number(process.env.HTTP_SERVER_PORT || "3000")
+
+Bun.serve({
+  port,
+  reusePort: true,
+  fetch(req) {
+    const url = new URL(req.url)
+    const routed = routeRequest(req.method, url.pathname, url.search)
+    return new Response(routed.body, {
+      status: routed.status,
+      headers: { "content-type": "text/plain" },
+    })
+  },
+})
+```
+
+That is the current “write the server directly in TypeScript” path in this repo.
+
+The StrictTS path is different today. You write the route matching and response formatting logic in TypeScript in [targets/http-router.ts](../targets/http-router.ts), and the native socket server is still provided by C in [harness/http-server-strictts.c](../harness/http-server-strictts.c). The C shell calls the StrictTS-generated functions for:
+
+- request parsing into the StrictTS route model
+- route matching
+- response shaping
+
+So the current model is:
+
+- Bun: TypeScript owns the whole server.
+- StrictTS: TypeScript owns the router core; C owns the socket loop.
+
+StrictTS does not yet expose an Express-like or `Bun.serve()`-like API directly inside the TypeScript subset. If that lands later, this section should move from “router core in TS” to “server in TS.”
+
+### Run The Full Benchmark
+
+```bash
+bash harness/run-http-server-bench.sh
+```
+
+Environment variables:
+
+- `HTTP_SERVER_WORKERS` controls server workers.
+- `HTTP_BENCH_CONCURRENCY` controls benchmark client concurrency.
+- `HTTP_BENCH_REQUESTS` controls measured request count.
+- `HTTP_BENCH_WARMUP` controls warmup request count.
+
+Example:
+
+```bash
+HTTP_SERVER_WORKERS=12 \
+HTTP_BENCH_CONCURRENCY=256 \
+HTTP_BENCH_REQUESTS=100000 \
+HTTP_BENCH_WARMUP=10000 \
+bash harness/run-http-server-bench.sh
+```
+
+### Consume One Server Directly
+
+```bash
+# Bun
+HTTP_SERVER_PORT=4101 bun targets/http-server-bun.ts
+
+# StrictTS+C
+npx tsx compiler/index.ts targets/http-router.ts
+clang -O2 -pthread -I compiler/runtime -o build/http-server-strictts harness/http-server-strictts.c -lm
+HTTP_SERVER_PORT=4102 HTTP_SERVER_WORKERS=4 ./build/http-server-strictts
+
+# Hand C
+clang -O2 -pthread -o build/baseline-http-server baselines/http-server.c
+HTTP_SERVER_PORT=4103 HTTP_SERVER_WORKERS=4 ./build/baseline-http-server
+```
+
+Once a server is running, consume it like any other HTTP service:
+
+```bash
+curl http://127.0.0.1:4102/
+curl http://127.0.0.1:4102/users/42
+curl "http://127.0.0.1:4102/search?q=hello&page=2&limit=20"
+curl http://127.0.0.1:4102/api/v1/health
+```
+
+The benchmark driver used by the harness is the native C client in [harness/http-server-bench.c](../harness/http-server-bench.c), not the older Python prototype.

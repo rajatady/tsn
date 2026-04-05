@@ -24,6 +24,39 @@ strictts run targets/http-router.ts
 
 Demonstrates: string.slice, string.indexOf, while loops, struct construction, pattern matching.
 
+## HTTP Server Authoring
+
+There are now two HTTP server examples in the repo, and they represent two different authoring models.
+
+### Bun Server Example
+
+Located in [targets/http-server-bun.ts](../targets/http-server-bun.ts). This is the full server written directly in TypeScript. If you are thinking in Express or Bun terms, this is the familiar shape: define routes, inspect the request URL, and return a response from a top-level server callback.
+
+What it demonstrates:
+
+- route table definition in TypeScript
+- path param extraction
+- query parsing
+- direct server authoring with `Bun.serve()`
+
+### StrictTS Server Example
+
+Located across [targets/http-router.ts](../targets/http-router.ts) and [harness/http-server-strictts.c](../harness/http-server-strictts.c).
+
+This is the current StrictTS story for server code:
+
+- the router logic is written in TypeScript in `targets/http-router.ts`
+- StrictTS compiles that router core to C
+- the native socket server shell lives in `harness/http-server-strictts.c`
+- the shell calls the generated StrictTS route matcher and response builder
+
+That means StrictTS already supports the application-layer logic you would normally write in server code, but it does not yet expose sockets, `listen()`, or an Express-like server API directly in the TypeScript subset.
+
+So if you want a mental model:
+
+- Bun example: “write the whole server in TS”
+- StrictTS example: “write the router and response logic in TS, host it in a native C server shell”
+
 ### markdown-parser.ts
 
 Markdown-to-HTML converter processing 235KB input.
