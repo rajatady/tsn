@@ -7,8 +7,9 @@
 
 interface Route {
   method: string;
-  pattern: string;    // e.g. "/users/:id/posts"
   handler: string;    // handler name (we just print it)
+  parts: string[];
+  paramNames: string[];
 }
 
 interface MatchResult {
@@ -25,7 +26,7 @@ interface QueryParam {
 
 interface ParsedRequest {
   method: string;
-  path: string;
+  pathParts: string[];
   queryParams: QueryParam[];
 }
 
@@ -45,45 +46,27 @@ function parseQueryString(qs: string): QueryParam[] {
   if (qs.length === 0) {
     return params;
   }
-  // Split on &
-  let current: string = "";
+  const pairs: string[] = qs.split("&");
   let i: number = 0;
-  while (i < qs.length) {
-    const ch: string = qs.slice(i, i + 1);
-    if (ch === "&") {
-      if (current.length > 0) {
-        const parsed: QueryParam = parseOneParam(current);
-        params.push(parsed);
-      }
-      current = "";
-    } else {
-      current = current + ch;
+  while (i < pairs.length) {
+    const pair: string = pairs[i];
+    if (pair.length > 0) {
+      const parsed: QueryParam = parseOneParam(pair);
+      params.push(parsed);
     }
     i = i + 1;
-  }
-  if (current.length > 0) {
-    const parsed: QueryParam = parseOneParam(current);
-    params.push(parsed);
   }
   return params;
 }
 
 function parseOneParam(s: string): QueryParam {
-  let key: string = "";
-  let value: string = "";
-  let foundEq: boolean = false;
-  let i: number = 0;
-  while (i < s.length) {
-    const ch: string = s.slice(i, i + 1);
-    if (ch === "=" && !foundEq) {
-      foundEq = true;
-    } else if (foundEq) {
-      value = value + ch;
-    } else {
-      key = key + ch;
-    }
-    i = i + 1;
+  const eqIdx: number = s.indexOf("=");
+  if (eqIdx < 0) {
+    const result: QueryParam = { key: s, value: "" };
+    return result;
   }
+  const key: string = s.slice(0, eqIdx);
+  const value: string = s.slice(eqIdx + 1);
   const result: QueryParam = { key: key, value: value };
   return result;
 }
@@ -92,66 +75,60 @@ function parseOneParam(s: string): QueryParam {
 
 function parseRequest(line: string): ParsedRequest {
   // Format: "GET /users/42/posts?page=2&limit=10"
-  let method: string = "";
+  const spaceIdx: number = line.indexOf(" ");
+  let method: string = line;
   let rest: string = "";
-  let foundSpace: boolean = false;
-  let i: number = 0;
-  while (i < line.length) {
-    const ch: string = line.slice(i, i + 1);
-    if (ch === " " && !foundSpace) {
-      foundSpace = true;
-    } else if (!foundSpace) {
-      method = method + ch;
-    } else {
-      rest = rest + ch;
-    }
-    i = i + 1;
+  if (spaceIdx >= 0) {
+    method = line.slice(0, spaceIdx);
+    rest = line.slice(spaceIdx + 1);
   }
 
   // Split path and query
-  let path: string = "";
+  const queryIdx: number = rest.indexOf("?");
+  let path: string = rest;
   let qs: string = "";
-  let foundQ: boolean = false;
-  let j: number = 0;
-  while (j < rest.length) {
-    const ch: string = rest.slice(j, j + 1);
-    if (ch === "?" && !foundQ) {
-      foundQ = true;
-    } else if (foundQ) {
-      qs = qs + ch;
-    } else {
-      path = path + ch;
-    }
-    j = j + 1;
+  if (queryIdx >= 0) {
+    path = rest.slice(0, queryIdx);
+    qs = rest.slice(queryIdx + 1);
   }
 
+  const pathParts: string[] = splitPath(path);
   const queryParams: QueryParam[] = parseQueryString(qs);
-  const req: ParsedRequest = { method: method, path: path, queryParams: queryParams };
+  const req: ParsedRequest = {
+    method: method,
+    pathParts: pathParts,
+    queryParams: queryParams,
+  };
   return req;
 }
 
 // ─── Route Matching ─────────────────────────────────────────────────
 
 function splitPath(path: string): string[] {
+  const rawParts: string[] = path.split("/");
   const parts: string[] = [];
-  let current: string = "";
   let i: number = 0;
-  while (i < path.length) {
-    const ch: string = path.slice(i, i + 1);
-    if (ch === "/") {
-      if (current.length > 0) {
-        parts.push(current);
-        current = "";
-      }
-    } else {
-      current = current + ch;
+  while (i < rawParts.length) {
+    const part: string = rawParts[i];
+    if (part.length > 0) {
+      parts.push(part);
     }
     i = i + 1;
   }
-  if (current.length > 0) {
-    parts.push(current);
-  }
   return parts;
+}
+
+function collectParamNames(parts: string[]): string[] {
+  const paramNames: string[] = [];
+  let i: number = 0;
+  while (i < parts.length) {
+    const part: string = parts[i];
+    if (part.startsWith(":")) {
+      paramNames.push(part.slice(1));
+    }
+    i = i + 1;
+  }
+  return paramNames;
 }
 
 function matchRoute(route: Route, req: ParsedRequest): MatchResult {
@@ -166,24 +143,18 @@ function matchRoute(route: Route, req: ParsedRequest): MatchResult {
     return noMatch;
   }
 
-  const patternParts: string[] = splitPath(route.pattern);
-  const pathParts: string[] = splitPath(req.path);
-
-  if (patternParts.length !== pathParts.length) {
+  if (route.parts.length !== req.pathParts.length) {
     return noMatch;
   }
 
-  const params: string[] = [];
   const paramValues: string[] = [];
 
   let i: number = 0;
-  while (i < patternParts.length) {
-    const pp: string = patternParts[i];
-    const rp: string = pathParts[i];
+  while (i < route.parts.length) {
+    const pp: string = route.parts[i];
+    const rp: string = req.pathParts[i];
 
-    if (pp.slice(0, 1) === ":") {
-      // This is a parameter segment
-      params.push(pp.slice(1));
+    if (pp.startsWith(":")) {
       paramValues.push(rp);
     } else if (pp !== rp) {
       return noMatch;
@@ -194,7 +165,7 @@ function matchRoute(route: Route, req: ParsedRequest): MatchResult {
   const result: MatchResult = {
     matched: true,
     handler: route.handler,
-    params: params,
+    params: route.paramNames,
     paramValues: paramValues,
   };
   return result;
@@ -265,14 +236,14 @@ function formatResponse(resp: Response): string {
 function main(): void {
   // Define routes
   const routes: Route[] = [
-    { method: "GET", pattern: "/", handler: "home" },
-    { method: "GET", pattern: "/users", handler: "listUsers" },
-    { method: "GET", pattern: "/users/:id", handler: "getUser" },
-    { method: "GET", pattern: "/users/:id/posts", handler: "getUserPosts" },
-    { method: "POST", pattern: "/users", handler: "createUser" },
-    { method: "GET", pattern: "/users/:id/posts/:postId", handler: "getPost" },
-    { method: "GET", pattern: "/search", handler: "search" },
-    { method: "GET", pattern: "/api/v1/health", handler: "healthCheck" },
+    { method: "GET", handler: "home", parts: splitPath("/"), paramNames: collectParamNames(splitPath("/")) },
+    { method: "GET", handler: "listUsers", parts: splitPath("/users"), paramNames: collectParamNames(splitPath("/users")) },
+    { method: "GET", handler: "getUser", parts: splitPath("/users/:id"), paramNames: collectParamNames(splitPath("/users/:id")) },
+    { method: "GET", handler: "getUserPosts", parts: splitPath("/users/:id/posts"), paramNames: collectParamNames(splitPath("/users/:id/posts")) },
+    { method: "POST", handler: "createUser", parts: splitPath("/users"), paramNames: collectParamNames(splitPath("/users")) },
+    { method: "GET", handler: "getPost", parts: splitPath("/users/:id/posts/:postId"), paramNames: collectParamNames(splitPath("/users/:id/posts/:postId")) },
+    { method: "GET", handler: "search", parts: splitPath("/search"), paramNames: collectParamNames(splitPath("/search")) },
+    { method: "GET", handler: "healthCheck", parts: splitPath("/api/v1/health"), paramNames: collectParamNames(splitPath("/api/v1/health")) },
   ];
 
   // Test requests
