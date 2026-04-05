@@ -57,6 +57,44 @@ static NSColor *system_color(int idx) {
 }
 - (BOOL)isFlipped { return YES; }
 
+/* Compute the natural (content-derived) size of this stack */
+- (NSSize)naturalSize {
+    CGFloat w = _padding_left + _padding_right;
+    CGFloat h = _padding_top + _padding_bottom;
+    CGFloat spacing_total = (_children.count > 1) ? (_children.count - 1) * _spacing : 0;
+
+    for (NSView *child in _children) {
+        CGFloat cw = 0, ch = 0;
+        if ([child isKindOfClass:[UIStackContainer class]]) {
+            UIStackContainer *sc = (UIStackContainer *)child;
+            if (sc.fixed_width > 0) cw = sc.fixed_width;
+            else { NSSize ns = [sc naturalSize]; cw = ns.width; }
+            if (sc.fixed_height > 0) ch = sc.fixed_height;
+            else { NSSize ns = [sc naturalSize]; ch = ns.height; }
+        } else if ([child isKindOfClass:[UISpacer class]]) {
+            /* spacers contribute nothing to natural size */
+        } else {
+            NSSize intrinsic = child.intrinsicContentSize;
+            CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
+            cw = intrinsic.width > 0 ? intrinsic.width : (fw > 0 ? fw : 0);
+            ch = intrinsic.height > 0 ? intrinsic.height : (fh > 0 ? fh : 0);
+        }
+
+        if (_direction == 0) { /* vertical: width = max, height = sum */
+            if (cw > w - _padding_left - _padding_right) w = cw + _padding_left + _padding_right;
+            h += ch;
+        } else { /* horizontal: width = sum, height = max */
+            w += cw;
+            if (ch > h - _padding_top - _padding_bottom) h = ch + _padding_top + _padding_bottom;
+        }
+    }
+
+    if (_direction == 0) h += spacing_total;
+    else w += spacing_total;
+
+    return NSMakeSize(w, h);
+}
+
 - (void)layout {
     [super layout];
     NSRect b = self.bounds;
@@ -74,7 +112,11 @@ static NSColor *system_color(int idx) {
             if (sc.flex > 0) { nflex += sc.flex; }
             else if (_direction == 0 && sc.fixed_height > 0) fixed_total += sc.fixed_height;
             else if (_direction == 1 && sc.fixed_width > 0) fixed_total += sc.fixed_width;
-            else { fixed_total += (_direction == 0 ? 30 : 80); }
+            else {
+                /* No fixed size, no flex — use natural (content) size */
+                NSSize ns = [sc naturalSize];
+                fixed_total += (_direction == 0 ? ns.height : ns.width);
+            }
         } else if ([child isKindOfClass:[NSVisualEffectView class]]) {
             UIStackContainer *inner = nil;
             for (NSView *sub in child.subviews) {
@@ -91,8 +133,9 @@ static NSColor *system_color(int idx) {
             /* Spacers and scroll views absorb remaining space — don't count as fixed */
         } else {
             NSSize intrinsic = child.intrinsicContentSize;
-            if (_direction == 0) fixed_total += (intrinsic.height > 0 ? intrinsic.height : 24);
-            else fixed_total += (intrinsic.width > 0 ? intrinsic.width : 60);
+            CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
+            if (_direction == 0) fixed_total += (intrinsic.height > 0 ? intrinsic.height : (fh > 0 ? fh : 24));
+            else fixed_total += (intrinsic.width > 0 ? intrinsic.width : (fw > 0 ? fw : 60));
         }
     }
     CGFloat spacing_total = (_children.count > 1) ? (_children.count - 1) * _spacing : 0;
@@ -106,16 +149,26 @@ static NSColor *system_color(int idx) {
         if ([child isKindOfClass:[UIStackContainer class]]) {
             UIStackContainer *sc = (UIStackContainer *)child;
             child_flex = sc.flex;
-            cw = (_direction == 1 && sc.fixed_width > 0) ? sc.fixed_width : avail_w;
-            ch = (_direction == 0 && sc.fixed_height > 0) ? sc.fixed_height : avail_h;
+            if (_direction == 1) {
+                /* Horizontal parent: width = fixed or natural, height = fill */
+                cw = (sc.fixed_width > 0) ? sc.fixed_width : (sc.flex > 0 ? 0 : [sc naturalSize].width);
+                ch = (sc.fixed_height > 0) ? sc.fixed_height : avail_h;
+            } else {
+                /* Vertical parent: width = fill, height = fixed or natural */
+                cw = (sc.fixed_width > 0) ? sc.fixed_width : avail_w;
+                ch = (sc.fixed_height > 0) ? sc.fixed_height : (sc.flex > 0 ? 0 : [sc naturalSize].height);
+            }
         } else if ([child isKindOfClass:[NSScrollView class]]) {
             /* Scroll views fill available space */
             cw = avail_w;
             ch = avail_h;
         } else {
             NSSize intrinsic = child.intrinsicContentSize;
-            cw = (_direction == 1) ? (intrinsic.width > 0 ? intrinsic.width : 60) : avail_w;
-            ch = (_direction == 0) ? (intrinsic.height > 0 ? intrinsic.height : 24) : avail_h;
+            CGFloat frameW = child.frame.size.width;
+            CGFloat frameH = child.frame.size.height;
+            /* Use intrinsic size, then frame size, then fallback */
+            cw = (_direction == 1) ? (intrinsic.width > 0 ? intrinsic.width : (frameW > 0 ? frameW : 60)) : avail_w;
+            ch = (_direction == 0) ? (intrinsic.height > 0 ? intrinsic.height : (frameH > 0 ? frameH : 24)) : avail_h;
         }
 
         if (child_flex > 0 && nflex > 0) {
@@ -525,8 +578,9 @@ void ui_symbol_set_color(UIHandle s, int c) {
 /* ─── Search Field ───────────────────────────────────────────────── */
 
 UIHandle ui_search_field(const char *placeholder) {
-    NSSearchField *f = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 260, 28)];
+    NSSearchField *f = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 300, 28)];
     f.placeholderString = [NSString stringWithUTF8String:placeholder];
+    f.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
     [g_retained addObject:f];
     return (__bridge UIHandle)f;
 }

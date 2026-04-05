@@ -45,7 +45,7 @@ interface FuncSig {
 class CodeGen {
   private structs: StructDef[] = []
   private functions: string[] = []
-  private funcSigs: Map<string, FuncSig> = new Map()
+  funcSigs: Map<string, FuncSig> = new Map()
   lambdas: string[] = []
   private lambdaCounter = 0
   varTypes: Map<string, string> = new Map()
@@ -60,6 +60,7 @@ class CodeGen {
   private funcDeclaredSoFar: Set<string> = new Set()  // tracks declaration order for return cleanup
   // JSX support
   jsxStmts: string[] = []    // accumulated C statements from JSX emission
+  jsxGlobals: string[] = []  // global variable declarations for JSX mode
   hasJsx = false              // track if source uses JSX (for includes/linking)
   private jsxEmitter: JsxEmitter
 
@@ -125,6 +126,40 @@ class CodeGen {
       case 'boolean': return 'bool'
       default: return inner
     }
+  }
+
+  /** Infer C type from a variable declaration's initializer */
+  private inferVarType(d: ts.VariableDeclaration): string {
+    if (!d.initializer) return 'double'
+    const tsType = this.exprType(d.initializer)
+    if (tsType === 'string') return 'Str'
+    if (tsType === 'number') return 'double'
+    if (tsType === 'boolean') return 'bool'
+    if (tsType?.endsWith('[]')) return this.arrayTypeName(tsType.replace('[]', ''))
+    if (tsType && this.structs.some(s => s.name === tsType)) return tsType
+    // Check if it's a function call — infer from return type
+    if (ts.isCallExpression(d.initializer)) {
+      const fnName = d.initializer.expression.getText()
+      const sig = this.funcSigs.get(fnName)
+      if (sig) {
+        const rt = sig.returnCType
+        return rt.startsWith('struct ') ? rt.replace('struct ', '') : rt
+      }
+    }
+    return 'double'
+  }
+
+  /** Infer TypeScript type name from a variable declaration's initializer */
+  private inferVarTsType(d: ts.VariableDeclaration): string {
+    if (!d.initializer) return 'number'
+    const tsType = this.exprType(d.initializer)
+    if (tsType) return tsType
+    if (ts.isCallExpression(d.initializer)) {
+      const fnName = d.initializer.expression.getText()
+      const sig = this.funcSigs.get(fnName)
+      if (sig) return sig.returnType
+    }
+    return 'number'
   }
 
   // ─── Struct Generation ──────────────────────────────────────────
@@ -397,6 +432,9 @@ class CodeGen {
       [ts.SyntaxKind.LessThanToken]: '<', [ts.SyntaxKind.LessThanEqualsToken]: '<=',
       [ts.SyntaxKind.GreaterThanToken]: '>', [ts.SyntaxKind.GreaterThanEqualsToken]: '>=',
       [ts.SyntaxKind.AmpersandAmpersandToken]: '&&', [ts.SyntaxKind.BarBarToken]: '||',
+      [ts.SyntaxKind.AmpersandToken]: '&', [ts.SyntaxKind.BarToken]: '|',
+      [ts.SyntaxKind.CaretToken]: '^',
+      [ts.SyntaxKind.LessThanLessThanToken]: '<<', [ts.SyntaxKind.GreaterThanGreaterThanToken]: '>>',
       [ts.SyntaxKind.PlusEqualsToken]: '+=', [ts.SyntaxKind.MinusEqualsToken]: '-=',
     }
     return `(${left} ${opMap[op] || '?'} ${right})`
@@ -1084,7 +1122,7 @@ class CodeGen {
     // Pass 1.5: pre-collect all function signatures (for forward references)
     // Also collect 'declare function' as extern declarations
     for (const s of sf.statements) {
-      if (ts.isFunctionDeclaration(s) && s.name && (s.body || !s.body)) {
+      if (ts.isFunctionDeclaration(s) && s.name && s.body) {
         const name = s.name.text
         const retType = this.tsTypeName(s.type)
         const retCType = this.tsTypeToC(s.type, 'void')
@@ -1104,18 +1142,66 @@ class CodeGen {
       if (ts.isVariableStatement(s) && s.getText().includes('require')) continue
     }
 
-    // Pass 3: top-level JSX expression statements (outside functions)
-    // These become the body of main()
+    // Pass 3: top-level statements that go into main()
+    // In JSX mode: variable declarations, expressions, and JSX trees
+    let hasTopLevelJsx = false
     for (const s of sf.statements) {
+      if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isImportDeclaration(s)) continue
+
+      // Check if any statement is JSX — triggers JSX mode for the file
       if (ts.isExpressionStatement(s)) {
         const expr = s.expression
         if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
-          this.indent = 1
-          this.jsxStmts.push(this.pad() + 'ui_init();')
-          this.emitExpr(expr)
-          this.indent = 0
+          hasTopLevelJsx = true
+          break
         }
       }
+    }
+
+    if (hasTopLevelJsx) {
+      // First pass: emit top-level variables as globals (declaration only)
+      // and collect their initializers for main()
+      for (const s of sf.statements) {
+        if (!ts.isVariableStatement(s)) continue
+        for (const d of s.declarationList.declarations) {
+          const name = d.name.getText()
+          const cType = d.type ? this.tsTypeToC(d.type) : this.inferVarType(d)
+          this.jsxGlobals.push(`${cType} ${name};`)
+          // Register in varTypes so functions can reference it
+          this.varTypes.set(name, d.type ? this.tsTypeName(d.type) : this.inferVarTsType(d))
+        }
+      }
+
+      // Second pass: main() body — init globals, then JSX
+      this.indent = 1
+      this.jsxStmts.push(this.pad() + 'ui_init();')
+
+      for (const s of sf.statements) {
+        if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isImportDeclaration(s)) continue
+
+        if (ts.isVariableStatement(s)) {
+          // Emit initialization (not declaration) into main()
+          for (const d of s.declarationList.declarations) {
+            if (d.initializer) {
+              const name = d.name.getText()
+              const val = this.emitExpr(d.initializer)
+              this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+            }
+          }
+          continue
+        }
+
+        if (ts.isExpressionStatement(s)) {
+          const expr = s.expression
+          if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
+            this.emitExpr(expr)
+          } else {
+            this.jsxStmts.push(this.pad() + `${this.emitExpr(expr)};`)
+          }
+          continue
+        }
+      }
+      this.indent = 0
     }
 
     // Build output
@@ -1159,6 +1245,12 @@ class CodeGen {
 
     // JSON parser
     if (this.needsJsonParser) { L.push(this.genJsonParser()); L.push('') }
+
+    // Global variables (JSX mode — top-level const/let)
+    if (this.jsxGlobals.length) {
+      for (const g of this.jsxGlobals) L.push(g)
+      L.push('')
+    }
 
     // Forward declarations (use typedef names, not struct X)
     for (const [name, sig] of this.funcSigs) {

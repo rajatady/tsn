@@ -8,12 +8,20 @@
 import * as ts from 'typescript'
 import { parseTailwind } from './tailwind.js'
 
+export interface FuncSig {
+  name: string
+  params: Array<{ name: string; tsType: string; cType: string }>
+  returnType: string
+  returnCType: string
+}
+
 /** Interface to access CodeGen internals without circular dependency */
 export interface CodeGenContext {
   jsxStmts: string[]
   lambdas: string[]
   indent: number
   hasJsx: boolean
+  funcSigs: Map<string, FuncSig>
   pad(): string
   emitExpr(node: ts.Node): string
   exprType(node: ts.Node): string
@@ -156,8 +164,8 @@ export class JsxEmitter {
         S.push(pad() + `UIHandle ${handle} = ui_search_field(${JSON.stringify(placeholder)});`)
         const onChange = props.get('onChange')
         if (onChange && ts.isJsxExpression(onChange) && onChange.expression) {
-          const fnName = this.ctx.emitExpr(onChange.expression)
-          S.push(pad() + `ui_on_text_changed(${handle}, ${fnName});`)
+          const wrapName = this.liftCallback(onChange.expression, 'UITextChangedFn')
+          S.push(pad() + `ui_on_text_changed(${handle}, ${wrapName});`)
         }
         if (tw) for (const c of tw.calls) S.push(pad() + c)
         return handle
@@ -236,10 +244,20 @@ export class JsxEmitter {
         S.push(pad() + `ui_data_table_set_row_height(${handle}, ${rowHeight});`)
         if (this.propBool(props, 'alternating'))
           S.push(pad() + `ui_data_table_set_alternating(${handle}, true);`)
-        const cellFn = this.propStr(props, 'cellFn')
-        if (cellFn) {
+        // cellFn prop — wrap TypeScript function for C callback
+        const cellFnProp = props.get('cellFn')
+        if (cellFnProp && ts.isJsxExpression(cellFnProp) && cellFnProp.expression) {
+          const wrapName = this.liftCallback(cellFnProp.expression, 'UITableCellFn')
           const rows = this.propNum(props, 'rows', 500)
-          S.push(pad() + `ui_data_table_set_data(${handle}, ${rows}, ${cellFn}, NULL);`)
+          S.push(pad() + `ui_data_table_set_data(${handle}, ${rows}, ${wrapName}, NULL);`)
+          // Generate refreshTable() — stores handle globally, callable from TS
+          S.push(pad() + `_g_table = ${handle};`)
+          this.ctx.lambdas.push(
+            `static UIHandle _g_table = NULL;\n` +
+            `void refreshTable(double rows) {\n` +
+            `    if (_g_table) ui_data_table_set_data(_g_table, (int)rows, ${wrapName}, NULL);\n` +
+            `}`
+          )
         }
         if (tw) for (const c of tw.calls) S.push(pad() + c)
         return handle
@@ -342,13 +360,88 @@ export class JsxEmitter {
     this.ctx.jsxStmts.push(this.ctx.pad() + `}`)
   }
 
-  // ─── Callback Lifting ─────────────────────────────────────────
+  // ─── Callback Wrappers ─────────────────────────────────────────
+  //
+  // TypeScript functions use TS types (number→double, string→Str).
+  // UI callbacks use C types (int, const char*).
+  // We generate thin wrappers that bridge the gap.
+
+  private wrappedFns = new Set<string>()  // track which wrappers we've already generated
+
+  /** Wrap a TypeScript function for use as UIClickFn: void(*)(int) */
+  private wrapForClick(fnName: string): string {
+    const wrapName = `_wrap_click_${fnName}`
+    if (!this.wrappedFns.has(wrapName)) {
+      this.wrappedFns.add(wrapName)
+      const sig = this.ctx.funcSigs.get(fnName)
+      if (sig && sig.params.length >= 1) {
+        // TS fn is void fnName(double tag) → wrap to void(int tag)
+        this.ctx.lambdas.push(
+          `static void ${wrapName}(int _tag) {\n` +
+          `    ${fnName}((double)_tag);\n` +
+          `}`
+        )
+      } else {
+        // No params — just call it
+        this.ctx.lambdas.push(
+          `static void ${wrapName}(int _tag) {\n` +
+          `    ${fnName}();\n` +
+          `}`
+        )
+      }
+    }
+    return wrapName
+  }
+
+  /** Wrap a TypeScript function for use as UITextChangedFn: void(*)(const char*) */
+  private wrapForTextChanged(fnName: string): string {
+    const wrapName = `_wrap_text_${fnName}`
+    if (!this.wrappedFns.has(wrapName)) {
+      this.wrappedFns.add(wrapName)
+      // TS fn is void fnName(Str text) → wrap to void(const char* text)
+      this.ctx.lambdas.push(
+        `static void ${wrapName}(const char *_text) {\n` +
+        `    ${fnName}(str_from(_text, (int)strlen(_text)));\n` +
+        `}`
+      )
+    }
+    return wrapName
+  }
+
+  /** Wrap a TypeScript function for use as UITableCellFn: const char*(*)(int, int, void*) */
+  private wrapForCellFn(fnName: string): string {
+    const wrapName = `_wrap_cell_${fnName}`
+    if (!this.wrappedFns.has(wrapName)) {
+      this.wrappedFns.add(wrapName)
+      // TS fn is Str fnName(double row, double col) → wrap to const char*(int, int, void*)
+      // We use a static buffer to return the C string
+      this.ctx.lambdas.push(
+        `static char _cell_buf[4096];\n` +
+        `static const char *${wrapName}(int _row, int _col, void *_ctx) {\n` +
+        `    Str _r = ${fnName}((double)_row, (double)_col);\n` +
+        `    if (_r.len > 4095) _r.len = 4095;\n` +
+        `    memcpy(_cell_buf, _r.data, _r.len);\n` +
+        `    _cell_buf[_r.len] = 0;\n` +
+        `    return _cell_buf;\n` +
+        `}`
+      )
+    }
+    return wrapName
+  }
 
   private liftCallback(expr: ts.Node, fnType: string): string {
-    if (ts.isIdentifier(expr)) return expr.text
+    // Direct function reference: onClick={onDeptClick}
+    if (ts.isIdentifier(expr)) {
+      const fnName = expr.text
+      if (fnType === 'UIClickFn') return this.wrapForClick(fnName)
+      if (fnType === 'UITextChangedFn') return this.wrapForTextChanged(fnName)
+      if (fnType === 'UITableCellFn') return this.wrapForCellFn(fnName)
+      return fnName
+    }
 
+    // Arrow function: onClick={() => doSomething()}
     if (ts.isArrowFunction(expr)) {
-      const name = `_jsx_cb_${this.jsxOnClickCounter}`
+      const name = `_jsx_cb_${this.jsxOnClickCounter++}`
       if (fnType === 'UIClickFn') {
         let body: string
         if (ts.isBlock(expr.body)) {
