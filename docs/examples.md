@@ -273,6 +273,29 @@ strictts build examples/native-gui/app-store.tsx
 strictts build examples/native-gui/app-store.tsx --debug
 ```
 
+## Native GUI: UI Gallery
+
+Located in [examples/native-gui/ui-gallery.tsx](../examples/native-gui/ui-gallery.tsx). This is the provider-facing visual verification surface for the TSN UI stack rather than an end-user product demo.
+
+It exercises:
+
+- sidebar shells and spacer-to-footer layout
+- centered content rails
+- horizontal shelves and overflow cases
+- button, card, stat, text, and search primitives
+- media hero, icon, screenshot, and circular crop cases
+- shared-store interactions that can be driven through the inspector
+
+The gallery is paired with the conformance harness:
+
+```bash
+strictts build examples/native-gui/ui-gallery.tsx
+strictts build examples/native-gui/ui-gallery.tsx --debug
+bash harness/ui-conformance.sh
+```
+
+The harness launches the gallery, clicks through the suites, captures screenshots, writes tree snapshots, and stores artifacts in `/tmp/tsn-ui-conformance`.
+
 ## Correctness Tests
 
 ```bash

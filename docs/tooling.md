@@ -117,6 +117,8 @@ Query running UI apps via Unix socket. When a single app is running, the inspect
 
 The inspector commands are synchronous now: `click` and `type` only return after the main-thread interaction has been applied. This makes screenshot- and state-based verification reliable in automated checks.
 
+The default UI verification path now includes the native gallery app at [examples/native-gui/ui-gallery.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/examples/native-gui/ui-gallery.tsx). `bash harness/ui-conformance.sh` builds it, launches it, drives it through the inspector, and writes screenshots plus tree dumps to `/tmp/tsn-ui-conformance`.
+
 ### Commands
 
 | Command | Description |
@@ -156,6 +158,9 @@ strictts inspect type "Alice"          # types into search field
 # When multiple StrictTS apps are running:
 npx tsx compiler/inspect.ts --app dashboard tree
 npx tsx compiler/inspect.ts --app incident-tracker screenshot
+
+# Native visual conformance
+bash harness/ui-conformance.sh
 ```
 
 ### Element IDs

@@ -10,3 +10,4 @@ export function serializeLayoutGolden(node: LayoutSnapshotNode): string {
 }
 
 export * from './layout.js'
+export * from './gallery.js'

@@ -9,7 +9,9 @@
   "type": "module",
   "scripts": {
     "bench": "bash harness/run-benchmarks.sh",
-    "test": "bash harness/correctness.sh",
+    "test": "bash harness/correctness.sh && bash harness/ui-conformance.sh",
+    "test:cli": "bash harness/correctness.sh",
+    "test:ui": "bash harness/ui-conformance.sh",
     "compile": "node --loader ts-node/esm compiler/index.ts"
   },
   "dependencies": {
