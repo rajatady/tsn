@@ -1,0 +1,5 @@
+service,uptime,error_rate,p95_ms,deploys
+checkout,99.82,0.42,640,18
+auth,99.91,0.18,480,12
+api,98.74,1.8,910,27
+search,99.5,0.65,720,9

@@ -25,26 +25,6 @@ function readStdin(): string {
   return fs.readFileSync("/dev/stdin", "utf-8");
 }
 
-function parseInt10(raw: string): number {
-  let i = 0
-  let n = 0
-  while (i < raw.length) {
-    const ch: string = raw.slice(i, i + 1)
-    if (ch === "0") n = n * 10 + 0
-    else if (ch === "1") n = n * 10 + 1
-    else if (ch === "2") n = n * 10 + 2
-    else if (ch === "3") n = n * 10 + 3
-    else if (ch === "4") n = n * 10 + 4
-    else if (ch === "5") n = n * 10 + 5
-    else if (ch === "6") n = n * 10 + 6
-    else if (ch === "7") n = n * 10 + 7
-    else if (ch === "8") n = n * 10 + 8
-    else if (ch === "9") n = n * 10 + 9
-    i = i + 1
-  }
-  return n
-}
-
 function parseLogs(raw: string): RequestLog[] {
   const lines: string[] = raw.split("\n")
   const logs: RequestLog[] = []
@@ -63,8 +43,8 @@ function parseLogs(raw: string): RequestLog[] {
     const log: RequestLog = {
       method: parts[1].trim().toUpperCase(),
       path: parts[2].trim().toLowerCase(),
-      status: parseInt10(parts[3].trim()),
-      latencyMs: parseInt10(parts[4].trim()),
+      status: parseInt(parts[3].trim()),
+      latencyMs: parseInt(parts[4].trim()),
       service: parts[5].trim().toLowerCase(),
     }
     logs.push(log)

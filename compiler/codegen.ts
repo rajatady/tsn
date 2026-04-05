@@ -352,6 +352,12 @@ class CodeGen {
     if (ts.isIdentifier(node.expression) && node.expression.text === 'String')
       return `num_to_str(${this.emitExpr(node.arguments[0])})`
 
+    if (ts.isIdentifier(node.expression) && node.expression.text === 'parseFloat')
+      return `ts_parse_float(${this.emitExpr(node.arguments[0])})`
+
+    if (ts.isIdentifier(node.expression) && node.expression.text === 'parseInt')
+      return `ts_parse_int(${this.emitExpr(node.arguments[0])})`
+
     // Regular function call
     const name = this.emitExpr(node.expression)
     const args = node.arguments.map(a => {
@@ -613,6 +619,7 @@ class CodeGen {
         const sig = this.funcSigs.get(node.expression.text)
         if (sig) return sig.returnType
         if (node.expression.text === 'String') return 'string'
+        if (node.expression.text === 'parseFloat' || node.expression.text === 'parseInt') return 'number'
       }
       if (ts.isPropertyAccessExpression(node.expression)) {
         const m = node.expression.name.text
@@ -620,7 +627,7 @@ class CodeGen {
         if (m === 'filter' || m === 'slice') return this.exprType(node.expression.expression)
         if (m === 'split') return 'string[]'
         if (m === 'trim' || m === 'trimStart' || m === 'trimEnd' || m === 'join' || m === 'toLowerCase' || m === 'toUpperCase') return 'string'
-        if (m === 'indexOf' || m === 'findIndex') return 'number'
+        if (m === 'indexOf' || m === 'findIndex' || m === 'count' || m === 'sum' || m === 'min' || m === 'max') return 'number'
         if (m === 'includes' || m === 'startsWith' || m === 'endsWith' || m === 'some' || m === 'every') return 'boolean'
       }
     }

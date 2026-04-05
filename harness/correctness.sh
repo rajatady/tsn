@@ -8,6 +8,8 @@
 set -e
 cd "$(dirname "$0")/.."
 
+JS_STDLIB_SHIM="$(pwd)/harness/js-stdlib-shim.cjs"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -42,18 +44,18 @@ run_target() {
 
   # Node.js
   if [ -n "$input" ]; then
-    npx tsx "targets/$name.ts" < "$input" > "/tmp/strictts-$name-node.txt" 2>&1
+    NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "targets/$name.ts" < "$input" > "/tmp/strictts-$name-node.txt" 2>&1
   else
-    npx tsx "targets/$name.ts" > "/tmp/strictts-$name-node.txt" 2>&1
+    NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "targets/$name.ts" > "/tmp/strictts-$name-node.txt" 2>&1
   fi
   check "Node.js" "/tmp/strictts-$name-node.txt" "harness/expected/$name.expected.txt"
 
   # Bun
   if command -v bun &> /dev/null; then
     if [ -n "$input" ]; then
-      bun "targets/$name.ts" < "$input" > "/tmp/strictts-$name-bun.txt" 2>&1
+      bun --preload "$JS_STDLIB_SHIM" "targets/$name.ts" < "$input" > "/tmp/strictts-$name-bun.txt" 2>&1
     else
-      bun "targets/$name.ts" > "/tmp/strictts-$name-bun.txt" 2>&1
+      bun --preload "$JS_STDLIB_SHIM" "targets/$name.ts" > "/tmp/strictts-$name-bun.txt" 2>&1
     fi
     check "Bun    " "/tmp/strictts-$name-bun.txt" "harness/expected/$name.expected.txt"
   else

@@ -5,6 +5,8 @@
 set -e
 cd "$(dirname "$0")/.."
 
+JS_STDLIB_SHIM="$(pwd)/harness/js-stdlib-shim.cjs"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -46,11 +48,11 @@ run_case() {
   echo ""
   echo "━━━ $name ━━━"
 
-  npx tsx "$source" < "$input" > "/tmp/strictts-$name-node.txt" 2>&1
+  NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "$source" < "$input" > "/tmp/strictts-$name-node.txt" 2>&1
   check "Node.js" "/tmp/strictts-$name-node.txt" "$expected"
 
   if command -v bun &> /dev/null; then
-    bun "$source" < "$input" > "/tmp/strictts-$name-bun.txt" 2>&1
+    bun --preload "$JS_STDLIB_SHIM" "$source" < "$input" > "/tmp/strictts-$name-bun.txt" 2>&1
     check "Bun    " "/tmp/strictts-$name-bun.txt" "$expected"
   else
     echo -e "  ${YELLOW}SKIP${NC} Bun (not installed)"
@@ -74,6 +76,8 @@ echo "╚═══════════════════════�
 run_case "config-audit" "examples/config-audit.ts" "harness/test-data/config-audit.env" "harness/expected/config-audit.expected.txt"
 run_case "access-log-summary" "examples/access-log-summary.ts" "harness/test-data/access-log.txt" "harness/expected/access-log-summary.expected.txt"
 run_case "log-triage" "examples/log-triage.ts" "harness/test-data/log-triage.txt" "harness/expected/log-triage.expected.txt"
+run_case "revenue-rollup" "examples/revenue-rollup.ts" "harness/test-data/revenue-rollup.csv" "harness/expected/revenue-rollup.expected.txt"
+run_case "sla-scorecard" "examples/sla-scorecard.ts" "harness/test-data/sla-scorecard.csv" "harness/expected/sla-scorecard.expected.txt"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

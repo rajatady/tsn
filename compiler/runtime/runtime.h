@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
+#include <limits.h>
 
 /* ─── Refcount Header ────────────────────────────────────────────
  *
@@ -249,8 +250,8 @@ static inline void strbuf_add_int(StrBuf *b, int n) {
 
 static inline void strbuf_add_double(StrBuf *b, double n) {
     char tmp[64]; int len;
-    if (n == (int)n && n >= -1e15 && n <= 1e15) len = snprintf(tmp, sizeof(tmp), "%d", (int)n);
-    else len = snprintf(tmp, sizeof(tmp), "%g", n);
+    if (n == (long long)n && n >= (double)LLONG_MIN && n <= (double)LLONG_MAX) len = snprintf(tmp, sizeof(tmp), "%lld", (long long)n);
+    else len = snprintf(tmp, sizeof(tmp), "%.15g", n);
     strbuf_add_mem(b, tmp, len);
 }
 
@@ -272,9 +273,29 @@ static inline void strbuf_free(StrBuf *b) {
 
 static inline Str num_to_str(double n) {
     static char buf[64]; int len;
-    if (n == (int)n && n >= -1e15 && n <= 1e15) len = snprintf(buf, sizeof(buf), "%d", (int)n);
-    else len = snprintf(buf, sizeof(buf), "%g", n);
+    if (n == (long long)n && n >= (double)LLONG_MIN && n <= (double)LLONG_MAX) len = snprintf(buf, sizeof(buf), "%lld", (long long)n);
+    else len = snprintf(buf, sizeof(buf), "%.15g", n);
     return (Str){ buf, NULL, len, 0 };
+}
+
+/* ─── Str → Number ──────────────────────────────────────────────── */
+
+static inline double ts_parse_float(Str s) {
+    if (s.len == 0) return 0;
+    char stack[256];
+    char *buf = s.len < 255 ? stack : (char *)malloc(s.len + 1);
+    memcpy(buf, s.data, s.len);
+    buf[s.len] = '\0';
+    char *end = buf;
+    double value = strtod(buf, &end);
+    if (buf != stack) free(buf);
+    if (end == buf) return 0;
+    return value;
+}
+
+static inline double ts_parse_int(Str s) {
+    double value = ts_parse_float(s);
+    return value >= 0 ? floor(value) : ceil(value);
 }
 
 /* ─── Typed Dynamic Array with Refcounting ───────────────────────
@@ -359,8 +380,8 @@ static inline void StrArr_release_deep(StrArr *a) {
 static inline void print_str(Str s) { fwrite(s.data, 1, s.len, stdout); }
 static inline void print_cstr(const char *s) { fputs(s, stdout); }
 static inline void print_num(double n) {
-    if (n == (int)n && n >= -1e15 && n <= 1e15) printf("%d", (int)n);
-    else printf("%g", n);
+    if (n == (long long)n && n >= (double)LLONG_MIN && n <= (double)LLONG_MAX) printf("%lld", (long long)n);
+    else printf("%.15g", n);
 }
 static inline void print_bool(bool b) { fputs(b ? "true" : "false", stdout); }
 static inline void print_nl(void) { putchar('\n'); }

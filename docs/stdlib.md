@@ -54,6 +54,16 @@ const s: string = String(42)        // "42"
 const s2: string = String(3.14)     // "3.14"
 ```
 
+### Number Parsing
+
+```typescript
+const amount = parseFloat("143220.75")
+const count = parseInt("502")
+```
+
+`parseFloat()` parses decimal strings. `parseInt()` parses then truncates toward
+zero. For invalid input, both return `0`.
+
 ## Array Methods
 
 | Method | Signature | Notes |
@@ -67,6 +77,10 @@ const s2: string = String(3.14)     // "3.14"
 | `arr.findIndex(fn)` | `((T) => boolean) => number` | Inline scan with early exit |
 | `arr.some(fn)` | `((T) => boolean) => boolean` | Stops at first match |
 | `arr.every(fn)` | `((T) => boolean) => boolean` | Stops at first failure |
+| `arr.count(fn)` | `((T) => boolean) => number` | Counts matching elements |
+| `nums.sum()` | `() => number` | `number[]` only |
+| `nums.min()` | `() => number` | `number[]` only, `0` if empty |
+| `nums.max()` | `() => number` | `number[]` only, `0` if empty |
 | `arr.join(sep?)` | `(?string) => string` | Stack `StrBuf`, heap finalization |
 | `arr.length` | `number` (property) | Direct field access, O(1) |
 | `arr[i]` | `T` | Bounds-checked in debug mode |
@@ -80,6 +94,15 @@ return the updated array and let the caller rebind it.
 const hasErrors = logs.some(log => log.status >= 500)
 const allHealthy = services.every(name => serviceErrorCount(logs, name) === 0)
 const firstSlow = logs.findIndex(log => log.latencyMs >= 900)
+const breaches = logs.count(log => log.status >= 500)
+```
+
+### Numeric Reductions
+
+```typescript
+const total = revenues.sum()
+const highest = revenues.max()
+const lowest = costs.min()
 ```
 
 ### Filter

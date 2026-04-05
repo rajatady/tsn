@@ -79,52 +79,6 @@ function parseCsvLine(line: string): Row {
   return row;
 }
 
-function parseFloat(s: string): number {
-  // Simple float parser for our strict subset
-  let result: number = 0;
-  let decimal: number = 0;
-  let divisor: number = 1;
-  let negative: boolean = false;
-  let i: number = 0;
-
-  if (i < s.length && s.slice(i, i + 1) === "-") {
-    negative = true;
-    i = i + 1;
-  }
-
-  while (i < s.length) {
-    const ch: string = s.slice(i, i + 1);
-    if (ch === ".") {
-      decimal = 1;
-    } else if (decimal > 0) {
-      divisor = divisor * 10;
-      result = result + (charToDigit(ch) / divisor);
-    } else {
-      result = result * 10 + charToDigit(ch);
-    }
-    i = i + 1;
-  }
-
-  if (negative) {
-    result = 0 - result;
-  }
-  return result;
-}
-
-function charToDigit(ch: string): number {
-  if (ch === "0") return 0;
-  if (ch === "1") return 1;
-  if (ch === "2") return 2;
-  if (ch === "3") return 3;
-  if (ch === "4") return 4;
-  if (ch === "5") return 5;
-  if (ch === "6") return 6;
-  if (ch === "7") return 7;
-  if (ch === "8") return 8;
-  if (ch === "9") return 9;
-  return 0;
-}
-
 function main(): void {
   const raw: string = readStdin();
   const rows: Row[] = parseCsv(raw);

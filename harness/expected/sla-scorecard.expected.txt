@@ -1,0 +1,10 @@
+=== SLA SCORECARD ===
+Services: 4
+Worst p95 ms: 910
+Best p95 ms: 480
+Lowest uptime: 98.74
+Total deploys: 66
+SLA breaches: 2
+Any critical errors: true
+All services stable: false
+Hot services: api, search

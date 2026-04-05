@@ -79,6 +79,26 @@ It uses:
 - `toUpperCase()` / `toLowerCase()` for normalization
 - `some()` / `every()` / `findIndex()` for health checks
 
+## CLI Example: Revenue Rollup
+
+Located in [examples/revenue-rollup.ts](../examples/revenue-rollup.ts). This is a finance-style reporting example that turns raw CSV sales snapshots into a concise rollup.
+
+It uses:
+
+- `parseFloat()` / `parseInt()` for numeric parsing
+- `count()` for threshold counts
+- `sum()`, `min()`, and `max()` for numeric reductions
+
+## CLI Example: SLA Scorecard
+
+Located in [examples/sla-scorecard.ts](../examples/sla-scorecard.ts). This is a reliability/reporting example that summarizes per-service health snapshots.
+
+It uses:
+
+- `parseFloat()` / `parseInt()` for numeric parsing
+- `count()` plus `some()` / `every()` for status checks
+- `sum()`, `min()`, and `max()` for summary metrics
+
 ## Harnesses
 
 ```bash

@@ -7,6 +7,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 ITERATIONS=5
+JS_STDLIB_SHIM="$(pwd)/harness/js-stdlib-shim.cjs"
 
 # Get time in nanoseconds (macOS)
 now_ns() {
@@ -78,46 +79,47 @@ measure() {
     printf "  %-8s %12s  %12s\n" "$label" "$time_str" "$mem_str"
 }
 
-bench_target() {
-    local name="$1"
-    local input="$2"
+bench_case() {
+    local label="$1"
+    local source="$2"
+    local input="$3"
+    local binary="$4"
+    local baseline="$5"
+    local node_cmd="NODE_OPTIONS=--require=$JS_STDLIB_SHIM npx tsx $source"
+    local bun_cmd="bun --preload $JS_STDLIB_SHIM $source"
 
     echo ""
-    echo "━━━ $name ━━━"
+    echo "━━━ $label ━━━"
 
-    # Node.js
     if [ -n "$input" ]; then
-        measure "Node" sh -c "npx tsx targets/$name.ts < $input"
+        measure "Node" sh -c "$node_cmd < $input"
     else
-        measure "Node" npx tsx "targets/$name.ts"
+        measure "Node" sh -c "$node_cmd"
     fi
 
-    # Bun
     if command -v bun &> /dev/null; then
         if [ -n "$input" ]; then
-            measure "Bun" sh -c "bun targets/$name.ts < $input"
+            measure "Bun" sh -c "$bun_cmd < $input"
         else
-            measure "Bun" bun "targets/$name.ts"
+            measure "Bun" sh -c "$bun_cmd"
         fi
     fi
 
-    # Native (compiler output)
-    if [ -f "build/$name" ]; then
+    if [ -f "build/$binary" ]; then
         if [ -n "$input" ]; then
-            measure "Native" sh -c "./build/$name < $input"
+            measure "Native" sh -c "./build/$binary < $input"
         else
-            measure "Native" "./build/$name"
+            measure "Native" "./build/$binary"
         fi
     else
         printf "  %-8s %12s  %12s\n" "Native" "---" "not compiled"
     fi
 
-    # Hand-optimized C baseline
-    if [ -f "build/baseline-$name" ]; then
+    if [ -n "$baseline" ] && [ -f "$baseline" ]; then
         if [ -n "$input" ]; then
-            measure "Hand C" sh -c "./build/baseline-$name < $input"
+            measure "Hand C" sh -c "$baseline < $input"
         else
-            measure "Hand C" "./build/baseline-$name"
+            measure "Hand C" "$baseline"
         fi
     fi
 }
@@ -127,9 +129,20 @@ echo "║  StrictTS → Native: Benchmarks                       ║"
 echo "║  ${ITERATIONS} iterations, median, nanosecond precision          ║"
 echo "╚═══════════════════════════════════════════════════════╝"
 
-bench_target "json-pipeline" "harness/test-data/large-dataset.json"
-bench_target "http-router" ""
-bench_target "markdown-parser" "harness/test-data/sample.md"
+echo ""
+echo "Core targets"
+bench_case "json-pipeline" "targets/json-pipeline.ts" "harness/test-data/large-dataset.json" "json-pipeline" "./build/baseline-json-pipeline"
+bench_case "http-router" "targets/http-router.ts" "" "http-router" "./build/baseline-http-router"
+bench_case "markdown-parser" "targets/markdown-parser.ts" "harness/test-data/sample.md" "markdown-parser" "./build/baseline-markdown-parser"
+bench_case "csv-tool" "targets/csv-tool.ts" "harness/test-data/large.csv" "csv-tool" ""
+
+echo ""
+echo "Real-world CLI examples"
+bench_case "config-audit" "examples/config-audit.ts" "harness/test-data/config-audit.env" "config-audit" ""
+bench_case "access-log-summary" "examples/access-log-summary.ts" "harness/test-data/access-log.txt" "access-log-summary" ""
+bench_case "log-triage" "examples/log-triage.ts" "harness/test-data/log-triage.txt" "log-triage" ""
+bench_case "revenue-rollup" "examples/revenue-rollup.ts" "harness/test-data/revenue-rollup.csv" "revenue-rollup" ""
+bench_case "sla-scorecard" "examples/sla-scorecard.ts" "harness/test-data/sla-scorecard.csv" "sla-scorecard" ""
 
 echo ""
 echo "Done."

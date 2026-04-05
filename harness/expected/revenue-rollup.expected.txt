@@ -1,0 +1,11 @@
+=== REVENUE ROLLUP ===
+Rows: 4
+Total revenue: 550971.25
+Total cost: 352840.55
+Gross margin: 198130.7
+Total orders: 1557
+Highest revenue: 187450
+Lowest cost: 70100.1
+Top region: enterprise
+Regions above 120k revenue: 3
+High revenue regions: north, west, enterprise
