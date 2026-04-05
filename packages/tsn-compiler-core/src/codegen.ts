@@ -23,9 +23,11 @@
  */
 
 import * as ts from 'typescript'
-import { JsxEmitter, type CodeGenContext } from '../../tsn-compiler-ui/src/jsx.js'
+import { JsxEmitter } from '../../tsn-compiler-ui/src/jsx.js'
+import type { CodeGenContext, FuncSig } from '../../tsn-compiler-ui/src/types.js'
 import { emitStringMethod } from '../../../compiler/stdlib/strings.js'
 import { emitArrayMethod } from '../../../compiler/stdlib/arrays.js'
+import { HookRegistry } from './hooks.js'
 
 interface StructField {
   name: string
@@ -36,13 +38,6 @@ interface StructField {
 interface StructDef {
   name: string
   fields: StructField[]
-}
-
-interface FuncSig {
-  name: string
-  params: Array<{ name: string; tsType: string; cType: string }>
-  returnType: string
-  returnCType: string
 }
 
 interface ParamAlias {
@@ -57,18 +52,6 @@ interface ParamInfo {
   tsType: string
   cType: string
   aliases: ParamAlias[]
-}
-
-interface HookState {
-  kind: 'state' | 'route' | 'store'
-  sourceValueName: string
-  sourceSetterName: string
-  tsType: string
-  cType: string
-  valueSymbol: string
-  initSymbol: string
-  applySymbol: string
-  storeKey: string
 }
 
 class CodeGen {
@@ -88,9 +71,7 @@ class CodeGen {
   private funcTopLevelVars: Set<string> = new Set()
   private funcDeclaredSoFar: Set<string> = new Set()  // tracks declaration order for return cleanup
   private identifierAliases: Map<string, string> = new Map()
-  private hookStates: HookState[] = []
-  private hookStatesBySetter: Map<string, HookState> = new Map()
-  private hookStatesByStoreKey: Map<string, HookState> = new Map()
+  private hooks: HookRegistry
   private jsxBootStmts: string[] = []
   // JSX support
   jsxStmts: string[] = []    // accumulated C statements from JSX emission
@@ -104,6 +85,15 @@ class CodeGen {
 
   constructor() {
     this.jsxEmitter = new JsxEmitter(this as CodeGenContext)
+    this.hooks = new HookRegistry({
+      tsTypeNameToC: (tsType: string, fallback = 'double') => this.tsTypeNameToC(tsType, fallback),
+      arrayTypeName: (innerTsType: string) => this.arrayTypeName(innerTsType),
+      exprType: (node: ts.Node) => this.exprType(node),
+      emitExpr: (node: ts.Node) => this.emitExpr(node),
+      getReleaseForType: (varName: string, tsType: string) => this.getReleaseForType(varName, tsType),
+      varTypes: this.varTypes,
+      identifierAliases: this.identifierAliases,
+    })
   }
 
   // ─── Type Resolution ────────────────────────────────────────────
@@ -251,137 +241,6 @@ class CodeGen {
     }
 
     return { name, tsType, cType, aliases }
-  }
-
-  private isHookCall(node: ts.Expression | undefined, kind?: 'state' | 'route' | 'store'): node is ts.CallExpression {
-    if (!node || !ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return false
-    if (kind === 'state') return node.expression.text === 'useState'
-    if (kind === 'route') return node.expression.text === 'useRoute'
-    if (kind === 'store') return node.expression.text === 'useStore'
-    return node.expression.text === 'useState' || node.expression.text === 'useRoute' || node.expression.text === 'useStore'
-  }
-
-  private inferHookTsType(call: ts.CallExpression): string {
-    if (ts.isIdentifier(call.expression) && call.expression.text === 'useRoute') return 'string'
-    if (ts.isIdentifier(call.expression) && call.expression.text === 'useStore') {
-      if (call.typeArguments?.length) return this.tsTypeName(call.typeArguments[0])
-      if (call.arguments.length > 1) return this.exprType(call.arguments[1]) ?? 'number'
-      return 'number'
-    }
-    if (call.typeArguments?.length) return this.tsTypeName(call.typeArguments[0])
-    if (call.arguments.length > 0) return this.exprType(call.arguments[0]) ?? 'number'
-    return 'number'
-  }
-
-  private hookInitArg(call: ts.CallExpression): ts.Expression | undefined {
-    if (ts.isIdentifier(call.expression) && call.expression.text === 'useStore') return call.arguments[1]
-    return call.arguments[0]
-  }
-
-  private hookStoreKey(call: ts.CallExpression): string {
-    if (ts.isIdentifier(call.expression) && call.expression.text === 'useStore' && call.arguments[0] && ts.isStringLiteral(call.arguments[0])) {
-      return call.arguments[0].text
-    }
-    return ''
-  }
-
-  private zeroInitForType(tsType: string, cType: string): string {
-    if (tsType === 'string') return '(Str){0}'
-    if (tsType === 'number') return '0'
-    if (tsType === 'boolean') return 'false'
-    if (tsType.endsWith('[]')) return `(${cType}){0}`
-    return `(${cType}){0}`
-  }
-
-  private retainForHookType(tsType: string, expr: string): string {
-    if (tsType === 'string') return `str_retain(${expr})`
-    if (tsType.endsWith('[]')) {
-      const inner = tsType.replace('[]', '')
-      return `${this.arrayTypeName(inner)}_retain(${expr})`
-    }
-    return expr
-  }
-
-  private registerHookState(
-    kind: 'state' | 'route' | 'store',
-    valueName: string,
-    setterName: string,
-    tsType: string,
-    storeKey = ''
-  ): HookState {
-    if (kind === 'route') {
-      const existing = this.hookStates.find(h => h.kind === 'route')
-      if (existing) {
-        this.identifierAliases.set(valueName, existing.valueSymbol)
-        this.hookStatesBySetter.set(setterName, existing)
-        return existing
-      }
-    }
-
-    if (kind === 'store' && storeKey.length > 0) {
-      const existing = this.hookStatesByStoreKey.get(storeKey)
-      if (existing) {
-        this.identifierAliases.set(valueName, existing.valueSymbol)
-        this.hookStatesBySetter.set(setterName, existing)
-        return existing
-      }
-    }
-
-    const id = this.hookStates.length
-    const cType = this.tsTypeNameToC(tsType)
-    const hook: HookState = {
-      kind,
-      sourceValueName: valueName,
-      sourceSetterName: setterName,
-      tsType,
-      cType,
-      valueSymbol: kind === 'route' ? '_route_state' : `_hook_state_${id}`,
-      initSymbol: kind === 'route' ? '_route_init' : `_hook_init_${id}`,
-      applySymbol: kind === 'route' ? '_route_navigate' : `_hook_apply_${id}`,
-      storeKey,
-    }
-    this.hookStates.push(hook)
-    this.identifierAliases.set(valueName, hook.valueSymbol)
-    this.hookStatesBySetter.set(setterName, hook)
-    if (kind === 'store' && storeKey.length > 0) this.hookStatesByStoreKey.set(storeKey, hook)
-    return hook
-  }
-
-  private emitHookInitializer(
-    hook: HookState,
-    initExpr: ts.Expression | undefined,
-    out: string[]
-  ): void {
-    const initial = initExpr ? this.retainForHookType(hook.tsType, this.emitExpr(initExpr)) : this.zeroInitForType(hook.tsType, hook.cType)
-    out.push(this.pad() + `if (!${hook.initSymbol}) {`)
-    this.indent++
-    out.push(this.pad() + `${hook.valueSymbol} = ${initial};`)
-    out.push(this.pad() + `${hook.initSymbol} = true;`)
-    this.indent--
-    out.push(this.pad() + `}`)
-  }
-
-  private emitHookSetterCall(hook: HookState, args: ts.NodeArray<ts.Expression>): string {
-    if (args.length === 0) return `${hook.applySymbol}(${hook.valueSymbol})`
-    const update = args[0]
-    if (ts.isArrowFunction(update) && update.parameters.length > 0) {
-      const paramName = update.parameters[0].name.getText()
-      const prevType = this.varTypes.get(paramName)
-      const prevAlias = this.identifierAliases.get(paramName)
-      this.varTypes.set(paramName, hook.tsType)
-      this.identifierAliases.set(paramName, hook.valueSymbol)
-      let nextExpr = hook.valueSymbol
-      if (ts.isBlock(update.body)) {
-        const ret = update.body.statements.find(s => ts.isReturnStatement(s)) as ts.ReturnStatement | undefined
-        nextExpr = ret?.expression ? this.emitExpr(ret.expression) : hook.valueSymbol
-      } else {
-        nextExpr = this.emitExpr(update.body)
-      }
-      if (prevType) this.varTypes.set(paramName, prevType); else this.varTypes.delete(paramName)
-      if (prevAlias) this.identifierAliases.set(paramName, prevAlias); else this.identifierAliases.delete(paramName)
-      return `${hook.applySymbol}(${nextExpr})`
-    }
-    return `${hook.applySymbol}(${this.emitExpr(update)})`
   }
 
   /** Infer C type from a variable declaration's initializer */
@@ -538,8 +397,8 @@ class CodeGen {
 
   private emitCall(node: ts.CallExpression): string {
     if (ts.isIdentifier(node.expression)) {
-      const hookSetter = this.hookStatesBySetter.get(node.expression.text)
-      if (hookSetter) return this.emitHookSetterCall(hookSetter, node.arguments)
+      const hookCall = this.hooks.emitSetterCall(node.expression.text, node.arguments)
+      if (hookCall) return hookCall
     }
 
     if (ts.isPropertyAccessExpression(node.expression)) {
@@ -1077,24 +936,7 @@ class CodeGen {
   }
 
   private emitVarDecl(decl: ts.VariableDeclaration, out: string[]): void {
-    if (ts.isArrayBindingPattern(decl.name) && this.isHookCall(decl.initializer)) {
-      const elems = decl.name.elements.filter((e): e is ts.BindingElement =>
-        !ts.isOmittedExpression(e) && ts.isIdentifier(e.name)
-      )
-      if (elems.length === 2 && decl.initializer) {
-        const valueName = elems[0].name.getText()
-        const setterName = elems[1].name.getText()
-        let kind: 'state' | 'route' | 'store' = 'state'
-        if (ts.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === 'useRoute') kind = 'route'
-        if (ts.isIdentifier(decl.initializer.expression) && decl.initializer.expression.text === 'useStore') kind = 'store'
-        const tsType = this.inferHookTsType(decl.initializer)
-        const hook = this.registerHookState(kind, valueName, setterName, tsType, this.hookStoreKey(decl.initializer))
-        this.varTypes.set(valueName, tsType)
-        this.varTypes.set(setterName, 'void')
-        this.emitHookInitializer(hook, this.hookInitArg(decl.initializer), out)
-        return
-      }
-    }
+    if (this.hooks.tryEmitBindingDeclaration(decl, out, () => this.pad())) return
 
     const name = decl.name.getText()
     const tsType = this.tsTypeName(decl.type)
@@ -1619,7 +1461,7 @@ class CodeGen {
       })
 
       this.functions.push(`static UIHandle _ts_render_root(void) {\n${renderBody.join('\n')}\n}`)
-      if (this.hookStates.length > 0) {
+      if (this.hooks.hasHooks()) {
         this.functions.push(
           `static void _ts_rerender(void) {\n` +
           `    UIHandle _jsx_root = _ts_render_root();\n` +
@@ -1683,13 +1525,7 @@ class CodeGen {
       L.push('')
     }
 
-    if (this.hookStates.length) {
-      for (const hook of this.hookStates) {
-        L.push(`bool ${hook.initSymbol} = false;`)
-        L.push(`${hook.cType} ${hook.valueSymbol} = ${this.zeroInitForType(hook.tsType, hook.cType)};`)
-      }
-      L.push('')
-    }
+    this.hooks.appendGlobalDeclarations(L)
 
     // Forward declarations (use typedef names, not struct X)
     for (const [name, sig] of this.funcSigs) {
@@ -1700,28 +1536,7 @@ class CodeGen {
     }
     if (this.funcSigs.size) L.push('')
 
-    if (this.hasJsx && this.hookStates.length) {
-      L.push('static void _ts_rerender(void);')
-      L.push('')
-      for (const hook of this.hookStates) {
-        const nextValue = hook.tsType === 'string'
-          ? `str_retain(_next)`
-          : hook.tsType.endsWith('[]')
-            ? `${this.arrayTypeName(hook.tsType.replace('[]', ''))}_retain(_next)`
-            : '_next'
-        const releaseLines = this.getReleaseForType('_old', hook.tsType)
-        const body: string[] = []
-        body.push(`static void ${hook.applySymbol}(${hook.cType} _next) {`)
-        body.push(`    ${hook.cType} _old = ${hook.valueSymbol};`)
-        body.push(`    ${hook.valueSymbol} = ${nextValue};`)
-        body.push(`    ${hook.initSymbol} = true;`)
-        for (const line of releaseLines) body.push(`    ${line}`)
-        body.push('    _ts_rerender();')
-        body.push('}')
-        L.push(body.join('\n'))
-        L.push('')
-      }
-    }
+    if (this.hasJsx && this.hooks.hasHooks()) this.hooks.appendApplyFunctions(L)
 
     // Lambdas
     for (const l of this.lambdas) { L.push(l); L.push('') }

@@ -2,6 +2,8 @@
 
 StrictTS compiles a strict subset of TypeScript to native ARM64 binaries via C. No runtime. No garbage collector. No Electron.
 
+The compiler remains general-purpose first. The UI stack is a packaged subsystem layered on top of the same compiler pipeline, not a separate product.
+
 ## Contents
 
 | Document | What it covers |
@@ -14,6 +16,16 @@ StrictTS compiles a strict subset of TypeScript to native ARM64 binaries via C. 
 | [Tooling](./tooling.md) | CLI commands, dev server, inspector, error overlay, debugging |
 | [Compilation Pipeline](./pipeline.md) | How .ts/.tsx becomes a native binary |
 | [Examples](./examples.md) | Walkthrough of the dashboard app and CLI targets |
+
+## Current Package Layout
+
+The implementation now lives behind `packages/tsn-*` boundaries:
+
+- `packages/tsn-compiler-core` owns build orchestration and core codegen.
+- `packages/tsn-compiler-ui` owns JSX lowering and hook/store UI codegen support.
+- `packages/tsn-tailwind` owns compile-time Tailwind parsing.
+- `packages/tsn-host-appkit` owns the macOS AppKit host runtime.
+- `compiler/` remains as compatibility entrypoints and CLI-facing wrappers.
 
 ## Quick Start
 

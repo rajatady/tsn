@@ -6,33 +6,36 @@
 .ts/.tsx source
     │
     ▼
-[1] Resolve ── Follow imports recursively (compiler/resolver.ts)
-    │           import { X } from './lib/types' → resolve to absolute path
-    │           Returns files in dependency order (leaves first, entry last)
+[1] Resolve ── Follow imports recursively (compiler/resolver.ts compatibility wrapper)
+    │           implementation lives in packages/tsn-compiler-core
     ▼
 [2] Parse ──── TypeScript API creates AST for each resolved file
-    │           (ts.createSourceFile with ScriptKind.TSX for .tsx)
     ▼
 [3] Validate ─ Reject banned features in ALL resolved files
-    │
     ▼
 [4] Codegen ── Emit C code with #line directives
-    │           Pass 1: interfaces → structs (ALL files)
-    │           Pass 1.5: collect function signatures (ALL files)
-    │           Pass 2: functions → C functions (ALL files)
-    │           Pass 2.5: library globals (non-entry files)
-    │           Pass 3: entry file top-level statements → main()
-    │           JSX mode: globals + ui_init() + JSX tree + ui_run()
+    │           core codegen in packages/tsn-compiler-core
+    │           JSX lowering in packages/tsn-compiler-ui
+    │           Tailwind lowering in packages/tsn-tailwind
     ▼
 [5] Compile ── clang with platform-specific flags
-    │           CLI: clang -O2 -o binary source.c -lm
-    │           UI:  clang -O2 -fobjc-arc -framework Cocoa -framework QuartzCore
-    │                      source.c ui.m -I framework -I runtime
+    │           CLI links only runtime headers
+    │           UI links packages/tsn-host-appkit/src/ui.m
     ▼
-    Native ARM64 binary (single .c file, all modules merged)
+    Native binary
 ```
 
 ## Pass Details
+
+### Package Boundaries
+
+The compiler is now organized as TSN packages:
+
+- `packages/tsn-compiler-core` owns build orchestration, validation, resolver flow, and core codegen
+- `packages/tsn-compiler-ui` owns JSX lowering and hook/store UI codegen support
+- `packages/tsn-tailwind` owns compile-time Tailwind parsing
+- `packages/tsn-host-appkit` owns the macOS host runtime
+- `compiler/` remains as compatibility and CLI-facing entrypoints
 
 ### Module Resolution
 
@@ -100,6 +103,7 @@ A function named `main` is renamed to `ts_main` to avoid conflicting with the C 
 **JSX mode** (has `<Window>` etc.):
 - Top-level variables become C globals (declaration before functions, initialization in `main()`)
 - `main()` calls `ui_init()`, initializes globals, emits the JSX tree, captures the root `UIHandle`, then calls `ui_run()` once
+- hook/store state is emitted through generated apply helpers from `packages/tsn-compiler-core/src/hooks.ts`
 - JSX elements emit `ui_*()` calls accumulated in `jsxStmts`
 
 ### Output Assembly
@@ -164,6 +168,6 @@ clang -O0 -g -DSTRICTTS_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore 
 ## UI Detection
 
 The compiler detects UI mode by checking if the generated C contains `#include "ui.h"`. This is set when JSX elements are encountered (`hasJsx` flag in codegen). UI mode triggers:
-- Linking with `ui.m` and Cocoa/QuartzCore frameworks
+- Linking with `packages/tsn-host-appkit/src/ui.m` and Cocoa/QuartzCore frameworks
 - `-fobjc-arc` for Objective-C ARC
 - Include paths for both framework and runtime directories

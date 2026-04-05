@@ -8,7 +8,13 @@ The native AppKit host (`packages/tsn-host-appkit/src/ui.h` + `ui.m`) wraps macO
 TypeScript JSX  →  codegen (jsx.ts)  →  ui_*() C calls  →  AppKit views
 ```
 
-Every `ui_*()` function creates a real NSView subclass. Views are retained in `g_retained` (NSMutableArray) to prevent ARC from releasing them.
+Every `ui_*()` function creates a real NSView subclass. The compile entrypoint is [ui.m](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/packages/tsn-host-appkit/src/ui.m), but the implementation is now split by responsibility under `packages/tsn-host-appkit/src/runtime/`:
+
+- `windowing.inc` for app/window lifecycle and crash overlay
+- `layout.inc` for stacks, spacers, sizing, and blur-wrapper layout behavior
+- `controls.inc` for buttons, images, text inputs, and click handlers
+- `shell.inc` for sidebars, scroll views, tabs, and shell primitives
+- `inspector.inc` for the live inspector and screenshots
 
 ## UIHandle
 
@@ -90,7 +96,10 @@ UIHandle ui_search_field(const char *placeholder);
 
 typedef void (*UITextChangedFn)(const char *text);
 void     ui_on_text_changed(UIHandle field, UITextChangedFn fn);
+void     ui_text_input_set_value(UIHandle field, const char *text);
 ```
+
+`ui_text_input_set_value()` is what controlled `Search` / `Input` values use during rerenders and reset flows.
 
 ## Buttons
 
@@ -181,6 +190,8 @@ void ui_set_timer(double interval_sec, UITimerFn fn);
 void ui_inspector_start(void);                    // Start Unix socket listener
 void ui_set_id(UIHandle v, const char *element_id); // Register element for inspector lookup
 ```
+
+The inspector now uses per-app sockets when needed. A single running app can still be auto-discovered, but concurrent apps are addressed with `--app <binary-name>` from [compiler/inspect.ts](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/compiler/inspect.ts).
 
 ## System Color Indices
 

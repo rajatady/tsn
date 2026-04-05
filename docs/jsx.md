@@ -1,6 +1,6 @@
 # JSX & Components
 
-StrictTS supports React-like TSX syntax that compiles to native macOS UI. Write familiar JSX with Tailwind classes — the compiler emits C calls to the AppKit-based UI framework.
+StrictTS supports React-like TSX syntax that compiles to native macOS UI. Write familiar JSX with Tailwind classes — the compiler emits C calls to the AppKit host in [packages/tsn-host-appkit/src/ui.h](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/packages/tsn-host-appkit/src/ui.h).
 
 ## How It Works
 
@@ -63,7 +63,39 @@ Notes:
 - Function components compile to real C functions returning `UIHandle`
 - `children` should be typed as `JSX.Element`
 - Top-level `<App />` is allowed, so the entry file does not need one giant inline `<Window>`
-- Hooks like `useState()` are not part of this slice yet
+
+## Hooks and App State
+
+StrictTS now supports a small React-like hook slice for native UI apps:
+
+```tsx
+import { useRoute, useState, useStore } from '../../packages/tsn-ui/src/react'
+
+function Counter() {
+  const [count, setCount] = useState<number>(0)
+  const [route, navigate] = useRoute("discover")
+  const [query, setQuery] = useStore<string>("search:query", "")
+
+  return (
+    <VStack className="gap-3">
+      <Text className="text-2xl font-bold">{String(count)}</Text>
+      <Button onClick={() => setCount(count + 1)}>Increment</Button>
+      <Button onClick={() => navigate("detail")}>Go</Button>
+      <Search value={query} placeholder="Search..." onChange={setQuery} />
+    </VStack>
+  )
+}
+```
+
+Supported hooks:
+- `useState<T>(initial)` for component-local rerendered state
+- `useRoute(initial)` for app route state
+- `useStore<T>(key, initial)` for simple reactive shared state by string key
+
+Current model:
+- whole-root rerender, not React reconciliation
+- state values compile to generated native globals plus apply functions
+- `useStore()` dedupes by store key across the app
 
 ## Component Catalog
 
@@ -141,11 +173,12 @@ Horizontal line separator.
 Search field with text change callback.
 
 ```tsx
-<Search placeholder="Search employees..." onChange={onSearch} className="w-[280]" />
+<Search value={query} placeholder="Search employees..." onChange={onSearch} className="w-[280]" />
 ```
 
 | Prop | Type | Notes |
 |------|------|-------|
+| `value` | string | Controlled value |
 | `placeholder` | string | Placeholder text |
 | `onChange` | `(text: string) => void` | Called on every keystroke |
 | `className` | string | Tailwind classes |
@@ -155,11 +188,12 @@ Search field with text change callback.
 Plain text input field.
 
 ```tsx
-<Input placeholder="Ticket title" onChange={onTitleChange} className="w-[240]" />
+<Input value={title} placeholder="Ticket title" onChange={onTitleChange} className="w-[240]" />
 ```
 
 | Prop | Type | Notes |
 |------|------|-------|
+| `value` | string | Controlled value |
 | `placeholder` | string | Placeholder text |
 | `onChange` | `(text: string) => void` | Called on text change |
 | `className` | string | Tailwind classes |

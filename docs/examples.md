@@ -252,6 +252,27 @@ strictts build examples/native-gui/incident-tracker.tsx
 strictts build examples/native-gui/incident-tracker.tsx --debug
 ```
 
+## Native GUI: App Store
+
+Located in [examples/native-gui/app-store.tsx](../examples/native-gui/app-store.tsx). This is the routed flagship UI example for the current React-like slice.
+
+It exercises:
+
+- named function components with top-level `<App />`
+- `useRoute()` for screen-level navigation
+- `useStore()` for shared app state
+- controlled search/input values
+- horizontal scroll rails and sidebar shells
+- app row click-through into detail views
+- larger multi-file app organization under `examples/native-gui/app-store/`
+
+Compile it with:
+
+```bash
+strictts build examples/native-gui/app-store.tsx
+strictts build examples/native-gui/app-store.tsx --debug
+```
+
 ## Correctness Tests
 
 ```bash

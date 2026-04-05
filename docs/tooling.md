@@ -7,7 +7,7 @@ strictts build <file.ts|.tsx>           # Optimized binary (-O2)
 strictts build <file> --debug           # Debug binary (-O0 -g, bounds checking)
 strictts dev <file.ts|.tsx>             # Watch mode, auto-recompile + relaunch
 strictts run <file.ts|.tsx>             # Compile and run once
-strictts inspect <command>              # Query running app
+npx tsx compiler/inspect.ts <command>   # Query running app
 ```
 
 ## Build Modes
@@ -113,7 +113,9 @@ Uses macOS `atos` with ASLR load-address resolution for symbolication.
 
 ## Inspector
 
-Query running UI apps via Unix socket at `/tmp/strictts-inspect.sock`.
+Query running UI apps via Unix socket. When a single app is running, the inspector auto-discovers it. When multiple apps are running at once, target one explicitly with `--app <binary-name>`, which maps to sockets like `/tmp/strictts-inspect-dashboard.sock`.
+
+The inspector commands are synchronous now: `click` and `type` only return after the main-thread interaction has been applied. This makes screenshot- and state-based verification reliable in automated checks.
 
 ### Commands
 
@@ -150,6 +152,10 @@ strictts inspect get _j1 children      # → 2 children
 strictts inspect screenshot
 strictts inspect click "Engineering"   # clicks the sidebar button
 strictts inspect type "Alice"          # types into search field
+
+# When multiple StrictTS apps are running:
+npx tsx compiler/inspect.ts --app dashboard tree
+npx tsx compiler/inspect.ts --app incident-tracker screenshot
 ```
 
 ### Element IDs
