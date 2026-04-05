@@ -1284,7 +1284,7 @@ class CodeGen {
 
     // Functions
     for (const f of this.functions) {
-      L.push(f.startsWith('void main(') ? f.replace('void main(void)', 'void ts_main(void)') : f)
+      L.push(f.includes('void main(') ? f.replace('void main(void)', 'void ts_main(void)') : f)
       L.push('')
     }
 
