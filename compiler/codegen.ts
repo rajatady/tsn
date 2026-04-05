@@ -799,34 +799,74 @@ class CodeGen {
       `_r${id}; })`
   }
 
-  private emitObjLit(node: ts.ObjectLiteralExpression): string {
+  private inferObjectStruct(node: ts.ObjectLiteralExpression): StructDef | null {
+    const props = node.properties.filter(ts.isPropertyAssignment).map(p => p.name.getText())
+    if (props.length === 0) return null
+
+    const exact = this.structs.filter(s =>
+      s.fields.length === props.length &&
+      props.every(name => s.fields.some(f => f.name === name))
+    )
+    if (exact.length === 1) return exact[0]
+
+    const partial = this.structs.filter(s =>
+      props.every(name => s.fields.some(f => f.name === name))
+    )
+    if (partial.length === 1) return partial[0]
+
+    return null
+  }
+
+  private emitObjLit(node: ts.ObjectLiteralExpression, targetStructName?: string): string {
+    const targetStruct = targetStructName
+      ? this.structs.find(s => s.name === targetStructName) ?? this.inferObjectStruct(node)
+      : this.inferObjectStruct(node)
+
     const fields = node.properties
       .filter(ts.isPropertyAssignment)
       .map(p => {
         const name = p.name!.getText()
         let val = this.emitExpr(p.initializer)
+        const field = targetStruct?.fields.find(x => x.name === name)
 
         // Empty array in object context
         if (ts.isArrayLiteralExpression(p.initializer) && p.initializer.elements.length === 0) {
-          for (const s of this.structs) {
-            const f = s.fields.find(x => x.name === name)
-            if (f && f.tsType.endsWith('[]')) {
-              val = `${this.arrayTypeName(f.tsType.replace('[]', ''))}_new()`
-              break
+          if (field && field.tsType.endsWith('[]')) {
+            val = `${this.arrayTypeName(field.tsType.replace('[]', ''))}_new()`
+          } else {
+            for (const s of this.structs) {
+              const f = s.fields.find(x => x.name === name)
+              if (f && f.tsType.endsWith('[]')) {
+                val = `${this.arrayTypeName(f.tsType.replace('[]', ''))}_new()`
+                break
+              }
             }
           }
         }
 
         // Retain array fields being copied into structs (shared ownership)
-        for (const s of this.structs) {
-          const f = s.fields.find(x => x.name === name)
-          if (f && f.tsType.endsWith('[]') && !ts.isArrayLiteralExpression(p.initializer)
+        if (field) {
+          if (field.tsType.endsWith('[]') && !ts.isArrayLiteralExpression(p.initializer)
               && !val.includes('_new()')) {
-            const inner = f.tsType.replace('[]', '')
+            const inner = field.tsType.replace('[]', '')
             val = `${this.arrayTypeName(inner)}_retain(${val})`
           }
-          if (f && f.tsType === 'string' && ts.isIdentifier(p.initializer)) {
+          if (field.tsType === 'string') {
             val = `str_retain(${val})`
+          }
+        } else {
+          for (const s of this.structs) {
+            const f = s.fields.find(x => x.name === name)
+            if (f && f.tsType.endsWith('[]') && !ts.isArrayLiteralExpression(p.initializer)
+                && !val.includes('_new()')) {
+              const inner = f.tsType.replace('[]', '')
+              val = `${this.arrayTypeName(inner)}_retain(${val})`
+              break
+            }
+            if (f && f.tsType === 'string') {
+              val = `str_retain(${val})`
+              break
+            }
           }
         }
 
@@ -1140,15 +1180,15 @@ class CodeGen {
       const elemCType = this.arrayCElemType(tsType)
       out.push(this.pad() + `${arrTypeName} ${name} = ${arrTypeName}_new();`)
       for (const el of decl.initializer.elements) {
-        const val = ts.isObjectLiteralExpression(el) ? `(${elemCType})${this.emitObjLit(el)}` : this.emitExpr(el)
-        out.push(this.pad() + `${arrTypeName}_push(&${name}, ${val});`)
-      }
-      return
+      const val = ts.isObjectLiteralExpression(el) ? `(${elemCType})${this.emitObjLit(el, inner)}` : this.emitExpr(el)
+      out.push(this.pad() + `${arrTypeName}_push(&${name}, ${val});`)
     }
+    return
+  }
 
-    // Object literal
-    if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
-      out.push(this.pad() + `${cType} ${name} = (${cType})${this.emitObjLit(decl.initializer)};`)
+  // Object literal
+  if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
+      out.push(this.pad() + `${cType} ${name} = (${cType})${this.emitObjLit(decl.initializer, tsType)};`)
       return
     }
 
