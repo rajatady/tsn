@@ -208,8 +208,12 @@ class CodeGen {
 
     if (ts.isElementAccessExpression(node)) {
       const arr = this.emitExpr(node.expression)
+      const arrName = node.expression.getText()
       const idx = this.emitExpr(node.argumentExpression)
-      return `${arr}.data[(int)(${idx})]`
+      const sl = this.sourceFile ? this.sourceFile.getLineAndCharacterOfPosition(node.getStart()) : null
+      const file = this.sourceFileName || 'unknown'
+      const line = sl ? sl.line + 1 : 0
+      return `ARRAY_GET(${arr}, ${idx}, "${arrName}", "${file}", ${line})`
     }
 
     if (ts.isCallExpression(node))
@@ -420,13 +424,38 @@ class CodeGen {
       return `!str_eq(${left}, ${right})`
     }
 
-    if (op === ts.SyntaxKind.EqualsToken) return `${left} = ${right}`
+    if (op === ts.SyntaxKind.EqualsToken) {
+      // Element access on LHS needs bounds-checked set, not get
+      if (ts.isElementAccessExpression(node.left)) {
+        const arr = this.emitExpr(node.left.expression)
+        const arrName = node.left.expression.getText()
+        const idx = this.emitExpr(node.left.argumentExpression)
+        const sl = this.sourceFile ? this.sourceFile.getLineAndCharacterOfPosition(node.left.getStart()) : null
+        const file = this.sourceFileName || 'unknown'
+        const line = sl ? sl.line + 1 : 0
+        return `ARRAY_SET(${arr}, ${idx}, ${right}, "${arrName}", "${file}", ${line})`
+      }
+      return `${left} = ${right}`
+    }
 
     // Non-string equality
     if (op === ts.SyntaxKind.EqualsEqualsEqualsToken || op === ts.SyntaxKind.EqualsEqualsToken)
       return `(${left} == ${right})`
     if (op === ts.SyntaxKind.ExclamationEqualsEqualsToken || op === ts.SyntaxKind.ExclamationEqualsToken)
       return `(${left} != ${right})`
+
+    // Compound assignment on element access: arr[i] += val → ARRAY_SET with read+op
+    if ((op === ts.SyntaxKind.PlusEqualsToken || op === ts.SyntaxKind.MinusEqualsToken) &&
+        ts.isElementAccessExpression(node.left)) {
+      const arr = this.emitExpr(node.left.expression)
+      const arrName = node.left.expression.getText()
+      const idx = this.emitExpr(node.left.argumentExpression)
+      const sl = this.sourceFile ? this.sourceFile.getLineAndCharacterOfPosition(node.left.getStart()) : null
+      const file = this.sourceFileName || 'unknown'
+      const line = sl ? sl.line + 1 : 0
+      const cOp = op === ts.SyntaxKind.PlusEqualsToken ? '+' : '-'
+      return `ARRAY_SET(${arr}, ${idx}, ARRAY_GET(${arr}, ${idx}, "${arrName}", "${file}", ${line}) ${cOp} ${right}, "${arrName}", "${file}", ${line})`
+    }
 
     const opMap: Record<number, string> = {
       [ts.SyntaxKind.PlusToken]: '+', [ts.SyntaxKind.MinusToken]: '-',
@@ -1292,11 +1321,13 @@ class CodeGen {
     if (this.hasJsx && this.jsxStmts.length > 0) {
       // JSX app — main() contains ui_init + JSX tree + ui_run
       L.push('int main(int argc, char **argv) {')
+      L.push('    ts_install_crash_handler(argv[0]);')
       for (const s of this.jsxStmts) L.push(s)
       L.push('    return 0;')
       L.push('}')
     } else if (this.funcSigs.has('main')) {
       L.push('int main(int argc, char **argv) {')
+      L.push('    ts_install_crash_handler(argv[0]);')
       L.push('    ts_main();')
       L.push('    return 0;')
       L.push('}')

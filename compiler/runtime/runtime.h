@@ -339,4 +339,9 @@ static inline OwnedStr read_stdin(void) {
 static inline double ts_math_round(double x) { return round(x); }
 static inline double ts_math_floor(double x) { return floor(x); }
 
+/* ─── Debug & Crash Handling ─────────────────────────────────────── */
+
+#include "debug.h"
+#include "crash.h"
+
 #endif /* STRICTTS_RUNTIME_H */

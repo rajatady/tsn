@@ -2,10 +2,12 @@
  * StrictTS Inspector CLI — query running app's view tree
  *
  * Usage:
- *   npx tsx compiler/inspect.ts tree          — dump view hierarchy
- *   npx tsx compiler/inspect.ts screenshot    — save screenshot to /tmp
- *   npx tsx compiler/inspect.ts click <label> — click a button
- *   npx tsx compiler/inspect.ts type <text>   — type into search field
+ *   npx tsx compiler/inspect.ts tree            — dump view hierarchy
+ *   npx tsx compiler/inspect.ts screenshot      — save screenshot to /tmp
+ *   npx tsx compiler/inspect.ts click <label>   — click a button
+ *   npx tsx compiler/inspect.ts type <text>     — type into search field
+ *   npx tsx compiler/inspect.ts find <text>     — find elements containing text
+ *   npx tsx compiler/inspect.ts get <id> [prop] — get element property
  */
 
 import * as net from 'node:net'

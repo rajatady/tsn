@@ -34,9 +34,15 @@ case "${1:-}" in
     echo ""
     echo "Usage:"
     echo "  strictts build <file.ts|.tsx>          Compile to optimized binary"
-    echo "  strictts build <file> --debug          Compile with debug symbols + source maps"
+    echo "  strictts build <file> --debug          Compile with debug symbols + bounds checking"
     echo "  strictts dev <file.ts|.tsx>            Watch mode with auto-recompile"
     echo "  strictts run <file.ts|.tsx>            Compile and run"
+    echo "  strictts inspect tree                  Dump view hierarchy of running app"
+    echo "  strictts inspect find <text>           Find elements containing text"
+    echo "  strictts inspect get <id> [prop]       Get element property"
+    echo "  strictts inspect screenshot            Save screenshot to /tmp"
+    echo "  strictts inspect click <label>         Click a button"
+    echo "  strictts inspect type <text>           Type into search field"
     echo ""
     ;;
 esac

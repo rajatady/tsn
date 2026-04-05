@@ -56,7 +56,7 @@ fs.writeFileSync(cPath, cCode)
 console.log(`  → ${cPath} (${cCode.length} bytes)`)
 
 const isDebug = process.argv.includes('--debug') || process.argv.includes('-g')
-const optFlag = isDebug ? '-O0 -g' : '-O2'
+const optFlag = isDebug ? '-O0 -g -DSTRICTTS_DEBUG' : '-O2'
 
 console.log(`[4/4] Compiling with clang${isDebug ? ' (debug)' : ''}...`)
 const binaryPath = path.join('build', baseName)

@@ -122,6 +122,11 @@ export class JsxEmitter {
     const tw = className ? parseTailwind(className, handle) : null
     const S = this.ctx.jsxStmts
     const pad = () => this.ctx.pad()
+    /** Emit UIHandle creation + ui_set_id registration */
+    const create = (call: string) => {
+      S.push(pad() + `UIHandle ${handle} = ${call};`)
+      S.push(pad() + `ui_set_id(${handle}, "${handle}");`)
+    }
 
     switch (tag) {
       case 'Window': {
@@ -129,7 +134,7 @@ export class JsxEmitter {
         const w = this.propNum(props, 'width', 1200)
         const h = this.propNum(props, 'height', 780)
         const dark = this.propBool(props, 'dark')
-        S.push(pad() + `UIHandle ${handle} = ui_window(${JSON.stringify(title)}, ${w}, ${h}, ${dark});`)
+        create(`ui_window(${JSON.stringify(title)}, ${w}, ${h}, ${dark})`)
         const sub = this.propStr(props, 'subtitle')
         if (sub) S.push(pad() + `ui_window_subtitle(${handle}, ${JSON.stringify(sub)});`)
         this.emitChildren(children, handle)
@@ -140,7 +145,7 @@ export class JsxEmitter {
       case 'VStack':
       case 'HStack': {
         const fn = tag === 'VStack' ? 'ui_vstack' : 'ui_hstack'
-        S.push(pad() + `UIHandle ${handle} = ${fn}();`)
+        create(`${fn}()`)
         if (tw) for (const c of tw.calls) S.push(pad() + c)
         this.emitChildren(children, handle)
         return handle
@@ -150,18 +155,18 @@ export class JsxEmitter {
         const text = this.textContent(children)
         const size = tw?.textSize || 14
         const bold = tw?.textBold || false
-        S.push(pad() + `UIHandle ${handle} = ui_text(${JSON.stringify(text)}, ${size}, ${bold});`)
+        create(`ui_text(${JSON.stringify(text)}, ${size}, ${bold})`)
         if (tw) for (const c of tw.calls) S.push(pad() + c)
         return handle
       }
 
       case 'Spacer':
-        S.push(pad() + `UIHandle ${handle} = ui_spacer();`)
+        create(`ui_spacer()`)
         return handle
 
       case 'Search': {
         const placeholder = this.propStr(props, 'placeholder')
-        S.push(pad() + `UIHandle ${handle} = ui_search_field(${JSON.stringify(placeholder)});`)
+        create(`ui_search_field(${JSON.stringify(placeholder)})`)
         const onChange = props.get('onChange')
         if (onChange && ts.isJsxExpression(onChange) && onChange.expression) {
           const wrapName = this.liftCallback(onChange.expression, 'UITextChangedFn')
@@ -173,7 +178,7 @@ export class JsxEmitter {
 
       case 'Sidebar': {
         const width = tw && tw.width > 0 ? tw.width : 200
-        S.push(pad() + `UIHandle ${handle} = ui_sidebar(${width});`)
+        create(`ui_sidebar(${width})`)
         this.emitChildren(children, handle)
         return handle
       }
@@ -206,7 +211,7 @@ export class JsxEmitter {
           fnRef = this.liftCallback(onClick.expression, 'UIClickFn')
           tagNum = this.jsxOnClickCounter++
         }
-        S.push(pad() + `UIHandle ${handle} = ui_sidebar_item(_jsx_parent, ${JSON.stringify(text)}, ${JSON.stringify(icon)}, ${tagNum}, ${fnRef});`)
+        create(`ui_sidebar_item(_jsx_parent, ${JSON.stringify(text)}, ${JSON.stringify(icon)}, ${tagNum}, ${fnRef})`)
         return handle
       }
 
@@ -215,28 +220,28 @@ export class JsxEmitter {
         const value = valueStr ? JSON.stringify(valueStr) : this.propExpr(props, 'value')
         const label = this.propStr(props, 'label')
         const color = this.colorIndex(this.propStr(props, 'color'))
-        S.push(pad() + `UIHandle ${handle} = ui_stat(${value}, ${JSON.stringify(label)}, ${color});`)
+        create(`ui_stat(${value}, ${JSON.stringify(label)}, ${color})`)
         return handle
       }
 
       case 'Badge': {
         const text = this.propStr(props, 'text') || this.textContent(children)
         const color = this.colorIndex(this.propStr(props, 'color'))
-        S.push(pad() + `UIHandle ${handle} = ui_badge(${JSON.stringify(text)}, ${color});`)
+        create(`ui_badge(${JSON.stringify(text)}, ${color})`)
         return handle
       }
 
       case 'BarChart': {
         const title = this.propStr(props, 'title')
         const h = tw && tw.height > 0 ? tw.height : 180
-        S.push(pad() + `UIHandle ${handle} = ui_bar_chart(${h});`)
+        create(`ui_bar_chart(${h})`)
         if (title) S.push(pad() + `ui_bar_chart_set_title(${handle}, ${JSON.stringify(title)});`)
         if (tw) for (const c of tw.calls) S.push(pad() + c)
         return handle
       }
 
       case 'Table': {
-        S.push(pad() + `UIHandle ${handle} = ui_data_table();`)
+        create(`ui_data_table()`)
         const colsProp = props.get('columns')
         if (colsProp && ts.isJsxExpression(colsProp) && colsProp.expression)
           this.emitTableColumns(handle, colsProp.expression)
@@ -264,17 +269,18 @@ export class JsxEmitter {
       }
 
       case 'Progress':
-        S.push(pad() + `UIHandle ${handle} = ui_progress(${this.propNum(props, 'value', -1)});`)
+        create(`ui_progress(${this.propNum(props, 'value', -1)})`)
         return handle
 
       case 'Divider':
-        S.push(pad() + `UIHandle ${handle} = ui_divider();`)
+        create(`ui_divider()`)
         return handle
 
       default:
         S.push(pad() + `/* Unknown JSX: <${tag}> */`)
         return '((UIHandle)0)'
     }
+    // Should be unreachable — all cases return above
   }
 
   // ─── Children ──────────────────────────────────────────────────
@@ -316,9 +322,15 @@ export class JsxEmitter {
     }
   }
 
+  /** Emit ui_set_id() for inspector element lookup */
+  private emitSetId(handle: string): void {
+    this.ctx.jsxStmts.push(this.ctx.pad() + `ui_set_id(${handle}, "${handle}");`)
+  }
+
   emitFragment(children: readonly ts.JsxChild[]): string {
     const handle = `_j${this.jsxCounter++}`
     this.ctx.jsxStmts.push(this.ctx.pad() + `UIHandle ${handle} = ui_vstack(); /* fragment */`)
+    this.emitSetId(handle)
     this.emitChildren(children, handle)
     return handle
   }

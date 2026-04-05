@@ -9,6 +9,7 @@
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
 #include "ui.h"
+#include "runtime.h"
 
 /* ─── Internal Helpers ───────────────────────────────────────────── */
 
@@ -358,13 +359,196 @@ typedef struct { char label[64]; double value; NSColor * __unsafe_unretained col
 
 static NSApplication *g_app;
 static NSMutableArray *g_retained;  /* prevent ARC from releasing delegates etc. */
+static NSMutableDictionary *g_element_ids;  /* element_id → NSView for inspector lookup */
 
 /* ─── API Implementation ─────────────────────────────────────────── */
+
+/* ─── Error Overlay (Next.js-style) ─────────────────────────────── */
+
+static void ts_error_overlay(const char *title, const char *message,
+                              const char *file, int line,
+                              const char *stack_trace) {
+    /* Must run on main thread for UI work */
+    void (^show_overlay)(void) = ^{
+        /* Find the app window */
+        NSWindow *win = nil;
+        for (NSWindow *w in [NSApp windows]) {
+            if (w.isVisible && !w.isMiniaturized) { win = w; break; }
+        }
+        if (!win) return;
+
+        NSView *content = win.contentView;
+        NSRect bounds = content.bounds;
+
+        /* ─── Red overlay container ─────────────────────────────── */
+        NSView *overlay = [[NSView alloc] initWithFrame:bounds];
+        overlay.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        overlay.wantsLayer = YES;
+        overlay.layer.backgroundColor = [NSColor colorWithRed:0.12 green:0.02 blue:0.02 alpha:0.97].CGColor;
+
+        /* ─── Inner content (inset from edges) ──────────────────── */
+        CGFloat pad = 40;
+        CGFloat y = bounds.size.height - pad;
+
+        /* Error icon + title */
+        NSTextField *icon_label = [NSTextField labelWithString:@"⛔"];
+        icon_label.font = [NSFont systemFontOfSize:28];
+        icon_label.frame = NSMakeRect(pad, y - 36, 40, 36);
+        [overlay addSubview:icon_label];
+
+        NSTextField *title_label = [NSTextField labelWithString:
+            [NSString stringWithUTF8String:title]];
+        title_label.font = [NSFont boldSystemFontOfSize:22];
+        title_label.textColor = [NSColor colorWithRed:1.0 green:0.3 blue:0.3 alpha:1.0];
+        title_label.frame = NSMakeRect(pad + 44, y - 34, bounds.size.width - 2*pad - 44, 30);
+        [overlay addSubview:title_label];
+        y -= 50;
+
+        /* Horizontal rule */
+        NSView *rule = [[NSView alloc] initWithFrame:NSMakeRect(pad, y, bounds.size.width - 2*pad, 1)];
+        rule.wantsLayer = YES;
+        rule.layer.backgroundColor = [NSColor colorWithRed:0.4 green:0.15 blue:0.15 alpha:1.0].CGColor;
+        [overlay addSubview:rule];
+        y -= 24;
+
+        /* File:line badge */
+        if (file && file[0]) {
+            /* Extract just filename from full path */
+            const char *basename = file;
+            const char *slash = strrchr(file, '/');
+            if (slash) basename = slash + 1;
+
+            NSString *loc = line > 0
+                ? [NSString stringWithFormat:@"  %s:%d  ", basename, line]
+                : [NSString stringWithFormat:@"  %s  ", basename];
+
+            NSTextField *loc_label = [NSTextField labelWithString:loc];
+            loc_label.font = [NSFont monospacedSystemFontOfSize:13 weight:NSFontWeightMedium];
+            loc_label.textColor = [NSColor whiteColor];
+            loc_label.wantsLayer = YES;
+            loc_label.layer.backgroundColor = [NSColor colorWithRed:0.6 green:0.1 blue:0.1 alpha:1.0].CGColor;
+            loc_label.layer.cornerRadius = 4;
+            [loc_label sizeToFit];
+            NSRect lf = loc_label.frame;
+            lf.origin = NSMakePoint(pad, y - lf.size.height);
+            loc_label.frame = lf;
+            [overlay addSubview:loc_label];
+            y -= lf.size.height + 16;
+
+            /* Full file path (dimmed) */
+            NSTextField *path_label = [NSTextField labelWithString:
+                [NSString stringWithUTF8String:file]];
+            path_label.font = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular];
+            path_label.textColor = [NSColor colorWithRed:0.6 green:0.4 blue:0.4 alpha:1.0];
+            path_label.frame = NSMakeRect(pad, y - 16, bounds.size.width - 2*pad, 16);
+            [overlay addSubview:path_label];
+            y -= 28;
+        }
+
+        /* Error message */
+        if (message && message[0]) {
+            NSTextField *msg = [NSTextField labelWithString:
+                [NSString stringWithUTF8String:message]];
+            msg.font = [NSFont monospacedSystemFontOfSize:14 weight:NSFontWeightRegular];
+            msg.textColor = [NSColor colorWithRed:1.0 green:0.85 blue:0.85 alpha:1.0];
+            msg.maximumNumberOfLines = 0;
+            msg.lineBreakMode = NSLineBreakByWordWrapping;
+            msg.preferredMaxLayoutWidth = bounds.size.width - 2*pad;
+            [msg sizeToFit];
+            NSRect mf = msg.frame;
+            mf.origin = NSMakePoint(pad, y - mf.size.height);
+            mf.size.width = bounds.size.width - 2*pad;
+            msg.frame = mf;
+            [overlay addSubview:msg];
+            y -= mf.size.height + 20;
+        }
+
+        /* Stack trace (if provided, different from message) */
+        if (stack_trace && stack_trace[0] && (!message || strcmp(stack_trace, message) != 0)) {
+            NSView *stack_rule = [[NSView alloc] initWithFrame:NSMakeRect(pad, y, bounds.size.width - 2*pad, 1)];
+            stack_rule.wantsLayer = YES;
+            stack_rule.layer.backgroundColor = [NSColor colorWithRed:0.3 green:0.1 blue:0.1 alpha:1.0].CGColor;
+            [overlay addSubview:stack_rule];
+            y -= 16;
+
+            NSTextField *stack_title = [NSTextField labelWithString:@"Stack Trace"];
+            stack_title.font = [NSFont boldSystemFontOfSize:12];
+            stack_title.textColor = [NSColor colorWithRed:0.7 green:0.4 blue:0.4 alpha:1.0];
+            stack_title.frame = NSMakeRect(pad, y - 16, 200, 16);
+            [overlay addSubview:stack_title];
+            y -= 24;
+
+            NSTextField *stack = [NSTextField labelWithString:
+                [NSString stringWithUTF8String:stack_trace]];
+            stack.font = [NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular];
+            stack.textColor = [NSColor colorWithRed:0.8 green:0.6 blue:0.6 alpha:1.0];
+            stack.maximumNumberOfLines = 0;
+            stack.lineBreakMode = NSLineBreakByCharWrapping;
+            stack.preferredMaxLayoutWidth = bounds.size.width - 2*pad;
+            [stack sizeToFit];
+            NSRect sf = stack.frame;
+            sf.origin = NSMakePoint(pad, y - sf.size.height);
+            sf.size.width = bounds.size.width - 2*pad;
+            stack.frame = sf;
+            [overlay addSubview:stack];
+        }
+
+        /* ─── "StrictTS" watermark ──────────────────────────────── */
+        NSTextField *watermark = [NSTextField labelWithString:@"StrictTS Error Overlay  ·  Debug Build"];
+        watermark.font = [NSFont systemFontOfSize:10 weight:NSFontWeightMedium];
+        watermark.textColor = [NSColor colorWithRed:0.5 green:0.25 blue:0.25 alpha:1.0];
+        watermark.frame = NSMakeRect(pad, 12, bounds.size.width - 2*pad, 14);
+        [overlay addSubview:watermark];
+
+        /* Add overlay on top of everything */
+        [content addSubview:overlay positioned:NSWindowAbove relativeTo:nil];
+        [content setNeedsDisplay:YES];
+        [content displayIfNeeded];
+        [win display];
+
+        /* Force a run loop tick so the window actually redraws */
+        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
+            beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+
+        /* Auto-save screenshot of the error overlay */
+        NSBitmapImageRep *rep = [content bitmapImageRepForCachingDisplayInRect:content.bounds];
+        [content cacheDisplayInRect:content.bounds toBitmapImageRep:rep];
+        NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+        [png writeToFile:@"/tmp/strictts-error.png" atomically:YES];
+        fprintf(stderr, "\n  \033[90mError screenshot: /tmp/strictts-error.png\033[0m\n\n");
+    };
+
+    /* Execute on main thread — might be called from signal handler */
+    if ([NSThread isMainThread]) {
+        show_overlay();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), show_overlay);
+    }
+
+    /* Keep the app alive so the user can see the overlay.
+     * Run the event loop for up to 30 seconds — user can Cmd+Q to exit sooner.
+     * After this returns, abort()/crash will proceed. */
+    if ([NSThread isMainThread]) {
+        NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:30];
+        while ([[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:deadline]) {
+            /* Check if window was closed */
+            BOOL any_visible = NO;
+            for (NSWindow *w in [NSApp windows]) {
+                if (w.isVisible) { any_visible = YES; break; }
+            }
+            if (!any_visible) break;
+        }
+    }
+}
 
 void ui_init(void) {
     g_app = [NSApplication sharedApplication];
     g_app.activationPolicy = NSApplicationActivationPolicyRegular;
     g_retained = [NSMutableArray new];
+    g_element_ids = [NSMutableDictionary new];
+
+    /* Register error overlay callback so runtime errors show in-app */
+    ts_set_error_overlay(ts_error_overlay);
 
     /* Menu bar */
     NSMenu *bar = [NSMenu new];
@@ -1109,6 +1293,95 @@ static NSString *type_text(NSString *text, NSView *view) {
     return nil;
 }
 
+/* Register element ID for inspector lookup */
+void ui_set_id(UIHandle v, const char *element_id) {
+    NSView *view = (__bridge NSView *)v;
+    NSString *key = [NSString stringWithUTF8String:element_id];
+    g_element_ids[key] = view;
+}
+
+/* Recursively find elements containing text */
+static void find_text(NSView *view, NSString *query, int depth, NSMutableString *out) {
+    NSString *indent = [@"" stringByPaddingToLength:depth * 2 withString:@" " startingAtIndex:0];
+    NSRect f = view.frame;
+
+    if ([view isKindOfClass:[NSTextField class]]) {
+        NSString *text = ((NSTextField *)view).stringValue;
+        if ([text localizedCaseInsensitiveContainsString:query]) {
+            [out appendFormat:@"%@Text \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, text,
+                f.size.width, f.size.height, f.origin.x, f.origin.y];
+        }
+    } else if ([view isKindOfClass:[NSButton class]]) {
+        NSString *title = ((NSButton *)view).title;
+        if ([title localizedCaseInsensitiveContainsString:query]) {
+            [out appendFormat:@"%@Button \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, title,
+                f.size.width, f.size.height, f.origin.x, f.origin.y];
+        }
+    } else if ([view isKindOfClass:[NSSearchField class]]) {
+        NSString *text = ((NSSearchField *)view).stringValue;
+        if ([text localizedCaseInsensitiveContainsString:query]) {
+            [out appendFormat:@"%@Search \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, text,
+                f.size.width, f.size.height, f.origin.x, f.origin.y];
+        }
+    }
+
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        for (NSView *child in ((UIStackContainer *)view).children) {
+            find_text(child, query, depth + 1, out);
+        }
+    }
+    for (NSView *sub in view.subviews) {
+        find_text(sub, query, depth + 1, out);
+    }
+}
+
+/* Get a property of a registered element */
+static NSString *get_property(NSString *element_id, NSString *prop) {
+    NSView *view = g_element_ids[element_id];
+    if (!view) return [NSString stringWithFormat:@"Element not found: %@\n", element_id];
+
+    if ([prop isEqualToString:@"frame"]) {
+        NSRect f = view.frame;
+        return [NSString stringWithFormat:@"%.0f×%.0f at %.0f,%.0f\n",
+            f.size.width, f.size.height, f.origin.x, f.origin.y];
+    }
+    if ([prop isEqualToString:@"text"]) {
+        if ([view isKindOfClass:[NSTextField class]])
+            return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
+        if ([view isKindOfClass:[NSButton class]])
+            return [NSString stringWithFormat:@"%@\n", ((NSButton *)view).title];
+        return @"(no text)\n";
+    }
+    if ([prop isEqualToString:@"hidden"]) {
+        return view.isHidden ? @"true\n" : @"false\n";
+    }
+    if ([prop isEqualToString:@"children"]) {
+        if ([view isKindOfClass:[UIStackContainer class]]) {
+            int count = (int)((UIStackContainer *)view).children.count;
+            return [NSString stringWithFormat:@"%d children\n", count];
+        }
+        return [NSString stringWithFormat:@"%d subviews\n", (int)view.subviews.count];
+    }
+    if ([prop isEqualToString:@"flex"]) {
+        if ([view isKindOfClass:[UIStackContainer class]])
+            return [NSString stringWithFormat:@"%d\n", ((UIStackContainer *)view).flex];
+        return @"0\n";
+    }
+    if ([prop isEqualToString:@"type"]) {
+        if ([view isKindOfClass:[UIStackContainer class]]) {
+            UIStackContainer *sc = (UIStackContainer *)view;
+            return [NSString stringWithFormat:@"%@\n", sc.direction == 0 ? @"VStack" : @"HStack"];
+        }
+        return [NSString stringWithFormat:@"%@\n", NSStringFromClass([view class])];
+    }
+
+    /* Default: dump all info */
+    NSRect f = view.frame;
+    NSString *type = NSStringFromClass([view class]);
+    return [NSString stringWithFormat:@"%@ (%.0f×%.0f at %.0f,%.0f)\n", type,
+        f.size.width, f.size.height, f.origin.x, f.origin.y];
+}
+
 /* Handle a command from the socket */
 static NSString *handle_command(NSString *cmd) {
     cmd = [cmd stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -1149,8 +1422,30 @@ static NSString *handle_command(NSString *cmd) {
         return result ?: @"No search field found";
     }
 
+    if ([cmd hasPrefix:@"find "]) {
+        NSString *query = [cmd substringFromIndex:5];
+        if (!g_inspect_window) return @"No window\n";
+        __block NSMutableString *out = [NSMutableString new];
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            find_text(g_inspect_window.contentView, query, 0, out);
+        });
+        return out.length > 0 ? out : [NSString stringWithFormat:@"No matches for: %@\n", query];
+    }
+
+    if ([cmd hasPrefix:@"get "]) {
+        NSString *args = [cmd substringFromIndex:4];
+        NSArray *parts = [args componentsSeparatedByString:@" "];
+        NSString *eid = parts[0];
+        NSString *prop = parts.count > 1 ? parts[1] : @"frame";
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            result = get_property(eid, prop);
+        });
+        return result;
+    }
+
     if ([cmd isEqualToString:@"help"]) {
-        return @"Commands:\n  tree        — dump view hierarchy\n  screenshot  — save /tmp/strictts-screenshot.png\n  click <lbl> — click button containing label\n  type <text> — type into search field\n  help        — this message\n";
+        return @"Commands:\n  tree          — dump view hierarchy\n  screenshot    — save /tmp/strictts-screenshot.png\n  click <label> — click button containing label\n  type <text>   — type into search field\n  find <text>   — find elements containing text\n  get <id> [prop] — get element property (frame/text/hidden/children/flex/type)\n  help          — this message\n";
     }
 
     return [NSString stringWithFormat:@"Unknown command: %@\nType 'help' for usage.\n", cmd];

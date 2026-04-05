@@ -142,5 +142,6 @@ void        ui_set_timer(double interval_sec, UITimerFn fn);
 
 /* ─── Inspector (dev tools) ──────────────────────────────────────── */
 void        ui_inspector_start(void);  /* starts Unix socket listener on /tmp/strictts-inspect.sock */
+void        ui_set_id(UIHandle v, const char *element_id);  /* register element for inspector lookup */
 
 #endif /* STRICTTS_UI_H */

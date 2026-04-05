@@ -66,13 +66,13 @@ function compile(): boolean {
       const runtimeDir = path.join('compiler', 'runtime')
 
       execSync(
-        `clang -O0 -g -fobjc-arc -framework Cocoa -framework QuartzCore ` +
+        `clang -O0 -g -DSTRICTTS_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
         `${cPath} ${uiMPath} -I ${uiHDir} -I ${runtimeDir} -o ${binaryPath}`,
         { stdio: 'pipe' }
       )
     } else {
       execSync(
-        `clang -O0 -g -o ${binaryPath} ${cPath} -lm -I compiler/runtime`,
+        `clang -O0 -g -DSTRICTTS_DEBUG -o ${binaryPath} ${cPath} -lm -I compiler/runtime`,
         { stdio: 'pipe' }
       )
     }
@@ -96,7 +96,36 @@ function timestamp(): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
 }
 
+/** Save window geometry before killing the app (via inspector socket) */
+function saveWindowGeometry(): { x: number; y: number; w: number; h: number } | null {
+  try {
+    const net = require('node:net') as typeof import('node:net')
+    const sock = '/tmp/strictts-inspect.sock'
+    if (!fs.existsSync(sock)) return null
+
+    // Quick synchronous-ish socket read via execSync
+    const result = execSync(
+      `echo "get _j0 frame" | nc -U ${sock} -w 1 2>/dev/null || true`,
+      { encoding: 'utf-8', timeout: 2000 }
+    ).trim()
+
+    // Parse "1200×780 at 100,200"
+    const match = result.match(/(\d+)×(\d+)\s+at\s+(\d+),(\d+)/)
+    if (match) {
+      return { w: +match[1], h: +match[2], x: +match[3], y: +match[4] }
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+let savedGeometry: { x: number; y: number; w: number; h: number } | null = null
+
 function launchApp(): void {
+  // Save window position before killing (UI apps only)
+  if (appProcess && isTsx) {
+    savedGeometry = saveWindowGeometry()
+  }
+
   // Kill previous instance
   if (appProcess) {
     appProcess.kill('SIGTERM')
@@ -110,7 +139,13 @@ function launchApp(): void {
 
   appProcess.on('exit', (code) => {
     if (code !== null && code !== 0 && code !== 143 /* SIGTERM */) {
-      console.log(`  [${timestamp()}] App exited with code ${code}`)
+      if (code > 128) {
+        const sig = code - 128
+        const sigNames: Record<number, string> = { 6: 'SIGABRT', 11: 'SIGSEGV', 10: 'SIGBUS' }
+        console.log(`  [${timestamp()}] \x1b[31mCrash: ${sigNames[sig] || `signal ${sig}`}\x1b[0m`)
+      } else {
+        console.log(`  [${timestamp()}] App exited with code ${code}`)
+      }
     }
     appProcess = null
   })
