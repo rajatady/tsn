@@ -140,4 +140,7 @@ void        ui_animate(UIHandle v, double duration); /* next property change is 
 typedef void (*UITimerFn)(void);
 void        ui_set_timer(double interval_sec, UITimerFn fn);
 
+/* ─── Inspector (dev tools) ──────────────────────────────────────── */
+void        ui_inspector_start(void);  /* starts Unix socket listener on /tmp/strictts-inspect.sock */
+
 #endif /* STRICTTS_UI_H */

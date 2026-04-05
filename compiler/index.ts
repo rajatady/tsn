@@ -55,7 +55,10 @@ fs.mkdirSync('build', { recursive: true })
 fs.writeFileSync(cPath, cCode)
 console.log(`  → ${cPath} (${cCode.length} bytes)`)
 
-console.log(`[4/4] Compiling with clang...`)
+const isDebug = process.argv.includes('--debug') || process.argv.includes('-g')
+const optFlag = isDebug ? '-O0 -g' : '-O2'
+
+console.log(`[4/4] Compiling with clang${isDebug ? ' (debug)' : ''}...`)
 const binaryPath = path.join('build', baseName)
 
 // Detect if generated code uses JSX/UI framework
@@ -78,7 +81,7 @@ try {
     const runtimeDir = path.join('compiler', 'runtime')
 
     execSync(
-      `clang -O2 -fobjc-arc -framework Cocoa -framework QuartzCore ` +
+      `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +
       `${cPath} ${uiMPath} ` +
       `-I ${uiHDir} -I ${runtimeDir} ` +
       `-o ${binaryPath}`,
@@ -86,7 +89,7 @@ try {
     )
   } else {
     // Regular CLI app
-    execSync(`clang -O2 -o ${binaryPath} ${cPath} -lm -I compiler/runtime`, {
+    execSync(`clang ${optFlag} -o ${binaryPath} ${cPath} -lm -I compiler/runtime`, {
       stdio: 'inherit'
     })
   }

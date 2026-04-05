@@ -1,0 +1,42 @@
+#!/bin/bash
+# StrictTS CLI — compile TypeScript to native code
+#
+# Usage:
+#   strictts build <file.ts|.tsx>    — optimized binary (-O2)
+#   strictts build <file> --debug    — debug binary (-O0 -g, source maps)
+#   strictts dev <file.ts|.tsx>      — watch mode, auto-recompile + relaunch
+#   strictts run <file.ts|.tsx>      — compile + run once
+
+set -e
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+case "${1:-}" in
+  build)
+    shift
+    npx tsx "$DIR/compiler/index.ts" "$@"
+    ;;
+  dev)
+    shift
+    npx tsx "$DIR/compiler/dev.ts" "$@"
+    ;;
+  run)
+    shift
+    npx tsx "$DIR/compiler/index.ts" "$@"
+    BINARY="build/$(basename "${1}" | sed 's/\.\(ts\|tsx\)$//')"
+    "./$BINARY"
+    ;;
+  inspect)
+    shift
+    npx tsx "$DIR/compiler/inspect.ts" "$@"
+    ;;
+  *)
+    echo "StrictTS — TypeScript to native compiler"
+    echo ""
+    echo "Usage:"
+    echo "  strictts build <file.ts|.tsx>          Compile to optimized binary"
+    echo "  strictts build <file> --debug          Compile with debug symbols + source maps"
+    echo "  strictts dev <file.ts|.tsx>            Watch mode with auto-recompile"
+    echo "  strictts run <file.ts|.tsx>            Compile and run"
+    echo ""
+    ;;
+esac

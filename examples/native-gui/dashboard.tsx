@@ -307,7 +307,7 @@ initFilters();
           <Text className="text-xs text-zinc-500">Real-time workforce analytics</Text>
         </VStack>
         <Spacer />
-        <Search placeholder="Search employees, roles..." onChange={onSearch} className="w-[280]" />
+        <Search placeholder="Search employees, roles aas..." onChange={onSearch} className="w-[280]" />
       </HStack>
 
       <HStack className="h-[110] px-5 py-4 gap-3">

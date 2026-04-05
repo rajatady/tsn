@@ -63,6 +63,9 @@ class CodeGen {
   jsxGlobals: string[] = []  // global variable declarations for JSX mode
   hasJsx = false              // track if source uses JSX (for includes/linking)
   private jsxEmitter: JsxEmitter
+  // Source mapping
+  private sourceFile: ts.SourceFile | null = null
+  private sourceFileName = ''
 
   constructor() {
     this.jsxEmitter = new JsxEmitter(this as CodeGenContext)
@@ -613,6 +616,10 @@ class CodeGen {
   // ─── Statement Generation ───────────────────────────────────────
 
   private emitStmt(node: ts.Node, out: string[]): void {
+    // Source map: emit #line directive
+    const sl = this.srcLine(node)
+    if (sl) out.push(sl.trimEnd())
+
     if (ts.isVariableStatement(node)) {
       for (const d of node.declarationList.declarations) this.emitVarDecl(d, out)
       return
@@ -1060,7 +1067,8 @@ class CodeGen {
       this.indent = 0
     }
     const ps = paramStrs.length ? paramStrs.join(', ') : 'void'
-    this.functions.push(`${retCType} ${name}(${ps}) {\n${body.join('\n')}\n}`)
+    const fnLine = this.srcLine(node)
+    this.functions.push(`${fnLine}${retCType} ${name}(${ps}) {\n${body.join('\n')}\n}`)
   }
 
   // ─── JSON Parser Generator ─────────────────────────────────────
@@ -1111,9 +1119,19 @@ class CodeGen {
 
   pad(): string { return '    '.repeat(this.indent) }
 
+  /** Emit a #line directive mapping C back to TypeScript source */
+  srcLine(node: ts.Node): string {
+    if (!this.sourceFile) return ''
+    const pos = this.sourceFile.getLineAndCharacterOfPosition(node.getStart())
+    return `#line ${pos.line + 1} "${this.sourceFileName}"\n`
+  }
+
   // ─── Main Entry ─────────────────────────────────────────────────
 
   generate(sf: ts.SourceFile): string {
+    this.sourceFile = sf
+    this.sourceFileName = sf.fileName
+
     // Pass 1: interfaces
     for (const s of sf.statements) {
       if (ts.isInterfaceDeclaration(s)) this.emitInterface(s)
