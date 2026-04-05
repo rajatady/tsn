@@ -7,135 +7,10 @@
  * Run:     ./build/dashboard
  */
 
-// ─── Data Model ────────────────────────────────────────────────────
-
-interface Employee {
-  name: string
-  department: string
-  role: string
-  salary: number
-  performance: number
-  status: string
-}
-
-// ─── Lookup Functions ──────────────────────────────────────────────
-
-function firstName(i: number): string {
-  if (i === 0) return "Alice"
-  if (i === 1) return "Bob"
-  if (i === 2) return "Charlie"
-  if (i === 3) return "Diana"
-  if (i === 4) return "Eve"
-  if (i === 5) return "Frank"
-  if (i === 6) return "Grace"
-  if (i === 7) return "Hank"
-  if (i === 8) return "Ivy"
-  if (i === 9) return "Jack"
-  if (i === 10) return "Kate"
-  if (i === 11) return "Leo"
-  if (i === 12) return "Maya"
-  if (i === 13) return "Noah"
-  if (i === 14) return "Olivia"
-  return "Pete"
-}
-
-function lastName(i: number): string {
-  if (i === 0) return "Smith"
-  if (i === 1) return "Jones"
-  if (i === 2) return "Brown"
-  if (i === 3) return "Davis"
-  if (i === 4) return "Wilson"
-  if (i === 5) return "Moore"
-  if (i === 6) return "Taylor"
-  if (i === 7) return "Clark"
-  if (i === 8) return "Hall"
-  if (i === 9) return "Lee"
-  if (i === 10) return "Adams"
-  if (i === 11) return "Baker"
-  if (i === 12) return "Collins"
-  if (i === 13) return "Foster"
-  return "Garcia"
-}
-
-function deptName(i: number): string {
-  if (i === 0) return "Engineering"
-  if (i === 1) return "Design"
-  if (i === 2) return "Marketing"
-  if (i === 3) return "Sales"
-  if (i === 4) return "Finance"
-  if (i === 5) return "HR"
-  if (i === 6) return "Product"
-  return "Operations"
-}
-
-function roleName(i: number): string {
-  if (i === 0) return "Senior Engineer"
-  if (i === 1) return "Designer"
-  if (i === 2) return "Manager"
-  if (i === 3) return "Analyst"
-  if (i === 4) return "Director"
-  if (i === 5) return "Lead"
-  if (i === 6) return "Associate"
-  if (i === 7) return "Specialist"
-  if (i === 8) return "VP"
-  return "Coordinator"
-}
-
-function statusName(i: number): string {
-  if (i < 4) return "Active"
-  if (i < 6) return "Remote"
-  return "On Leave"
-}
-
-// ─── PRNG (no bitwise ops — use modulo) ────────────────────────────
-
-function nextRand(s: number): number {
-  const raw = s * 1103515245 + 12345
-  return raw - Math.floor(raw / 2147483648) * 2147483648
-}
-
-function randIndex(s: number, max: number): number {
-  const v = Math.floor((s / 2147483647) * max)
-  if (v >= max) return max - 1
-  if (v < 0) return 0
-  return v
-}
-
-// ─── Data Generation ───────────────────────────────────────────────
-
-function makeEmployee(s: number): Employee {
-  const s1 = nextRand(s)
-  const s2 = nextRand(s1)
-  const s3 = nextRand(s2)
-  const s4 = nextRand(s3)
-  const s5 = nextRand(s4)
-  const s6 = nextRand(s5)
-  const s7 = nextRand(s6)
-
-  const emp: Employee = {
-    name: firstName(randIndex(s1, 16)) + " " + lastName(randIndex(s2, 15)),
-    department: deptName(randIndex(s3, 8)),
-    role: roleName(randIndex(s4, 10)),
-    salary: 45000 + randIndex(s5, 155000),
-    performance: 1.0 + (s6 / 2147483647) * 4.0,
-    status: statusName(randIndex(s7, 7))
-  }
-  return emp
-}
-
-function generateEmployees(n: number): Employee[] {
-  const result: Employee[] = []
-  let s = 42
-  let i = 0
-  while (i < n) {
-    s = nextRand(s)
-    const emp: Employee = makeEmployee(s)
-    result.push(emp)
-    s = nextRand(nextRand(nextRand(nextRand(nextRand(nextRand(nextRand(s)))))))
-    i = i + 1
-  }
-  return result
-}
+import { Employee } from './lib/types'
+import { generateEmployees } from './lib/data'
+import { fuzzyScore } from './lib/search'
+import { deptForTag } from './lib/lookups'
 
 // ─── Global State ──────────────────────────────────────────────────
 
@@ -144,53 +19,13 @@ let searchText = ""
 let deptFilterIdx = 0
 let filteredCount = 0
 
-// ─── Fuzzy Score ───────────────────────────────────────────────────
-
-function fuzzyScore(text: string, query: string): number {
-  if (query.length === 0) return 100
-  if (text.length === 0) return 0
-  let score = 0
-  let qi = 0
-  let consecutive = 0
-  let i = 0
-  while (i < text.length && qi < query.length) {
-    const tc: string = text.slice(i, i + 1)
-    const qc: string = query.slice(qi, qi + 1)
-    if (tc === qc) {
-      score = score + 10
-      consecutive = consecutive + 1
-      if (consecutive > 1) score = score + consecutive * 5
-      qi = qi + 1
-    } else {
-      consecutive = 0
-    }
-    i = i + 1
-  }
-  if (qi < query.length) return 0
-  return score
-}
-
 // ─── Filter Logic ──────────────────────────────────────────────────
 
-function deptForTag(tag: number): string {
-  if (tag === 2) return "Engineering"
-  if (tag === 3) return "Design"
-  if (tag === 4) return "Marketing"
-  if (tag === 5) return "Sales"
-  if (tag === 6) return "Finance"
-  if (tag === 7) return "HR"
-  if (tag === 8) return "Product"
-  if (tag === 9) return "Operations"
-  return ""
-}
-
 function matchesFilter(e: Employee): boolean {
-  // Department filter
   if (deptFilterIdx > 1) {
     const want: string = deptForTag(deptFilterIdx)
     if (want.length > 0 && e.department !== want) return false
   }
-  // Search filter
   if (searchText.length > 0) {
     const s1 = fuzzyScore(e.name, searchText)
     const s2 = fuzzyScore(e.role, searchText)
@@ -221,7 +56,6 @@ function nthFilteredEmployee(n: number): Employee {
     }
     i = i + 1
   }
-  // Fallback — shouldn't reach here
   return employees[0]
 }
 
@@ -246,7 +80,6 @@ function tableCellFn(row: number, col: number): string {
 
 // ─── Event Handlers ────────────────────────────────────────────────
 
-// refreshTable is auto-generated by the JSX compiler
 declare function refreshTable(rows: number): void
 
 function onSearch(text: string): void {
@@ -263,7 +96,7 @@ function onDeptClick(tag: number): void {
   refreshTable(show)
 }
 
-// ─── Init Filters ──────────────────────────────────────────────────
+// ─── Init ──────────────────────────────────────────────────────────
 
 function initFilters(): void {
   applyFilters()
@@ -274,7 +107,7 @@ initFilters();
 // ─── UI ────────────────────────────────────────────────────────────
 
 <Window title="HR Dashboard" width={1200} height={780} dark
-        subtitle="50,000 Employees | Native Binary a | No JS Runtime">
+        subtitle="50,000 Employees | Native Binary | No JS Runtime">
 
   <HStack className="flex-1 gap-0">
 
@@ -307,7 +140,7 @@ initFilters();
           <Text className="text-xs text-zinc-500">Real-time workforce analytics</Text>
         </VStack>
         <Spacer />
-        <Search placeholder="Search employees, roles aas..." onChange={onSearch} className="w-[280]" />
+        <Search placeholder="Search employees, roles..." onChange={onSearch} className="w-[280]" />
       </HStack>
 
       <HStack className="h-[110] px-5 py-4 gap-3">
@@ -336,9 +169,8 @@ initFilters();
       ]} className="flex-1 mx-5" rowHeight={26} alternating
          cellFn={tableCellFn} rows={500} />
 
-
       <HStack className="h-7 px-5 py-1 bg-zinc-950">
-        <Text className="text-xs text-zinc-500">StrictTS Native | 50K records</Text>
+        <Text className="text-xs text-zinc-500">StrictTS Native | 50K records | Multi-file imports</Text>
         <Spacer />
         <Text className="text-xs text-zinc-500">No JS Runtime</Text>
       </HStack>

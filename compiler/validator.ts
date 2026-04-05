@@ -102,6 +102,14 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: 'Classes are banned (future work) — use interfaces + functions' })
     }
 
+    // Ban: bare module imports (non-relative)
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const spec = node.moduleSpecifier.text
+      if (!spec.startsWith('.')) {
+        errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path) are supported` })
+      }
+    }
+
     ts.forEachChild(node, visit)
   }
 

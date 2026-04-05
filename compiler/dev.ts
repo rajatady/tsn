@@ -10,9 +10,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync, spawn, type ChildProcess } from 'node:child_process'
-import * as ts from 'typescript'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
+import { resolveModules } from './resolver.js'
 
 const inputPath = process.argv[2]
 if (!inputPath) {
@@ -31,27 +31,33 @@ fs.mkdirSync('build', { recursive: true })
 
 let appProcess: ChildProcess | null = null
 
+/** Track resolved file paths for watching */
+let watchedFiles: string[] = [absolutePath]
+
 function compile(): boolean {
   const start = performance.now()
 
   try {
-    const source = fs.readFileSync(absolutePath, 'utf-8')
-    const sourceFile = ts.createSourceFile(
-      absolutePath, source, ts.ScriptTarget.Latest, true,
-      isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-    )
+    const sourceFiles = resolveModules(absolutePath)
 
-    const errors = validate(sourceFile)
-    if (errors.length > 0) {
-      console.error(`\n  Validation errors:`)
-      for (const err of errors) {
-        const { line, character } = sourceFile.getLineAndCharacterOfPosition(err.pos)
-        console.error(`    ${baseName}${ext}:${line + 1}:${character + 1} — ${err.message}`)
+    // Update watched files list
+    watchedFiles = sourceFiles.map(sf => sf.fileName)
+
+    let totalErrors = 0
+    for (const sf of sourceFiles) {
+      const errors = validate(sf)
+      if (errors.length > 0) {
+        const relPath = path.relative(process.cwd(), sf.fileName)
+        for (const err of errors) {
+          const { line, character } = sf.getLineAndCharacterOfPosition(err.pos)
+          console.error(`    ${relPath}:${line + 1}:${character + 1} — ${err.message}`)
+        }
+        totalErrors += errors.length
       }
-      return false
     }
+    if (totalErrors > 0) return false
 
-    const cCode = generateC(sourceFile, baseName)
+    const cCode = generateC(sourceFiles, baseName)
     fs.writeFileSync(cPath, cCode)
 
     const hasUi = cCode.includes('#include "ui.h"')
@@ -166,33 +172,58 @@ if (compile()) {
   launchApp()
 }
 
-// Watch for changes
+// Watch for changes — watch all resolved files
 let debounce: ReturnType<typeof setTimeout> | null = null
+const watchers: fs.FSWatcher[] = []
 
-fs.watch(absolutePath, (eventType) => {
-  if (eventType !== 'change') return
-  if (debounce) clearTimeout(debounce)
-  debounce = setTimeout(() => {
-    console.log(`  [${timestamp()}] Change detected...`)
-    if (compile()) {
-      launchApp()
-    }
-  }, 100) // 100ms debounce
-})
+function setupWatchers(): void {
+  // Close old watchers
+  for (const w of watchers) w.close()
+  watchers.length = 0
 
-// Also watch the directory for new files
-const dir = path.dirname(absolutePath)
-fs.watch(dir, (eventType, filename) => {
-  if (!filename || !filename.endsWith(ext)) return
-  if (path.resolve(dir, filename) !== absolutePath) return
-  if (debounce) clearTimeout(debounce)
-  debounce = setTimeout(() => {
-    console.log(`  [${timestamp()}] Change detected...`)
-    if (compile()) {
-      launchApp()
+  // Watch all resolved files + their directories
+  const watchedDirs = new Set<string>()
+  for (const filePath of watchedFiles) {
+    // Watch the file itself
+    try {
+      const w = fs.watch(filePath, (eventType) => {
+        if (eventType !== 'change') return
+        if (debounce) clearTimeout(debounce)
+        debounce = setTimeout(() => {
+          const rel = path.relative(process.cwd(), filePath)
+          console.log(`  [${timestamp()}] Change: ${rel}`)
+          if (compile()) {
+            setupWatchers() // re-setup in case imports changed
+            launchApp()
+          }
+        }, 100)
+      })
+      watchers.push(w)
+    } catch { /* file may not exist yet */ }
+
+    // Watch directory for new files
+    const dir = path.dirname(filePath)
+    if (!watchedDirs.has(dir)) {
+      watchedDirs.add(dir)
+      try {
+        const w = fs.watch(dir, (eventType, filename) => {
+          if (!filename || (!filename.endsWith('.ts') && !filename.endsWith('.tsx'))) return
+          if (debounce) clearTimeout(debounce)
+          debounce = setTimeout(() => {
+            console.log(`  [${timestamp()}] Change detected...`)
+            if (compile()) {
+              setupWatchers()
+              launchApp()
+            }
+          }, 100)
+        })
+        watchers.push(w)
+      } catch { /* dir may not exist */ }
     }
-  }, 100)
-})
+  }
+}
+
+setupWatchers()
 
 // Handle Ctrl+C
 process.on('SIGINT', () => {

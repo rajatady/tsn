@@ -1155,47 +1155,78 @@ class CodeGen {
     return `#line ${pos.line + 1} "${this.sourceFileName}"\n`
   }
 
+  /** Check if a statement should be skipped (import/export/require) */
+  private isSkippable(s: ts.Statement): boolean {
+    if (ts.isImportDeclaration(s)) return true
+    if (ts.isExportDeclaration(s)) return true
+    if (ts.isVariableStatement(s) && s.getText().includes('require')) return true
+    return false
+  }
+
   // ─── Main Entry ─────────────────────────────────────────────────
 
-  generate(sf: ts.SourceFile): string {
-    this.sourceFile = sf
-    this.sourceFileName = sf.fileName
-
-    // Pass 1: interfaces
-    for (const s of sf.statements) {
-      if (ts.isInterfaceDeclaration(s)) this.emitInterface(s)
-    }
-
-    // Pass 1.5: pre-collect all function signatures (for forward references)
-    // Also collect 'declare function' as extern declarations
-    for (const s of sf.statements) {
-      if (ts.isFunctionDeclaration(s) && s.name && s.body) {
-        const name = s.name.text
-        const retType = this.tsTypeName(s.type)
-        const retCType = this.tsTypeToC(s.type, 'void')
-        const params = s.parameters.map(p => ({
-          name: p.name.getText(),
-          tsType: this.tsTypeName(p.type),
-          cType: this.tsTypeToC(p.type),
-        }))
-        this.funcSigs.set(name, { name, params, returnType: retType, returnCType: retCType })
+  generate(sourceFiles: ts.SourceFile[]): string {
+    // Pass 1: interfaces from ALL files
+    for (const sf of sourceFiles) {
+      for (const s of sf.statements) {
+        if (ts.isInterfaceDeclaration(s)) this.emitInterface(s)
       }
     }
 
-    // Pass 2: functions and top-level statements
-    for (const s of sf.statements) {
-      if (ts.isFunctionDeclaration(s)) this.emitFunction(s)
-      if (ts.isImportDeclaration(s)) continue
-      if (ts.isVariableStatement(s) && s.getText().includes('require')) continue
+    // Pass 1.5: pre-collect all function signatures from ALL files
+    for (const sf of sourceFiles) {
+      for (const s of sf.statements) {
+        if (ts.isFunctionDeclaration(s) && s.name && s.body) {
+          const name = s.name.text
+          const retType = this.tsTypeName(s.type)
+          const retCType = this.tsTypeToC(s.type, 'void')
+          const params = s.parameters.map(p => ({
+            name: p.name.getText(),
+            tsType: this.tsTypeName(p.type),
+            cType: this.tsTypeToC(p.type),
+          }))
+          this.funcSigs.set(name, { name, params, returnType: retType, returnCType: retCType })
+        }
+      }
     }
 
-    // Pass 3: top-level statements that go into main()
-    // In JSX mode: variable declarations, expressions, and JSX trees
-    let hasTopLevelJsx = false
-    for (const s of sf.statements) {
-      if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isImportDeclaration(s)) continue
+    // Pass 2: functions from ALL files (update source mapping per file)
+    for (const sf of sourceFiles) {
+      this.sourceFile = sf
+      this.sourceFileName = sf.fileName
+      for (const s of sf.statements) {
+        if (ts.isFunctionDeclaration(s)) this.emitFunction(s)
+        if (this.isSkippable(s)) continue
+      }
+    }
 
-      // Check if any statement is JSX — triggers JSX mode for the file
+    // Pass 2.5: top-level variables from non-entry library files → globals
+    // (so functions in other files can reference them)
+    const entryFile = sourceFiles[sourceFiles.length - 1]
+    for (const sf of sourceFiles) {
+      if (sf === entryFile) continue // entry file handled in Pass 3
+      this.sourceFile = sf
+      this.sourceFileName = sf.fileName
+      for (const s of sf.statements) {
+        if (!ts.isVariableStatement(s)) continue
+        if (this.isSkippable(s)) continue
+        for (const d of s.declarationList.declarations) {
+          const name = d.name.getText()
+          const cType = d.type ? this.tsTypeToC(d.type) : this.inferVarType(d)
+          const tsType = d.type ? this.tsTypeName(d.type) : this.inferVarTsType(d)
+          this.jsxGlobals.push(`${cType} ${name};`)
+          this.varTypes.set(name, tsType)
+        }
+      }
+    }
+
+    // Pass 3: top-level statements from entry file → main()
+    this.sourceFile = entryFile
+    this.sourceFileName = entryFile.fileName
+
+    let hasTopLevelJsx = false
+    for (const s of entryFile.statements) {
+      if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || this.isSkippable(s)) continue
       if (ts.isExpressionStatement(s)) {
         const expr = s.expression
         if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
@@ -1206,28 +1237,46 @@ class CodeGen {
     }
 
     if (hasTopLevelJsx) {
-      // First pass: emit top-level variables as globals (declaration only)
-      // and collect their initializers for main()
-      for (const s of sf.statements) {
+      // Emit entry file's top-level variables as globals
+      for (const s of entryFile.statements) {
         if (!ts.isVariableStatement(s)) continue
         for (const d of s.declarationList.declarations) {
           const name = d.name.getText()
           const cType = d.type ? this.tsTypeToC(d.type) : this.inferVarType(d)
           this.jsxGlobals.push(`${cType} ${name};`)
-          // Register in varTypes so functions can reference it
           this.varTypes.set(name, d.type ? this.tsTypeName(d.type) : this.inferVarTsType(d))
         }
       }
 
-      // Second pass: main() body — init globals, then JSX
+      // main() body — init library globals, then entry globals, then JSX
       this.indent = 1
       this.jsxStmts.push(this.pad() + 'ui_init();')
 
-      for (const s of sf.statements) {
-        if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isImportDeclaration(s)) continue
+      // Initialize library globals (non-entry files, in dependency order)
+      for (const sf of sourceFiles) {
+        if (sf === entryFile) continue
+        this.sourceFile = sf
+        this.sourceFileName = sf.fileName
+        for (const s of sf.statements) {
+          if (!ts.isVariableStatement(s)) continue
+          if (this.isSkippable(s)) continue
+          for (const d of s.declarationList.declarations) {
+            if (d.initializer) {
+              const name = d.name.getText()
+              const val = this.emitExpr(d.initializer)
+              this.jsxStmts.push(this.pad() + `${name} = ${val};`)
+            }
+          }
+        }
+      }
+
+      // Initialize entry file globals and JSX
+      this.sourceFile = entryFile
+      this.sourceFileName = entryFile.fileName
+      for (const s of entryFile.statements) {
+        if (ts.isFunctionDeclaration(s) || ts.isInterfaceDeclaration(s) || this.isSkippable(s)) continue
 
         if (ts.isVariableStatement(s)) {
-          // Emit initialization (not declaration) into main()
           for (const d of s.declarationList.declarations) {
             if (d.initializer) {
               const name = d.name.getText()
@@ -1337,6 +1386,11 @@ class CodeGen {
   }
 }
 
-export function generateC(sf: ts.SourceFile, name: string): string {
-  return new CodeGen().generate(sf)
+export function generateC(sourceFiles: ts.SourceFile[], name: string): string {
+  return new CodeGen().generate(sourceFiles)
+}
+
+/** Backward-compatible single-file entry point */
+export function generateCSingle(sf: ts.SourceFile, name: string): string {
+  return new CodeGen().generate([sf])
 }
