@@ -1,21 +1,35 @@
+import { AppRow, EditorialCardView, NativeHud, SectionHeader } from '../components'
+import { developCards, developerApps, type EditorialCard, type StoreApp } from '../data'
+
 export function DevelopScreen() {
+  const cards: EditorialCard[] = developCards()
+  const apps: StoreApp[] = developerApps()
+
   return (
-    <VStack className="flex-1 gap-4 p-5">
-      <Text className="text-3xl font-bold">Develop</Text>
-      <Text className="text-sm text-zinc-400">A routed native page inspired by the App Store’s developer section.</Text>
-      <Card className="rounded-xl">
-        <VStack className="gap-2">
-          <Text className="text-sm text-zinc-400">GET STARTED</Text>
-          <Text className="text-2xl font-bold">Code faster with Xcode extensions</Text>
-          <Text className="text-sm text-zinc-400">This page exists to prove clean file structure and route-level screen rendering.</Text>
-        </VStack>
-      </Card>
-      <Card className="rounded-xl">
-        <VStack className="gap-2">
-          <Text className="text-sm text-zinc-400">ESSENTIAL APPS FOR DEVELOPERS</Text>
-          <Text className="text-lg font-bold">Prompt 3, TestFlight, Apple Developer, Xcode</Text>
-        </VStack>
-      </Card>
-    </VStack>
+    <Scroll className="flex-1">
+      <VStack className="gap-8 p-4">
+        <Text className="text-5xl font-bold">Develop</Text>
+        <HStack className="gap-4">
+          <EditorialCardView card={cards[0]} large />
+          <EditorialCardView card={cards[1]} large />
+        </HStack>
+        <SectionHeader title="Essential Apps for Developers" action="See All" route="develop" />
+        <HStack className="gap-8">
+          <VStack className="flex-1 gap-4">
+            <AppRow app={apps[0]} />
+            <AppRow app={apps[3]} />
+          </VStack>
+          <VStack className="flex-1 gap-4">
+            <AppRow app={apps[1]} />
+            <AppRow app={apps[4]} />
+          </VStack>
+          <VStack className="flex-1 gap-4">
+            <AppRow app={apps[2]} />
+            <AppRow app={apps[5]} />
+          </VStack>
+        </HStack>
+        <NativeHud />
+      </VStack>
+    </Scroll>
   )
 }

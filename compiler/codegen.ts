@@ -1000,6 +1000,7 @@ class CodeGen {
       // Release function-level vars declared BEFORE this return.
       // Track which vars have been declared by checking the funcDeclaredSoFar set.
       const returnedVar = node.expression && ts.isIdentifier(node.expression) ? node.expression.text : null
+      const returnedExpr = node.expression ? this.emitExpr(node.expression) : null
       for (const vn of this.funcDeclaredSoFar) {
         if (vn === returnedVar) continue
         if (this.builderVars.has(vn)) continue
@@ -1008,7 +1009,7 @@ class CodeGen {
         const releases = this.getReleaseForType(vn, vt)
         for (const r of releases) out.push(this.pad() + r)
       }
-      out.push(this.pad() + (node.expression ? `return ${this.emitExpr(node.expression)};` : 'return;'))
+      out.push(this.pad() + (returnedExpr ? `return ${returnedExpr};` : 'return;'))
       return
     }
 
@@ -1436,6 +1437,21 @@ class CodeGen {
             return { name: info.name, tsType: info.tsType, cType: info.cType }
           })
           this.funcSigs.set(name, { name, params, returnType: retInfo.tsType, returnCType: retInfo.cType })
+        }
+      }
+    }
+
+    // Pass 1.75: pre-collect top-level variable types so imported constants
+    // can be referenced inside function JSX props and expressions.
+    for (const sf of sourceFiles) {
+      this.sourceFile = sf
+      this.sourceFileName = sf.fileName
+      for (const s of sf.statements) {
+        if (!ts.isVariableStatement(s) || this.isSkippable(s)) continue
+        for (const d of s.declarationList.declarations) {
+          if (!ts.isIdentifier(d.name)) continue
+          const tsType = d.type ? this.tsTypeName(d.type) : this.inferVarTsType(d)
+          this.varTypes.set(d.name.text, tsType)
         }
       }
     }

@@ -1,5 +1,4 @@
 import { useRoute } from '../framework/react'
-import { gameFromRoute } from './data'
 import { AppStoreSidebar } from './sidebar'
 import { ArcadeScreen } from './screens/arcade'
 import { DetailScreen } from './screens/detail'
@@ -12,13 +11,13 @@ export function App() {
   let content: JSX.Element = <ArcadeScreen />
   if (route === 'play') content = <PlayScreen />
   if (route === 'develop') content = <DevelopScreen />
-  if (route.startsWith('game:')) content = <DetailScreen game={gameFromRoute(route)} />
+  if (route.startsWith('game:')) content = <DetailScreen />
 
   return (
-    <Window title="App Store" width={1340} height={860} dark subtitle="StrictTS Native Storefront">
-      <HStack className="flex-1 gap-0 bg-zinc-900">
+    <Window title="App Store" width={1400} height={900} dark subtitle="Apple Arcade">
+      <HStack className="flex-1 gap-3 bg-black p-2">
         <AppStoreSidebar />
-        <VStack className="flex-1 gap-0 bg-zinc-900">
+        <VStack className="flex-1 gap-0 bg-zinc-900 rounded-xl">
           {content}
         </VStack>
       </HStack>

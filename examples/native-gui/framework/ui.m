@@ -375,7 +375,10 @@ static inline void retain_persistent(id obj) {
 }
 
 static void finish_render_cycle(void) {
-    [g_render_retained removeAllObjects];
+    /* Temporary conservative policy: keep render objects alive.
+     * Whole-root rerender works, but eager release here can over-release
+     * AppKit-owned views during the current run loop turn.
+     */
 }
 static NSMutableDictionary *g_element_ids;  /* element_id → NSView for inspector lookup */
 
@@ -697,10 +700,16 @@ void ui_set_flex(UIHandle v, int f) {
 }
 
 void ui_set_size(UIHandle v, int w, int h) {
-    if ([(__bridge NSView *)v isKindOfClass:[UIStackContainer class]]) {
-        UIStackContainer *s = (__bridge UIStackContainer *)v;
+    NSView *view = (__bridge NSView *)v;
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        UIStackContainer *s = (UIStackContainer *)view;
         s.fixed_width = w; s.fixed_height = h;
+        return;
     }
+    NSRect frame = view.frame;
+    if (w >= 0) frame.size.width = w;
+    if (h >= 0) frame.size.height = h;
+    view.frame = frame;
 }
 
 void ui_set_min_size(UIHandle v, int w, int h) { /* placeholder */ }
@@ -720,11 +729,16 @@ void ui_add_child(UIHandle parent, UIHandle child) {
         [((UIStackContainer *)p).children addObject:c];
         [p addSubview:c];
     } else if ([p isKindOfClass:[NSScrollView class]]) {
-        /* Scroll view: set as document view */
-        if ([c isKindOfClass:[NSTableView class]]) {
-            ((NSScrollView *)p).documentView = c;
-        } else {
-            [p addSubview:c];
+        NSScrollView *sv = (NSScrollView *)p;
+        sv.documentView = c;
+        if ([c isKindOfClass:[UIStackContainer class]]) {
+            UIStackContainer *stack = (UIStackContainer *)c;
+            NSSize natural = [stack naturalSize];
+            CGFloat width = sv.contentView.bounds.size.width > 0 ? sv.contentView.bounds.size.width : natural.width;
+            CGFloat height = natural.height > 0 ? natural.height : sv.contentView.bounds.size.height;
+            stack.fixed_width = width;
+            c.frame = NSMakeRect(0, 0, width, height);
+            c.autoresizingMask = NSViewWidthSizable;
         }
     } else {
         [p addSubview:c];
@@ -818,6 +832,30 @@ void ui_symbol_set_color(UIHandle s, int c) {
         ((NSImageView *)(__bridge NSView *)s).contentTintColor = system_color(c);
 }
 
+UIHandle ui_image(const char *path) {
+    NSString *src = [NSString stringWithUTF8String:path];
+    NSImage *img = nil;
+    if ([src hasPrefix:@"http://"] || [src hasPrefix:@"https://"]) {
+        img = [[NSImage alloc] initWithContentsOfURL:[NSURL URLWithString:src]];
+    } else {
+        img = [[NSImage alloc] initWithContentsOfFile:src];
+        if (!img) {
+            NSString *cwd = [[NSFileManager defaultManager] currentDirectoryPath];
+            img = [[NSImage alloc] initWithContentsOfFile:[cwd stringByAppendingPathComponent:src]];
+        }
+    }
+
+    NSImageView *iv = [NSImageView new];
+    iv.image = img;
+    iv.imageScaling = NSImageScaleProportionallyUpOrDown;
+    iv.imageAlignment = NSImageAlignCenter;
+    iv.wantsLayer = YES;
+    iv.layer.masksToBounds = YES;
+    if (img) iv.frame = NSMakeRect(0, 0, img.size.width, img.size.height);
+    retain_render(iv);
+    return (__bridge UIHandle)iv;
+}
+
 /* ─── Search Field ───────────────────────────────────────────────── */
 
 UIHandle ui_search_field(const char *placeholder) {
@@ -891,13 +929,62 @@ UIHandle ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, 
     return (__bridge UIHandle)b;
 }
 
+static void style_button_surface(NSButton *btn, NSColor *bg, NSColor *fg, CGFloat radius,
+                                 bool bordered, NSTextAlignment align,
+                                 CGFloat top, CGFloat left, CGFloat bottom, CGFloat right,
+                                 NSFontWeight weight) {
+    btn.bordered = bordered;
+    btn.alignment = align;
+    btn.wantsLayer = YES;
+    btn.layer.cornerRadius = radius;
+    btn.layer.masksToBounds = YES;
+    btn.layer.backgroundColor = bg ? bg.CGColor : NSColor.clearColor.CGColor;
+    btn.font = [NSFont systemFontOfSize:13 weight:weight];
+    btn.contentTintColor = fg;
+    btn.bezelColor = bg ?: NSColor.clearColor;
+    if (left > 10 || right > 10) {
+        NSString *trimmed = [btn.title stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        btn.title = [NSString stringWithFormat:@"  %@  ", trimmed];
+    }
+}
+
 void ui_button_set_style(UIHandle b, int style) {
     NSButton *btn = (__bridge NSButton *)b;
     if (![btn isKindOfClass:[NSButton class]]) return;
     switch (style) {
-        case 1: btn.bezelStyle = NSBezelStylePush; btn.bezelColor = NSColor.controlAccentColor; break;
-        case 2: btn.contentTintColor = NSColor.systemRedColor; break;
-        case 3: btn.bordered = NO; break;
+        case 1:
+            btn.bezelStyle = NSBezelStyleRounded;
+            style_button_surface(btn, NSColor.controlAccentColor, NSColor.whiteColor, 999, NO,
+                                 NSTextAlignmentCenter, 8, 20, 8, 20, NSFontWeightSemibold);
+            break;
+        case 2:
+            style_button_surface(btn, [NSColor systemRedColor], NSColor.whiteColor, 999, NO,
+                                 NSTextAlignmentCenter, 8, 16, 8, 16, NSFontWeightSemibold);
+            break;
+        case 3:
+            style_button_surface(btn, nil, NSColor.systemBlueColor, 0, NO,
+                                 NSTextAlignmentCenter, 4, 6, 4, 6, NSFontWeightSemibold);
+            break;
+        case 4:
+            style_button_surface(btn, nil, [NSColor colorWithWhite:0.88 alpha:1], 12, NO,
+                                 NSTextAlignmentLeft, 8, 12, 8, 12, NSFontWeightMedium);
+            break;
+        case 5:
+            style_button_surface(btn, [NSColor colorWithWhite:0.22 alpha:1], NSColor.systemBlueColor, 12, NO,
+                                 NSTextAlignmentLeft, 8, 12, 8, 12, NSFontWeightSemibold);
+            break;
+        case 6:
+            style_button_surface(btn, NSColor.whiteColor, NSColor.systemBlueColor, 999, NO,
+                                 NSTextAlignmentCenter, 4, 16, 4, 16, NSFontWeightSemibold);
+            break;
+        case 7:
+            style_button_surface(btn, [NSColor colorWithWhite:0.25 alpha:1], [NSColor colorWithWhite:0.92 alpha:1], 999, NO,
+                                 NSTextAlignmentCenter, 5, 12, 5, 12, NSFontWeightSemibold);
+            break;
+        default:
+            style_button_surface(btn, [NSColor colorWithWhite:0.16 alpha:1], [NSColor colorWithWhite:0.92 alpha:1], 10, NO,
+                                 NSTextAlignmentCenter, 6, 12, 6, 12, NSFontWeightMedium);
+            break;
     }
 }
 
@@ -1138,6 +1225,7 @@ void ui_sparkline_set_values(UIHandle s, double *v, int c, int sc) { /* TODO */ 
 UIHandle ui_scroll(void) {
     NSScrollView *sv = [NSScrollView new];
     sv.hasVerticalScroller = YES;
+    sv.hasHorizontalScroller = NO;
     sv.drawsBackground = NO;
     retain_render(sv);
     return (__bridge UIHandle)sv;

@@ -55,6 +55,9 @@ UIHandle    ui_label(const char *content);  /* small gray secondary text */
 UIHandle    ui_symbol(const char *name, int size);
 void        ui_symbol_set_color(UIHandle s, int system_color);
 
+/* ─── Images ─────────────────────────────────────────────────────── */
+UIHandle    ui_image(const char *path);
+
 /* ─── Text Field / Search ────────────────────────────────────────── */
 UIHandle    ui_text_field(const char *placeholder);
 UIHandle    ui_search_field(const char *placeholder);

@@ -233,6 +233,10 @@ export class JsxEmitter {
       'destructive': 2,
       'primary': 1,
       'accent': 1,
+      'sidebar': 4,
+      'sidebar-active': 5,
+      'get': 6,
+      'chip': 7,
     }
     return map[name] ?? 0
   }
@@ -288,6 +292,16 @@ export class JsxEmitter {
         return handle
       }
 
+      case 'Symbol': {
+        const name = this.propCStr(props, 'name') ?? '""'
+        const size = this.propNum(props, 'size', 14)
+        create(`ui_symbol(${name}, ${size})`)
+        const color = this.propStr(props, 'color')
+        if (color) push(`ui_symbol_set_color(${handle}, ${this.colorIndex(color)});`)
+        if (tw) for (const c of tw.calls) push(c)
+        return handle
+      }
+
       case 'Spacer':
         create(`ui_spacer()`)
         return handle
@@ -316,9 +330,23 @@ export class JsxEmitter {
         return handle
       }
 
+      case 'Image': {
+        const src = this.propCStr(props, 'src') ?? '""'
+        create(`ui_image(${src})`)
+        if (tw) for (const c of tw.calls) push(c)
+        return handle
+      }
+
       case 'Sidebar': {
         const width = tw && tw.width > 0 ? tw.width : 200
         create(`ui_sidebar(${width})`)
+        this.emitChildren(children, handle)
+        return handle
+      }
+
+      case 'Scroll': {
+        create(`ui_scroll()`)
+        if (tw) for (const c of tw.calls) push(c)
         this.emitChildren(children, handle)
         return handle
       }
