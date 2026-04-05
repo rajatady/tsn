@@ -1,0 +1,25 @@
+=== TOP 10 RESULTS ===
+#1 Hank Taylor (Tokyo) — score: 100
+#2 Hank Taylor (Tokyo) — score: 100
+#3 Hank Taylor (Tokyo) — score: 100
+#4 Hank Taylor (Tokyo) — score: 100
+#5 Hank Taylor (Tokyo) — score: 100
+#6 Hank Taylor (Tokyo) — score: 100
+#7 Hank Taylor (Tokyo) — score: 100
+#8 Hank Taylor (Tokyo) — score: 100
+#9 Hank Taylor (Tokyo) — score: 100
+#10 Hank Taylor (Tokyo) — score: 100
+
+=== CITY STATS ===
+Paris: 6793 people, avg score: 47.93
+Tokyo: 7790 people, avg score: 51.31
+New York: 7837 people, avg score: 49.85
+Toronto: 7592 people, avg score: 50
+Sydney: 7325 people, avg score: 49.49
+London: 7704 people, avg score: 50.37
+Mumbai: 7095 people, avg score: 48.02
+Berlin: 7853 people, avg score: 48.63
+
+Total processed: 100000
+Active: 69563
+Age >= 25: 59989

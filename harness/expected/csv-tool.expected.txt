@@ -1,0 +1,25 @@
+name,age,city,score
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+Hank Taylor,47,Tokyo,100
+
+Total rows: 1000000
+Filtered (age > 30): 733614
+Showing top 20

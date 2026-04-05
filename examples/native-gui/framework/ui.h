@@ -1,0 +1,143 @@
+/*
+ * StrictTS Native UI Framework — Apple-quality macOS components
+ *
+ * C API over AppKit. TypeScript devs call functions, get native views.
+ * Supports: vibrancy, blur, SF Symbols, dark mode, gradients,
+ * split views, outline views, popovers, badges, progress, segmented controls.
+ */
+
+#ifndef STRICTTS_UI_H
+#define STRICTTS_UI_H
+
+#include <stdbool.h>
+
+typedef struct UIView_ *UIHandle;
+
+/* ─── App & Window ───────────────────────────────────────────────── */
+void        ui_init(void);
+void        ui_run(UIHandle root);
+UIHandle    ui_window(const char *title, int w, int h, bool dark);
+void        ui_window_subtitle(UIHandle w, const char *sub);
+void        ui_window_toolbar(UIHandle w, bool visible);
+void        ui_window_titlebar_transparent(UIHandle w);
+void        ui_window_fullsize_content(UIHandle w);
+
+/* ─── Layout ─────────────────────────────────────────────────────── */
+UIHandle    ui_vstack(void);
+UIHandle    ui_hstack(void);
+void        ui_set_padding(UIHandle v, int top, int right, int bottom, int left);
+void        ui_set_spacing(UIHandle v, int spacing);
+void        ui_set_flex(UIHandle v, int flex);
+void        ui_set_size(UIHandle v, int w, int h);  /* -1 = auto */
+void        ui_set_min_size(UIHandle v, int w, int h);
+void        ui_set_max_size(UIHandle v, int w, int h);
+void        ui_set_alignment(UIHandle v, int align); /* 0=leading, 1=center, 2=trailing */
+void        ui_add_child(UIHandle parent, UIHandle child);
+UIHandle    ui_spacer(void);
+UIHandle    ui_divider(void);
+
+/* ─── Visual Effect (vibrancy/blur) ──────────────────────────────── */
+/* material: 0=sidebar, 1=header, 2=content, 3=sheet, 4=fullscreen, 5=tooltip, 6=menu, 7=popover, 8=hudWindow */
+UIHandle    ui_blur_view(int material);
+
+/* ─── Text ───────────────────────────────────────────────────────── */
+UIHandle    ui_text(const char *content, int size, bool bold);
+UIHandle    ui_text_mono(const char *content, int size, bool bold);
+void        ui_text_set_color_rgb(UIHandle t, double r, double g, double b, double a);
+void        ui_text_set_color_system(UIHandle t, int color);
+/* system colors: 0=label, 1=secondaryLabel, 2=tertiaryLabel, 3=blue, 4=green,
+   5=red, 6=orange, 7=yellow, 8=purple, 9=pink, 10=teal, 11=indigo, 12=cyan */
+void        ui_text_set_selectable(UIHandle t, bool sel);
+UIHandle    ui_label(const char *content);  /* small gray secondary text */
+
+/* ─── SF Symbols ─────────────────────────────────────────────────── */
+UIHandle    ui_symbol(const char *name, int size);
+void        ui_symbol_set_color(UIHandle s, int system_color);
+
+/* ─── Text Field / Search ────────────────────────────────────────── */
+UIHandle    ui_text_field(const char *placeholder);
+UIHandle    ui_search_field(const char *placeholder);
+typedef void (*UITextChangedFn)(const char *text);
+void        ui_on_text_changed(UIHandle field, UITextChangedFn fn);
+
+/* ─── Buttons ────────────────────────────────────────────────────── */
+typedef void (*UIClickFn)(int tag);
+UIHandle    ui_button(const char *label, UIClickFn fn, int tag);
+UIHandle    ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, int tag);
+/* style: 0=regular, 1=prominent/accent, 2=destructive, 3=borderless */
+void        ui_button_set_style(UIHandle b, int style);
+
+/* ─── Segmented Control ──────────────────────────────────────────── */
+UIHandle    ui_segmented(int count, const char **labels);
+typedef void (*UISegmentFn)(int selected);
+void        ui_segmented_on_change(UIHandle seg, UISegmentFn fn);
+
+/* ─── Toggle / Switch ────────────────────────────────────────────── */
+UIHandle    ui_toggle(const char *label, bool initial);
+typedef void (*UIToggleFn)(bool on);
+void        ui_toggle_on_change(UIHandle tog, UIToggleFn fn);
+
+/* ─── Progress ───────────────────────────────────────────────────── */
+UIHandle    ui_progress(double value); /* 0.0 - 1.0, -1 = indeterminate */
+void        ui_progress_set(UIHandle p, double value);
+
+/* ─── Badge / Pill ───────────────────────────────────────────────── */
+UIHandle    ui_badge(const char *text, int system_color);
+
+/* ─── Card (rounded container with shadow) ───────────────────────── */
+UIHandle    ui_card(void);
+void        ui_card_set_color(UIHandle c, double r, double g, double b, double a);
+
+/* ─── Stat Card (number + label, like a KPI) ─────────────────────── */
+UIHandle    ui_stat(const char *value, const char *label, int system_color);
+
+/* ─── Sidebar List ───────────────────────────────────────────────── */
+UIHandle    ui_sidebar(int width);
+UIHandle    ui_sidebar_section(UIHandle sidebar, const char *header);
+UIHandle    ui_sidebar_item(UIHandle section, const char *label, const char *sf_symbol, int tag, UIClickFn fn);
+void        ui_sidebar_item_set_badge(UIHandle item, const char *badge_text);
+
+/* ─── Data Table ─────────────────────────────────────────────────── */
+UIHandle    ui_data_table(void);
+void        ui_data_table_add_column(UIHandle tbl, const char *id, const char *title, int width);
+typedef const char *(*UITableCellFn)(int row, int col, void *ctx);
+void        ui_data_table_set_data(UIHandle tbl, int rows, UITableCellFn fn, void *ctx);
+void        ui_data_table_set_row_height(UIHandle tbl, int height);
+void        ui_data_table_set_alternating(UIHandle tbl, bool alt);
+
+/* ─── Bar Chart ──────────────────────────────────────────────────── */
+UIHandle    ui_bar_chart(int height);
+void        ui_bar_chart_add(UIHandle chart, const char *label, double value, int system_color);
+void        ui_bar_chart_set_title(UIHandle chart, const char *title);
+
+/* ─── Line Sparkline (small inline chart) ────────────────────────── */
+UIHandle    ui_sparkline(int width, int height);
+void        ui_sparkline_set_values(UIHandle spark, double *values, int count, int system_color);
+
+/* ─── Scroll View ────────────────────────────────────────────────── */
+UIHandle    ui_scroll(void);
+
+/* ─── Tab View ───────────────────────────────────────────────────── */
+UIHandle    ui_tab_view(void);
+UIHandle    ui_tab(UIHandle tv, const char *label, const char *sf_symbol);
+
+/* ─── Popover ────────────────────────────────────────────────────── */
+void        ui_show_popover(UIHandle anchor, UIHandle content, int width, int height);
+
+/* ─── Alert / Dialog ─────────────────────────────────────────────── */
+void        ui_alert(const char *title, const char *message, const char *button);
+
+/* ─── Background Color ──────────────────────────────────────────── */
+void        ui_set_background_rgb(UIHandle v, double r, double g, double b, double a);
+void        ui_set_background_system(UIHandle v, int color);
+void        ui_set_corner_radius(UIHandle v, double r);
+void        ui_set_border(UIHandle v, double r, double g, double b, double width);
+
+/* ─── Animation ──────────────────────────────────────────────────── */
+void        ui_animate(UIHandle v, double duration); /* next property change is animated */
+
+/* ─── Timer / Periodic Update ────────────────────────────────────── */
+typedef void (*UITimerFn)(void);
+void        ui_set_timer(double interval_sec, UITimerFn fn);
+
+#endif /* STRICTTS_UI_H */

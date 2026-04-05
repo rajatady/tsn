@@ -1,0 +1,19 @@
+{
+  "name": "strictts-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Compile strict TypeScript to native binaries via C",
+  "type": "module",
+  "scripts": {
+    "bench": "bash harness/run-benchmarks.sh",
+    "test": "bash harness/correctness.sh",
+    "compile": "node --loader ts-node/esm compiler/index.ts"
+  },
+  "dependencies": {
+    "typescript": "^5.4.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.0",
+    "@types/node": "^20.0.0"
+  }
+}

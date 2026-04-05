@@ -1,0 +1,36 @@
+=== HTTP ROUTER TEST ===
+
+REQ: GET /
+RES: HTTP 200 | handler: home
+
+REQ: GET /users
+RES: HTTP 200 | handler: listUsers
+
+REQ: GET /users/42
+RES: HTTP 200 | handler: getUser | params: id=42
+
+REQ: GET /users/42/posts
+RES: HTTP 200 | handler: getUserPosts | params: id=42
+
+REQ: GET /users/42/posts/7
+RES: HTTP 200 | handler: getPost | params: id=42, postId=7
+
+REQ: POST /users
+RES: HTTP 200 | handler: createUser
+
+REQ: GET /search?q=hello&page=2&limit=20
+RES: HTTP 200 | handler: search | query: q=hello, page=2, limit=20
+
+REQ: GET /api/v1/health
+RES: HTTP 200 | handler: healthCheck
+
+REQ: GET /nonexistent
+RES: HTTP 404 | handler: none
+
+REQ: DELETE /users/1
+RES: HTTP 404 | handler: none
+
+REQ: GET /users/99/posts?sort=date&order=desc
+RES: HTTP 200 | handler: getUserPosts | params: id=99 | query: sort=date, order=desc
+
+Benchmark: 100000 route matches, 81818 matched
