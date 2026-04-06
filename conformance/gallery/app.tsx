@@ -22,6 +22,7 @@ import { ButtonVariantsCase } from '../cases/button-variants'
 import { CardDeepCase } from '../cases/card-deep'
 import { ImageDeepCase } from '../cases/image-deep'
 import { InputDeepCase } from '../cases/input-deep'
+import { BadgeDeepCase } from '../cases/badge-deep'
 
 function onCaseClick(tag: number): void {
   const cases: string[] = [
@@ -30,6 +31,7 @@ function onCaseClick(tag: number): void {
     'max-width', 'app-row', 'stat-row', 'sidebar-shell',
     'text-sizes', 'text-weights', 'text-lineheight', 'text-align-transform', 'text-in-card',
     'button-variants', 'card-deep', 'image-deep', 'input-deep',
+    'badge-deep',
   ]
   const [_current, setCurrent] = useStore<string>('gallery:case', 'hstack-basic')
   if (tag >= 0 && tag < cases.length) {
@@ -59,6 +61,7 @@ function CaseContent() {
   if (current === 'card-deep') return <CardDeepCase />
   if (current === 'image-deep') return <ImageDeepCase />
   if (current === 'input-deep') return <InputDeepCase />
+  if (current === 'badge-deep') return <BadgeDeepCase />
   return <HstackBasicCase />
 }
 
@@ -119,6 +122,10 @@ function GallerySidebar() {
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Input Deep</Text>
       <NavButton label="Search + Input" tag={20} caseId="input-deep" />
+
+      <Divider />
+      <Text className="text-xs text-zinc-500 uppercase">Badge Deep</Text>
+      <NavButton label="All Variants" tag={21} caseId="badge-deep" />
     </VStack>
   )
 }

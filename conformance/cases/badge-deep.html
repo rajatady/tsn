@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; }
+    /* Badge: NSTextField font-size 10, bold, cornerRadius 8, centered text, colored bg */
+    .badge { display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; border-radius: 8px; padding: 2px 8px; white-space: nowrap; text-align: center; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-col gap-3 w-[500px] bg-zinc-900 p-4">
+    <div data-testid="row-blue" class="flex flex-row items-center gap-3 h-[36px]">
+      <div data-testid="label-blue" class="w-[80px] h-[16px] rounded bg-zinc-800 shrink-0"></div>
+      <span data-testid="badge-blue" class="badge" style="background: rgb(0,122,255);">Blue</span>
+    </div>
+    <div data-testid="row-green" class="flex flex-row items-center gap-3 h-[36px]">
+      <div data-testid="label-green" class="w-[80px] h-[16px] rounded bg-zinc-800 shrink-0"></div>
+      <span data-testid="badge-green" class="badge" style="background: rgb(52,199,89);">Green</span>
+    </div>
+    <div data-testid="row-red" class="flex flex-row items-center gap-3 h-[36px]">
+      <div data-testid="label-red" class="w-[80px] h-[16px] rounded bg-zinc-800 shrink-0"></div>
+      <span data-testid="badge-red" class="badge" style="background: rgb(255,59,48);">Red</span>
+    </div>
+    <div data-testid="row-orange" class="flex flex-row items-center gap-3 h-[36px]">
+      <div data-testid="label-orange" class="w-[80px] h-[16px] rounded bg-zinc-800 shrink-0"></div>
+      <span data-testid="badge-orange" class="badge" style="background: rgb(255,149,0);">Orange</span>
+    </div>
+    <div data-testid="row-purple" class="flex flex-row items-center gap-3 h-[36px]">
+      <div data-testid="label-purple" class="w-[80px] h-[16px] rounded bg-zinc-800 shrink-0"></div>
+      <span data-testid="badge-purple" class="badge" style="background: rgb(175,82,222);">Purple</span>
+    </div>
+    <div data-testid="row-pink" class="flex flex-row items-center gap-3 h-[36px]">
+      <div data-testid="label-pink" class="w-[80px] h-[16px] rounded bg-zinc-800 shrink-0"></div>
+      <span data-testid="badge-pink" class="badge" style="background: rgb(255,45,85);">Pink</span>
+    </div>
+    <div data-testid="row-teal" class="flex flex-row items-center gap-3 h-[36px]">
+      <div data-testid="label-teal" class="w-[80px] h-[16px] rounded bg-zinc-800 shrink-0"></div>
+      <span data-testid="badge-teal" class="badge" style="background: rgb(90,200,250);">Teal</span>
+    </div>
+    <div data-testid="row-multi" class="flex flex-row items-center gap-3 h-[36px]">
+      <span data-testid="multi-a" class="badge" style="background: rgb(0,122,255);">Info</span>
+      <span data-testid="multi-b" class="badge" style="background: rgb(52,199,89);">OK</span>
+      <span data-testid="multi-c" class="badge" style="background: rgb(255,59,48);">Error</span>
+    </div>
+  </div>
+</body>
+</html>

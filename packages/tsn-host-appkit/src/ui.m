@@ -391,17 +391,26 @@ void ui_progress_set(UIHandle p, double value) {
 
 /* ─── Badge ──────────────────────────────────────────────────────── */
 UIHandle ui_badge(const char *text, int sc) {
+    /* Wrap text in a padded stack to match CSS padding: 2px 8px */
+    UIStackContainer *wrap = [UIStackContainer new];
+    wrap.direction = 1; /* horizontal — single child, just for padding */
+    wrap.padding_top = 2; wrap.padding_bottom = 2;
+    wrap.padding_left = 8; wrap.padding_right = 8;
+    wrap.wantsLayer = YES;
+    wrap.layer.backgroundColor = system_color(sc).CGColor;
+    wrap.layer.cornerRadius = 8;
+    wrap.layer.masksToBounds = YES;
+
     NSTextField *t = [NSTextField labelWithString:[NSString stringWithUTF8String:text]];
     t.font = [NSFont systemFontOfSize:10 weight:NSFontWeightBold];
     t.textColor = [NSColor whiteColor];
-    t.drawsBackground = YES;
-    t.backgroundColor = system_color(sc);
+    t.drawsBackground = NO;
     t.alignment = NSTextAlignmentCenter;
-    t.wantsLayer = YES;
-    t.layer.cornerRadius = 8;
-    t.layer.masksToBounds = YES;
-    retain_render(t);
-    return (__bridge UIHandle)t;
+    [wrap addSubview:t];
+    [wrap.children addObject:t];
+
+    retain_render(wrap);
+    return (__bridge UIHandle)wrap;
 }
 
 /* ─── Card ───────────────────────────────────────────────────────── */

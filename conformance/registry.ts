@@ -223,6 +223,22 @@ export const geometryCases: GeometryCase[] = [
                'object-cover', 'object-contain', 'items-center', 'flex-1'],
   },
 
+  // ─── Badge Primitive (deep) ──────────────────────────────────────
+  {
+    id: 'badge-deep',
+    label: 'Badge all color variants and multi-badge row',
+    category: 'badge',
+    viewport: { width: 500, height: 400 },
+    testIds: ['root', 'row-blue', 'row-green', 'row-red', 'row-orange',
+              'row-purple', 'row-pink', 'row-teal',
+              'label-blue', 'label-green', 'label-red', 'label-orange',
+              'label-purple', 'label-pink', 'label-teal',
+              'row-multi', 'multi-a', 'multi-b', 'multi-c'],
+    tolerance: { position: 10, size: 8 },
+    features: ['Badge', 'color:blue', 'color:green', 'color:red', 'color:orange',
+               'color:purple', 'color:pink', 'color:teal', 'items-center'],
+  },
+
   // ─── Input Primitives (deep) ────────────────────────────────────
   {
     id: 'input-deep',

@@ -169,9 +169,19 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
             child_flex = sc.flex;
             if (_direction == 1) {
                 cw = (sc.fixed_width > 0) ? sc.fixed_width : (sc.flex > 0 ? 0 : [sc naturalSize].width);
-                ch = (sc.fixed_height > 0) ? sc.fixed_height : avail_h;
+                /* Cross-axis: use natural height when align_items is not stretch */
+                if (sc.fixed_height > 0) ch = sc.fixed_height;
+                else if (_align_items != 3 && sc.flex == 0) {
+                    CGFloat nh = [sc naturalSize].height;
+                    ch = (nh > 0) ? nh : avail_h;
+                } else ch = avail_h;
             } else {
-                cw = (sc.fixed_width > 0) ? sc.fixed_width : avail_w;
+                /* Cross-axis: use natural width when align_items is not stretch */
+                if (sc.fixed_width > 0) cw = sc.fixed_width;
+                else if (_align_items != 3 && sc.flex == 0) {
+                    CGFloat nw = [sc naturalSize].width;
+                    cw = (nw > 0) ? nw : avail_w;
+                } else cw = avail_w;
                 ch = (sc.fixed_height > 0) ? sc.fixed_height : (sc.flex > 0 ? 0 : [sc naturalSize].height);
             }
             cw = clamp_dimension(cw, sc.min_width, sc.max_width);
