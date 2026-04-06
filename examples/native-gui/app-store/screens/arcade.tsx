@@ -80,16 +80,16 @@ function TopStrip() {
   return (
     <HStack className="gap-8">
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[0]} />
-        <AppRow app={apps[3]} />
+        <AppRow app={apps[0]} testId="at-0" />
+        <AppRow app={apps[3]} testId="at-3" />
       </VStack>
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[1]} />
-        <AppRow app={apps[4]} />
+        <AppRow app={apps[1]} testId="at-1" />
+        <AppRow app={apps[4]} testId="at-4" />
       </VStack>
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[2]} />
-        <AppRow app={apps[5]} />
+        <AppRow app={apps[2]} testId="at-2" />
+        <AppRow app={apps[5]} testId="at-5" />
       </VStack>
     </HStack>
   )
@@ -125,19 +125,19 @@ function FameShelf() {
   return (
     <HStack className="gap-8">
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[0]} />
-        <AppRow app={apps[3]} />
-        <AppRow app={apps[6]} />
+        <AppRow app={apps[0]} testId="af-0" />
+        <AppRow app={apps[3]} testId="af-3" />
+        <AppRow app={apps[6]} testId="af-6" />
       </VStack>
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[1]} />
-        <AppRow app={apps[4]} />
-        <AppRow app={apps[7]} />
+        <AppRow app={apps[1]} testId="af-1" />
+        <AppRow app={apps[4]} testId="af-4" />
+        <AppRow app={apps[7]} testId="af-7" />
       </VStack>
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[2]} />
-        <AppRow app={apps[5]} />
-        <AppRow app={apps[8]} />
+        <AppRow app={apps[2]} testId="af-2" />
+        <AppRow app={apps[5]} testId="af-5" />
+        <AppRow app={apps[8]} testId="af-8" />
       </VStack>
     </HStack>
   )
@@ -149,16 +149,16 @@ function NewGamesShelf() {
   return (
     <HStack className="gap-8">
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[0]} />
-        <AppRow app={apps[3]} />
+        <AppRow app={apps[0]} testId="an-0" />
+        <AppRow app={apps[3]} testId="an-3" />
       </VStack>
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[1]} />
-        <AppRow app={apps[4]} />
+        <AppRow app={apps[1]} testId="an-1" />
+        <AppRow app={apps[4]} testId="an-4" />
       </VStack>
       <VStack className="flex-1 gap-4">
-        <AppRow app={apps[2]} />
-        <AppRow app={apps[5]} />
+        <AppRow app={apps[2]} testId="an-2" />
+        <AppRow app={apps[5]} testId="an-5" />
       </VStack>
     </HStack>
   )

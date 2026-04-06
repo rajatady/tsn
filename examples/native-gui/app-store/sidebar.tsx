@@ -41,7 +41,7 @@ function NavItem({ icon, label, route }: NavItemProps) {
 
 export function AppStoreSidebar() {
   return (
-    <VStack testId="sidebar" className="w-[240] gap-2 bg-zinc-900 p-3 rounded-xl">
+    <VStack testId="sidebar" className="w-[240] gap-2 bg-[#1a1a1c] p-3">
       <Search testId="sidebar-search" placeholder="Search" onChange={handleSidebarSearch} className="w-[216]" />
 
       <VStack className="gap-1">

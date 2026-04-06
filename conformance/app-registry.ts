@@ -25,7 +25,7 @@ export const appScreens: AppScreen[] = [
     app: 'app-store',
     buildTarget: 'examples/native-gui/app-store.tsx',
     htmlOracle: 'scratch/app-store-html/discover.html',
-    viewport: { width: 1400, height: 838 },  // window content area (minus title bar)
+    viewport: { width: 1400, height: 836 },  // window content area (900 - 64px title bar)
     testIds: [
       // Sidebar
       'sidebar',

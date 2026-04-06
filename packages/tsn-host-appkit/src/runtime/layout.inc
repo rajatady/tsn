@@ -108,6 +108,103 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
     return apply_stack_constraints(self, NSMakeSize(w, h));
 }
 
+/* Compute height assuming a given available width.
+   Unlike naturalSize, this accounts for flex distribution and aspect ratios.
+   Used by parent VStacks to correctly size HStack/ZStack children. */
+- (CGFloat)heightForWidth:(CGFloat)width {
+    CGFloat inner_w = width - _padding_left - _padding_right;
+    if (inner_w <= 0) return [self naturalSize].height;
+
+    /* ZStack: height from first child with aspect ratio */
+    if (_direction == 2) {
+        for (NSView *child in _children) {
+            CGFloat ah = aspect_height(child, inner_w);
+            if (ah >= 0) return ah + _padding_top + _padding_bottom;
+        }
+        return [self naturalSize].height;
+    }
+
+    /* VStack: sum children heights using width-aware computation */
+    if (_direction == 0) {
+        CGFloat h = _padding_top + _padding_bottom;
+        CGFloat sp = (_children.count > 1) ? (_children.count - 1) * _spacing : 0;
+        h += sp;
+        for (NSView *child in _children) {
+            if ([child isKindOfClass:[UIStackContainer class]]) {
+                UIStackContainer *sc = (UIStackContainer *)child;
+                if (sc.flex > 0) continue;
+                if (sc.fixed_height > 0) { h += sc.fixed_height; continue; }
+                CGFloat ch2 = [sc heightForWidth:inner_w];
+                h += ch2;
+            } else if ([child isKindOfClass:[UISpacer class]]) {
+                /* skip */
+            } else {
+                CGFloat ah = aspect_height(child, inner_w);
+                if (ah >= 0) { h += ah; continue; }
+                if ([child isKindOfClass:[NSTextField class]]) {
+                    NSTextField *field = (NSTextField *)child;
+                    CGFloat fs = field.font.pointSize;
+                    CGFloat cssLH = fs * 1.5;
+                    CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, inner_w, CGFLOAT_MAX)].height;
+                    int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
+                    h += nlines * cssLH;
+                } else {
+                    CGFloat fh = child.frame.size.height;
+                    NSSize intrinsic = child.intrinsicContentSize;
+                    h += (fh > 0) ? fh : (intrinsic.height > 0 ? intrinsic.height : 24);
+                }
+            }
+        }
+        return apply_stack_constraints(self, NSMakeSize(width, h)).height;
+    }
+
+    /* HStack: distribute width among children, return max height */
+    int nflex = 0;
+    CGFloat fixed_w = 0;
+    CGFloat sp = (_children.count > 1) ? (_children.count - 1) * _spacing : 0;
+    for (NSView *child in _children) {
+        if ([child isKindOfClass:[UIStackContainer class]]) {
+            UIStackContainer *sc = (UIStackContainer *)child;
+            if (sc.flex > 0) nflex += sc.flex;
+            else if (sc.fixed_width > 0) fixed_w += sc.fixed_width;
+            else fixed_w += [sc naturalSize].width;
+        } else if ([child isKindOfClass:[UISpacer class]]) {
+            /* skip */
+        } else {
+            CGFloat fw = child.frame.size.width;
+            NSSize intrinsic = child.intrinsicContentSize;
+            fixed_w += (fw > 0) ? fw : (intrinsic.width > 0 ? intrinsic.width : 60);
+        }
+    }
+    CGFloat flex_space = inner_w - fixed_w - sp;
+    if (flex_space < 0) flex_space = 0;
+
+    CGFloat max_h = 0;
+    for (NSView *child in _children) {
+        CGFloat child_h = 0;
+        if ([child isKindOfClass:[UIStackContainer class]]) {
+            UIStackContainer *sc = (UIStackContainer *)child;
+            if (sc.fixed_height > 0) { child_h = sc.fixed_height; }
+            else {
+                CGFloat child_w;
+                if (sc.flex > 0 && nflex > 0) child_w = flex_space * sc.flex / nflex;
+                else if (sc.fixed_width > 0) child_w = sc.fixed_width;
+                else child_w = [sc naturalSize].width;
+                child_h = [sc heightForWidth:child_w];
+            }
+        } else if ([child isKindOfClass:[UISpacer class]]) {
+            /* skip */
+        } else {
+            CGFloat fh = child.frame.size.height;
+            NSSize intrinsic = child.intrinsicContentSize;
+            child_h = (fh > 0) ? fh : (intrinsic.height > 0 ? intrinsic.height : 24);
+        }
+        if (child_h > max_h) max_h = child_h;
+    }
+    CGFloat h = max_h + _padding_top + _padding_bottom;
+    return apply_stack_constraints(self, NSMakeSize(width, h)).height;
+}
+
 - (void)layout {
     [super layout];
     NSRect b = self.bounds;
@@ -116,23 +213,20 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
     CGFloat avail_w = b.size.width - _padding_left - _padding_right;
     CGFloat avail_h = b.size.height - _padding_top - _padding_bottom;
 
-    /* ZStack: all children fill the container, layered on top of each other */
+    /* ZStack: all children fill the container, layered on top of each other.
+       The first child with an aspect ratio determines the container height. */
     if (_direction == 2) {
+        /* First pass: find if any child has an aspect ratio that should set our height */
+        CGFloat zstack_h = avail_h;
         for (NSView *child in _children) {
-            CGFloat cw = avail_w, ch = avail_h;
-            if ([child isKindOfClass:[UIStackContainer class]]) {
-                UIStackContainer *sc = (UIStackContainer *)child;
-                if (sc.fixed_width > 0) cw = sc.fixed_width;
-                if (sc.fixed_height > 0) ch = sc.fixed_height;
-            } else {
-                CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
-                /* For images/views with explicit sizes, respect them */
-                if (fw > 0) cw = fw;
-                if (fh > 0) ch = fh;
-                /* But if no explicit size, fill container */
-                if (fw <= 0) cw = avail_w;
-                if (fh <= 0) ch = avail_h;
-            }
+            CGFloat ah = aspect_height(child, avail_w);
+            if (ah >= 0) { zstack_h = ah; break; }
+        }
+        for (NSView *child in _children) {
+            CGFloat cw = avail_w, ch = zstack_h;
+            /* Apply per-child aspect ratio */
+            CGFloat ah = aspect_height(child, cw);
+            if (ah >= 0) ch = ah;
             child.frame = NSMakeRect(x, y, cw, ch);
             if ([child isKindOfClass:[UIStackContainer class]]) {
                 [(UIStackContainer *)child layout];
@@ -151,9 +245,13 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
             else if (_direction == 0 && sc.fixed_height > 0) fixed_total += sc.fixed_height;
             else if (_direction == 1 && sc.fixed_width > 0) fixed_total += sc.fixed_width;
             else {
-                /* No fixed size, no flex — use natural (content) size */
-                NSSize ns = apply_stack_constraints(sc, [sc naturalSize]);
-                fixed_total += (_direction == 0 ? ns.height : ns.width);
+                /* No fixed size, no flex — use width-aware height for VStack parents */
+                if (_direction == 0) {
+                    fixed_total += [sc heightForWidth:avail_w];
+                } else {
+                    NSSize ns = apply_stack_constraints(sc, [sc naturalSize]);
+                    fixed_total += ns.width;
+                }
             }
         } else if ([child isKindOfClass:[NSVisualEffectView class]]) {
             UIStackContainer *inner = nil;
@@ -177,11 +275,18 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
             CGFloat ah = aspect_height(child, _direction == 0 ? avail_w : 0);
             if (ah >= 0 && _direction == 0) {
                 fixed_total += ah;
+            } else if ([child isKindOfClass:[NSTextField class]] && _direction == 0) {
+                NSTextField *field = (NSTextField *)child;
+                CGFloat fs = field.font.pointSize;
+                CGFloat cssLH = fs * 1.5;
+                CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, avail_w, CGFLOAT_MAX)].height;
+                int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
+                fixed_total += nlines * cssLH;
             } else {
                 NSSize intrinsic = child.intrinsicContentSize;
                 CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
-                if (_direction == 0) fixed_total += (intrinsic.height > 0 ? intrinsic.height : (fh > 0 ? fh : 24));
-                else fixed_total += (intrinsic.width > 0 ? intrinsic.width : (fw > 0 ? fw : 60));
+                if (_direction == 0) fixed_total += (fh > 0 ? fh : (intrinsic.height > 0 ? intrinsic.height : 24));
+                else fixed_total += (fw > 0 ? fw : (intrinsic.width > 0 ? intrinsic.width : 60));
             }
         }
     }
@@ -229,7 +334,7 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                     CGFloat nw = [sc naturalSize].width;
                     cw = (nw > 0) ? nw : avail_w;
                 } else cw = avail_w;
-                ch = (sc.fixed_height > 0) ? sc.fixed_height : (sc.flex > 0 ? 0 : [sc naturalSize].height);
+                ch = (sc.fixed_height > 0) ? sc.fixed_height : (sc.flex > 0 ? 0 : [sc heightForWidth:cw]);
             }
             cw = clamp_dimension(cw, sc.min_width, sc.max_width);
             ch = clamp_dimension(ch, sc.min_height, sc.max_height);
@@ -249,8 +354,13 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                     cw = (frameW > 0) ? frameW : (intrinsic.width > 0 ? intrinsic.width : 60);
                     ch = (frameH > 0) ? frameH : [[field cell] cellSizeForBounds:NSMakeRect(0, 0, cw, CGFLOAT_MAX)].height;
                 } else {
-                    cw = (frameW > 0) ? frameW : avail_w;
-                    ch = (frameH > 0) ? frameH : [[field cell] cellSizeForBounds:NSMakeRect(0, 0, cw, CGFLOAT_MAX)].height;
+                    /* VStack: text fills available width like CSS block elements */
+                    cw = avail_w;
+                    CGFloat fs = field.font.pointSize;
+                    CGFloat cssLH = fs * 1.5;
+                    CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, cw, CGFLOAT_MAX)].height;
+                    int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
+                    ch = nlines * cssLH;
                 }
             } else if (_direction == 1) {
                 cw = (frameW > 0) ? frameW : (intrinsic.width > 0 ? intrinsic.width : 60);
@@ -267,7 +377,16 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
 
         if (child_flex > 0 && nflex > 0) {
             CGFloat portion = flex_space * child_flex / nflex;
-            if (_direction == 0) ch = portion; else cw = portion;
+            if (_direction == 0) ch = portion;
+            else {
+                cw = portion;
+                /* Cross-axis: recompute height for flex children with non-stretch alignment */
+                if (_align_items != 3 && [child isKindOfClass:[UIStackContainer class]]) {
+                    UIStackContainer *fsc = (UIStackContainer *)child;
+                    CGFloat fh = [fsc heightForWidth:cw];
+                    if (fh > 0) ch = fh;
+                }
+            }
             if ([child isKindOfClass:[UIStackContainer class]]) {
                 UIStackContainer *sc = (UIStackContainer *)child;
                 cw = clamp_dimension(cw, sc.min_width, sc.max_width);
@@ -332,7 +451,8 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                         doc.frame = NSMakeRect(0, 0, natural.width > 0 ? natural.width : cw, ch);
                     } else {
                         stack.fixed_width = cw;
-                        doc.frame = NSMakeRect(0, 0, cw, natural.height > 0 ? natural.height : ch);
+                        CGFloat doc_h = [stack heightForWidth:cw];
+                        doc.frame = NSMakeRect(0, 0, cw, doc_h > 0 ? doc_h : ch);
                     }
                 }
             }

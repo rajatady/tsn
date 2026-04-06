@@ -16,16 +16,16 @@ export function DevelopScreen() {
         <SectionHeader title="Essential Apps for Developers" action="See All" route="develop" />
         <HStack className="gap-8">
           <VStack className="flex-1 gap-4">
-            <AppRow app={apps[0]} />
-            <AppRow app={apps[3]} />
+            <AppRow app={apps[0]} testId="dr-0" />
+            <AppRow app={apps[3]} testId="dr-3" />
           </VStack>
           <VStack className="flex-1 gap-4">
-            <AppRow app={apps[1]} />
-            <AppRow app={apps[4]} />
+            <AppRow app={apps[1]} testId="dr-1" />
+            <AppRow app={apps[4]} testId="dr-4" />
           </VStack>
           <VStack className="flex-1 gap-4">
-            <AppRow app={apps[2]} />
-            <AppRow app={apps[5]} />
+            <AppRow app={apps[2]} testId="dr-2" />
+            <AppRow app={apps[5]} testId="dr-5" />
           </VStack>
         </HStack>
         <NativeHud />

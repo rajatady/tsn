@@ -78,16 +78,18 @@ function AppActionButton({ app }: AppActionButtonProps) {
 
 interface AppRowProps {
   app: StoreApp
+  testId: string
 }
 
-export function AppRow({ app }: AppRowProps) {
+export function AppRow({ app, testId }: AppRowProps) {
+  const iconId: string = testId + '-icon'
+
   return (
-    <HStack className="items-center gap-3" onClick={openStoreApp} tag={app.detailTag}>
-      <Image src={app.icon} className="w-[52] h-[52] rounded-xl object-cover" />
+    <HStack testId={testId} className="items-center gap-3 py-3" onClick={openStoreApp} tag={app.detailTag}>
+      <Image testId={iconId} src={app.icon} className="w-[52] h-[52] rounded-xl object-cover" />
       <VStack className="flex-1 gap-0">
-        <Text className="text-xs text-zinc-400">{app.subtitle}</Text>
-        <Text className="text-lg font-bold">{app.title}</Text>
-        <Text className="text-sm text-zinc-400">{app.caption}</Text>
+        <Text className="text-[14] font-medium">{app.title}</Text>
+        <Text className="text-[12] text-white/35">{app.subtitle}</Text>
       </VStack>
       <AppActionButton app={app} />
     </HStack>

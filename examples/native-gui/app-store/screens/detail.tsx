@@ -203,16 +203,16 @@ export function DetailScreen() {
           <SectionHeader title="More From Apple Arcade" action="See All" route="arcade" />
           <HStack className="gap-8">
             <VStack className="flex-1 gap-4">
-              <AppRow app={moreGames[0]} />
-              <AppRow app={moreGames[3]} />
+              <AppRow app={moreGames[0]} testId="dm-0" />
+              <AppRow app={moreGames[3]} testId="dm-3" />
             </VStack>
             <VStack className="flex-1 gap-4">
-              <AppRow app={moreGames[1]} />
-              <AppRow app={moreGames[4]} />
+              <AppRow app={moreGames[1]} testId="dm-1" />
+              <AppRow app={moreGames[4]} testId="dm-4" />
             </VStack>
             <VStack className="flex-1 gap-4">
-              <AppRow app={moreGames[2]} />
-              <AppRow app={moreGames[5]} />
+              <AppRow app={moreGames[2]} testId="dm-2" />
+              <AppRow app={moreGames[5]} testId="dm-5" />
             </VStack>
           </HStack>
         </VStack>

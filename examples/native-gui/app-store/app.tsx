@@ -17,9 +17,9 @@ export function App() {
 
   return (
     <Window title="App Store" width={1400} height={900} dark subtitle="Apple Arcade">
-      <HStack className="flex-1 gap-3 bg-black p-2">
+      <HStack className="flex-1 gap-0 bg-black">
         <AppStoreSidebar />
-        <VStack className="flex-1 gap-0 bg-zinc-900 rounded-xl">
+        <VStack className="flex-1 gap-0 bg-[#161617]">
           {content}
         </VStack>
       </HStack>

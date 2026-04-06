@@ -267,6 +267,14 @@ UIHandle ui_text(const char *content, int size, bool bold) {
     t.maximumNumberOfLines = 0;
     [t setUsesSingleLineMode:NO];
     [[t cell] setWraps:YES];
+    /* Default line-height 1.5 to match Tailwind preflight (html { line-height: 1.5 }) */
+    CGFloat lh = size * 1.5;
+    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:t.attributedStringValue];
+    NSMutableParagraphStyle *pstyle = [NSMutableParagraphStyle new];
+    pstyle.minimumLineHeight = lh;
+    pstyle.maximumLineHeight = lh;
+    [attrStr addAttribute:NSParagraphStyleAttributeName value:pstyle range:NSMakeRange(0, attrStr.length)];
+    t.attributedStringValue = attrStr;
     [t sizeToFit];
     retain_render(t);
     return (__bridge UIHandle)t;
@@ -359,8 +367,14 @@ void ui_text_set_transform(UIHandle t, int xform) {
     NSView *view = (__bridge NSView *)t;
     if (![view isKindOfClass:[NSTextField class]]) return;
     NSTextField *field = (NSTextField *)view;
-    if (xform == 1) field.stringValue = [field.stringValue uppercaseString];
-    else if (xform == 2) field.stringValue = [field.stringValue lowercaseString];
+    /* Preserve paragraph style (line-height) when transforming text */
+    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
+    NSString *transformed = [attrStr string];
+    if (xform == 1) transformed = [transformed uppercaseString];
+    else if (xform == 2) transformed = [transformed lowercaseString];
+    else return;
+    NSDictionary *attrs = attrStr.length > 0 ? [attrStr attributesAtIndex:0 effectiveRange:NULL] : @{};
+    field.attributedStringValue = [[NSAttributedString alloc] initWithString:transformed attributes:attrs];
     [field sizeToFit];
 }
 
