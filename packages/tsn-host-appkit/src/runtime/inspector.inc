@@ -404,7 +404,7 @@ static NSString *handle_command(NSString *cmd) {
     }
 
     if ([cmd hasPrefix:@"find "]) {
-        NSString *query = [cmd substringFromIndex:5];
+        NSString *query = [[cmd substringFromIndex:5] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\"'"]];
         if (!g_inspect_window) return @"No window\n";
         __block NSMutableString *out = [NSMutableString new];
         dispatch_sync(dispatch_get_main_queue(), ^{
@@ -425,8 +425,163 @@ static NSString *handle_command(NSString *cmd) {
         return result;
     }
 
+    /* ── Scroll commands ─────────────────────────────────────────── */
+
+    /* Helper: find deepest vertical NSScrollView in view hierarchy */
+    static NSScrollView *(^findMainScrollView)(NSView *) = ^NSScrollView *(NSView *root) {
+        /* BFS for the largest vertical scroll view (the main content scroller) */
+        NSScrollView *best = nil;
+        CGFloat bestArea = 0;
+        NSMutableArray *queue = [NSMutableArray arrayWithObject:root];
+        while (queue.count > 0) {
+            NSView *v = queue[0]; [queue removeObjectAtIndex:0];
+            if ([v isKindOfClass:[NSScrollView class]]) {
+                NSScrollView *sv = (NSScrollView *)v;
+                if (sv.hasVerticalScroller || !sv.hasHorizontalScroller) {
+                    CGFloat area = sv.frame.size.width * sv.frame.size.height;
+                    if (area > bestArea) { best = sv; bestArea = area; }
+                }
+            }
+            for (NSView *sub in v.subviews) [queue addObject:sub];
+            if ([v isKindOfClass:[UIStackContainer class]])
+                for (NSView *c in ((UIStackContainer *)v).children) [queue addObject:c];
+        }
+        return best;
+    };
+
+    if ([cmd hasPrefix:@"scroll "]) {
+        NSString *args = [cmd substringFromIndex:7];
+        NSArray *parts = [args componentsSeparatedByString:@" "];
+        int ticks = [parts[0] intValue];
+        /* If first arg is a number, scroll main scroll view. If it's an ID, scroll that element's ancestor. */
+        BOOL isNumber = ticks != 0 || [parts[0] isEqualToString:@"0"];
+        NSString *eid = isNumber ? nil : parts[0];
+        if (!isNumber && parts.count > 1) ticks = [parts[1] intValue];
+        if (isNumber && ticks == 0) ticks = 1;
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            NSScrollView *sv = nil;
+            if (eid) {
+                NSView *view = g_element_ids[eid];
+                if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+                NSView *walk = view;
+                while (walk) {
+                    if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                    walk = walk.superview;
+                }
+            } else {
+                sv = findMainScrollView(g_inspect_window.contentView);
+            }
+            if (!sv) { result = @"No scroll view found\n"; return; }
+            NSClipView *clip = sv.contentView;
+            NSPoint origin = clip.bounds.origin;
+            CGFloat tickSize = 80.0;
+            CGFloat newY = origin.y + ticks * tickSize;
+            CGFloat maxY = sv.documentView.frame.size.height - clip.bounds.size.height;
+            if (newY < 0) newY = 0;
+            if (maxY > 0 && newY > maxY) newY = maxY;
+            [clip scrollToPoint:NSMakePoint(origin.x, newY)];
+            [sv reflectScrolledClipView:clip];
+            result = [NSString stringWithFormat:@"Scrolled to y=%.0f (ticks=%d)\n", newY, ticks];
+        });
+        return result;
+    }
+
+    if ([cmd hasPrefix:@"scrollto "]) {
+        NSString *args = [cmd substringFromIndex:9];
+        NSArray *parts = [args componentsSeparatedByString:@" "];
+        NSString *eid = parts[0];
+        CGFloat margin = parts.count > 1 ? [parts[1] doubleValue] : 0;
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            NSView *view = g_element_ids[eid];
+            if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+            NSScrollView *sv = nil;
+            NSView *walk = view.superview;
+            while (walk) {
+                if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                walk = walk.superview;
+            }
+            if (!sv) { result = @"No scroll view ancestor found\n"; return; }
+            /* Convert element frame to document view coordinates */
+            NSRect viewRect = [view convertRect:view.bounds toView:sv.documentView];
+            /* Flip Y for flipped document views */
+            CGFloat targetY = viewRect.origin.y - margin;
+            if (targetY < 0) targetY = 0;
+            CGFloat maxY = sv.documentView.frame.size.height - sv.contentView.bounds.size.height;
+            if (targetY > maxY) targetY = maxY;
+            [sv.contentView scrollToPoint:NSMakePoint(0, targetY)];
+            [sv reflectScrolledClipView:sv.contentView];
+            result = [NSString stringWithFormat:@"Scrolled to %@ at y=%.0f (margin=%.0f)\n", eid, targetY, margin];
+        });
+        return result;
+    }
+
+    if ([cmd isEqualToString:@"scrolltop"] || [cmd hasPrefix:@"scrolltop "]) {
+        NSString *eid = cmd.length > 10 ? [cmd substringFromIndex:10] : nil;
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            NSScrollView *sv = nil;
+            if (eid.length > 0) {
+                NSView *view = g_element_ids[eid];
+                if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+                NSView *walk = view;
+                while (walk) {
+                    if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                    walk = walk.superview;
+                }
+            } else {
+                sv = findMainScrollView(g_inspect_window.contentView);
+            }
+            if (!sv) { result = @"No scroll view found\n"; return; }
+            [sv.contentView scrollToPoint:NSMakePoint(0, 0)];
+            [sv reflectScrolledClipView:sv.contentView];
+            result = @"Scrolled to top\n";
+        });
+        return result;
+    }
+
+    if ([cmd isEqualToString:@"scrollbottom"] || [cmd hasPrefix:@"scrollbottom "]) {
+        NSString *eid = cmd.length > 13 ? [cmd substringFromIndex:13] : nil;
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            NSScrollView *sv = nil;
+            if (eid.length > 0) {
+                NSView *view = g_element_ids[eid];
+                if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+                NSView *walk = view;
+                while (walk) {
+                    if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                    walk = walk.superview;
+                }
+            } else {
+                sv = findMainScrollView(g_inspect_window.contentView);
+            }
+            if (!sv) { result = @"No scroll view found\n"; return; }
+            CGFloat maxY = sv.documentView.frame.size.height - sv.contentView.bounds.size.height;
+            if (maxY < 0) maxY = 0;
+            [sv.contentView scrollToPoint:NSMakePoint(0, maxY)];
+            [sv reflectScrolledClipView:sv.contentView];
+            result = [NSString stringWithFormat:@"Scrolled to bottom (y=%.0f)\n", maxY];
+        });
+        return result;
+    }
+
     if ([cmd isEqualToString:@"help"]) {
-        return @"Commands:\n  tree              — dump view hierarchy\n  screenshot        — save /tmp/strictts-screenshot.png\n  click <label>     — click button containing label\n  clickid <id>      — click element by inspector id\n  type <text>       — type into first search field\n  typeid <id> <txt> — type into specific input by inspector id\n  find <text>       — find elements containing text\n  get <id> [prop]   — get element property (frame/text/value/placeholder/indeterminate/rows/columns/hidden/children/flex/type)\n  help              — this message\n";
+        return @"Commands:\n"
+               "  tree                  — dump view hierarchy\n"
+               "  screenshot            — save /tmp/strictts-screenshot.png\n"
+               "  click <label>         — click button containing label\n"
+               "  clickid <id>          — click element by inspector id\n"
+               "  type <text>           — type into first search field\n"
+               "  typeid <id> <txt>     — type into specific input by inspector id\n"
+               "  find <text>           — find elements containing text\n"
+               "  get <id> [prop]       — get element property\n"
+               "  scroll <id> <ticks>   — scroll by ticks (80px each, negative=up)\n"
+               "  scrollto <id> [margin]— scroll element to top of scroll view\n"
+               "  scrolltop <id>        — scroll to top\n"
+               "  scrollbottom <id>     — scroll to bottom\n"
+               "  help                  — this message\n";
     }
 
     return [NSString stringWithFormat:@"Unknown command: %@\nType 'help' for usage.\n", cmd];
