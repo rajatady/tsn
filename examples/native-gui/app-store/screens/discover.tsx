@@ -12,15 +12,15 @@ import {
 
 function DiscoverHero() {
   return (
-    <Card className="rounded-2xl bg-zinc-800">
-      <HStack className="gap-7 p-6">
+    <Card className="rounded-2xl bg-zinc-800 shadow-lg">
+      <HStack className="items-center gap-7 p-6">
         <VStack className="max-w-[280] gap-2">
-          <Text className="text-xs text-zinc-400">TRY SOMETHING NEW</Text>
-          <Text className="text-4xl font-bold">Indispensable affordable apps</Text>
+          <Text className="text-xs text-zinc-400 uppercase tracking-wide">Try Something New</Text>
+          <Text className="text-4xl font-bold tracking-tight leading-tight">Indispensable affordable apps</Text>
           <Text className="text-base text-zinc-400">Simple but super-useful apps that won't break the bank.</Text>
         </VStack>
         <Spacer />
-        <Image src="examples/native-gui/app-store/assets/develop-spotlight.png" className="w-[610] h-[296] rounded-2xl" />
+        <Image src="examples/native-gui/app-store/assets/develop-spotlight.png" className="w-[610] h-[296] rounded-2xl object-cover" />
       </HStack>
     </Card>
   )
@@ -32,37 +32,37 @@ function DiscoverFeatureRail() {
   return (
     <Scroll className="h-[210] overflow-x-auto">
       <HStack className="gap-4">
-        <Card className="w-[470] rounded-2xl bg-zinc-800">
-          <HStack className="gap-5 p-5">
+        <Card className="w-[470] rounded-2xl bg-zinc-800 shadow-lg">
+          <HStack className="items-center gap-5 p-5">
             <VStack className="max-w-[230] gap-2">
               <Text className="text-xs text-zinc-400">{cards[0].eyebrow}</Text>
-              <Text className="text-3xl font-bold">{cards[0].title}</Text>
+              <Text className="text-3xl font-bold tracking-tight leading-tight">{cards[0].title}</Text>
               <Text className="text-base text-zinc-400">{cards[0].subtitle}</Text>
             </VStack>
             <Spacer />
-            <Image src={cards[0].image} className="w-[120] h-[120] rounded-full" />
+            <Image src={cards[0].image} className="w-[120] h-[120] rounded-full object-cover" />
           </HStack>
         </Card>
-        <Card className="w-[470] rounded-2xl bg-zinc-800">
-          <HStack className="gap-5 p-5">
+        <Card className="w-[470] rounded-2xl bg-zinc-800 shadow-lg">
+          <HStack className="items-center gap-5 p-5">
             <VStack className="max-w-[230] gap-2">
               <Text className="text-xs text-zinc-400">{cards[1].eyebrow}</Text>
-              <Text className="text-3xl font-bold">{cards[1].title}</Text>
+              <Text className="text-3xl font-bold tracking-tight leading-tight">{cards[1].title}</Text>
               <Text className="text-base text-zinc-400">{cards[1].subtitle}</Text>
             </VStack>
             <Spacer />
-            <Image src={cards[1].image} className="w-[120] h-[120] rounded-full" />
+            <Image src={cards[1].image} className="w-[120] h-[120] rounded-full object-cover" />
           </HStack>
         </Card>
-        <Card className="w-[470] rounded-2xl bg-zinc-800">
-          <HStack className="gap-5 p-5">
+        <Card className="w-[470] rounded-2xl bg-zinc-800 shadow-lg">
+          <HStack className="items-center gap-5 p-5">
             <VStack className="max-w-[230] gap-2">
               <Text className="text-xs text-zinc-400">{cards[2].eyebrow}</Text>
-              <Text className="text-3xl font-bold">{cards[2].title}</Text>
+              <Text className="text-3xl font-bold tracking-tight leading-tight">{cards[2].title}</Text>
               <Text className="text-base text-zinc-400">{cards[2].subtitle}</Text>
             </VStack>
             <Spacer />
-            <Image src={cards[2].image} className="w-[120] h-[120] rounded-full" />
+            <Image src={cards[2].image} className="w-[120] h-[120] rounded-full object-cover" />
           </HStack>
         </Card>
       </HStack>
@@ -109,19 +109,19 @@ function LatestGamesRail() {
     <Scroll className="h-[308] overflow-x-auto">
       <HStack className="gap-4">
         <VStack className="w-[356] gap-2">
-          <Image src={cards[0].image} className="w-[356] h-[200] rounded-2xl" />
+          <Image src={cards[0].image} className="w-[356] h-[200] rounded-2xl object-cover" />
           <Text className="text-xs text-zinc-400">{cards[0].eyebrow}</Text>
           <Text className="text-2xl font-bold">{cards[0].title}</Text>
           <Text className="text-base text-zinc-400">{cards[0].subtitle}</Text>
         </VStack>
         <VStack className="w-[356] gap-2">
-          <Image src={cards[1].image} className="w-[356] h-[200] rounded-2xl" />
+          <Image src={cards[1].image} className="w-[356] h-[200] rounded-2xl object-cover" />
           <Text className="text-xs text-zinc-400">{cards[1].eyebrow}</Text>
           <Text className="text-2xl font-bold">{cards[1].title}</Text>
           <Text className="text-base text-zinc-400">{cards[1].subtitle}</Text>
         </VStack>
         <VStack className="w-[356] gap-2">
-          <Image src={cards[2].image} className="w-[356] h-[200] rounded-2xl" />
+          <Image src={cards[2].image} className="w-[356] h-[200] rounded-2xl object-cover" />
           <Text className="text-xs text-zinc-400">{cards[2].eyebrow}</Text>
           <Text className="text-2xl font-bold">{cards[2].title}</Text>
           <Text className="text-base text-zinc-400">{cards[2].subtitle}</Text>

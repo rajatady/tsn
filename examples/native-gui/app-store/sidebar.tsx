@@ -60,9 +60,9 @@ export function AppStoreSidebar() {
 
       <Spacer />
 
-      <Card className="rounded-xl">
-        <HStack className="gap-3">
-          <Card className="rounded-full bg-zinc-700">
+      <Card className="rounded-xl shadow-lg">
+        <HStack className="items-center gap-3">
+          <Card className="w-[32] h-[32] rounded-full bg-zinc-700 items-center justify-center">
             <Text className="text-sm font-bold">KR</Text>
           </Card>
           <Text className="text-sm font-bold">Kumar Divya Rajat</Text>

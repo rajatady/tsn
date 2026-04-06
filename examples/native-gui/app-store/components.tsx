@@ -27,8 +27,8 @@ export function SectionHeader({ title, action, route }: SectionHeaderProps) {
 
   if (route === 'develop') {
     return (
-      <HStack className="gap-3">
-        <Text className="text-2xl font-bold">{title}</Text>
+      <HStack className="items-center gap-3">
+        <Text className="text-2xl font-bold tracking-tight">{title}</Text>
         <Spacer />
         <Button variant="link" onClick={() => navigate('develop')}>{action}</Button>
       </HStack>
@@ -37,8 +37,8 @@ export function SectionHeader({ title, action, route }: SectionHeaderProps) {
 
   if (route === 'play') {
     return (
-      <HStack className="gap-3">
-        <Text className="text-2xl font-bold">{title}</Text>
+      <HStack className="items-center gap-3">
+        <Text className="text-2xl font-bold tracking-tight">{title}</Text>
         <Spacer />
         <Button variant="link" onClick={() => navigate('play')}>{action}</Button>
       </HStack>
@@ -47,8 +47,8 @@ export function SectionHeader({ title, action, route }: SectionHeaderProps) {
 
   if (route === 'discover') {
     return (
-      <HStack className="gap-3">
-        <Text className="text-2xl font-bold">{title}</Text>
+      <HStack className="items-center gap-3">
+        <Text className="text-2xl font-bold tracking-tight">{title}</Text>
         <Spacer />
         <Button variant="link" onClick={() => navigate('discover')}>{action}</Button>
       </HStack>
@@ -82,8 +82,8 @@ interface AppRowProps {
 
 export function AppRow({ app }: AppRowProps) {
   return (
-    <HStack className="gap-3" onClick={openStoreApp} tag={app.detailTag}>
-      <Image src={app.icon} className="w-[52] h-[52] rounded-xl" />
+    <HStack className="items-center gap-3" onClick={openStoreApp} tag={app.detailTag}>
+      <Image src={app.icon} className="w-[52] h-[52] rounded-xl object-cover" />
       <VStack className="flex-1 gap-0">
         <Text className="text-xs text-zinc-400">{app.subtitle}</Text>
         <Text className="text-lg font-bold">{app.title}</Text>
@@ -100,8 +100,8 @@ interface RankedAppRowProps {
 
 export function RankedAppRow({ item }: RankedAppRowProps) {
   return (
-    <HStack className="gap-4" onClick={openStoreApp} tag={item.app.detailTag}>
-      <Image src={item.app.icon} className="w-[54] h-[54] rounded-xl" />
+    <HStack className="items-center gap-4" onClick={openStoreApp} tag={item.app.detailTag}>
+      <Image src={item.app.icon} className="w-[54] h-[54] rounded-xl object-cover" />
       <Text className="text-2xl font-bold">{item.rank}</Text>
       <VStack className="flex-1 gap-0">
         <Text className="text-xs text-zinc-400">{item.app.subtitle}</Text>
@@ -120,7 +120,7 @@ interface PerkCardProps {
 export function PerkCardView({ perk }: PerkCardProps) {
   return (
     <VStack className="gap-2">
-      <Image src={perk.image} className="w-[240] h-[145] rounded-xl" />
+      <Image src={perk.image} className="w-[240] h-[145] rounded-xl object-cover" />
       <Text className="text-base font-bold">{perk.title}</Text>
       <Text className="text-sm text-zinc-400">{perk.subtitle}</Text>
     </VStack>
@@ -134,7 +134,7 @@ interface CategoryTileProps {
 export function CategoryTile({ card }: CategoryTileProps) {
   return (
     <VStack className="gap-2">
-      <Image src={card.image} className="w-[250] h-[138] rounded-xl" />
+      <Image src={card.image} className="w-[250] h-[138] rounded-xl object-cover" />
       <Text className="text-lg font-bold">{card.title}</Text>
     </VStack>
   )
@@ -155,10 +155,10 @@ export function EditorialCardView({ card, large }: EditorialCardProps) {
   if (large) {
     return (
       <VStack className="gap-3">
-        <Image src={card.image} className="w-[520] h-[320] rounded-xl" />
+        <Image src={card.image} className="w-[520] h-[320] rounded-xl object-cover" />
         <VStack className="gap-0">
-          <Text className="text-xs text-zinc-400">{card.eyebrow}</Text>
-          <Text className="text-xl font-bold">{card.title}</Text>
+          <Text className="text-xs text-zinc-400 uppercase tracking-wide">{card.eyebrow}</Text>
+          <Text className="text-xl font-bold leading-tight">{card.title}</Text>
           <Text className="text-sm text-zinc-400">{card.subtitle}</Text>
         </VStack>
         {openStory}
@@ -168,10 +168,10 @@ export function EditorialCardView({ card, large }: EditorialCardProps) {
 
   return (
     <VStack className="gap-3">
-      <Image src={card.image} className="w-[348] h-[220] rounded-xl" />
+      <Image src={card.image} className="w-[348] h-[220] rounded-xl object-cover" />
       <VStack className="gap-0">
-        <Text className="text-xs text-zinc-400">{card.eyebrow}</Text>
-        <Text className="text-xl font-bold">{card.title}</Text>
+        <Text className="text-xs text-zinc-400 uppercase tracking-wide">{card.eyebrow}</Text>
+        <Text className="text-xl font-bold leading-tight">{card.title}</Text>
         <Text className="text-sm text-zinc-400">{card.subtitle}</Text>
       </VStack>
       {openStory}
@@ -201,9 +201,9 @@ interface ReviewCardProps {
 
 export function ReviewCardView({ review }: ReviewCardProps) {
   return (
-    <Card className="rounded-xl">
+    <Card className="rounded-xl shadow-lg">
       <VStack className="gap-2">
-        <HStack className="gap-3">
+        <HStack className="items-center gap-3">
           <VStack className="flex-1 gap-0">
             <Text className="text-lg font-bold">{review.title}</Text>
             <Text className="text-sm text-zinc-400">{review.age}</Text>
@@ -232,11 +232,11 @@ export function InfoPairView({ item }: InfoPairProps) {
 
 export function NativeHud() {
   return (
-    <Card className="rounded-xl">
+    <Card className="rounded-xl shadow-lg">
       <VStack className="gap-2">
-        <Text className="text-xs text-zinc-400">STRICTTS NATIVE</Text>
+        <Text className="text-xs text-zinc-400 uppercase tracking-wide">StrictTS Native</Text>
         <Text className="text-sm font-bold">Hooks, router, images</Text>
-        <HStack className="gap-2">
+        <HStack className="items-center gap-2">
           <Button variant="chip">C runtime</Button>
           <Button variant="chip">AppKit</Button>
           <Button variant="chip">TSX</Button>

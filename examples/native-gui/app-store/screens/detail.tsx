@@ -15,11 +15,11 @@ function DetailTopBar() {
   const app: StoreApp = storeAppFromId(selectedAppId)
 
   return (
-    <HStack className="gap-3">
+    <HStack className="items-center gap-3">
       <Button variant="ghost" icon="chevron.left" onClick={goBackToStorefront}>Back</Button>
       <Spacer />
-      <HStack className="gap-2">
-        <Image src={app.icon} className="w-[22] h-[22] rounded-lg" />
+      <HStack className="items-center gap-2">
+        <Image src={app.icon} className="w-[22] h-[22] rounded-lg object-cover" />
         <Text className="text-base font-bold">{app.title}</Text>
       </HStack>
       <Spacer />
@@ -35,12 +35,12 @@ function DetailSummary() {
   const detail: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
-    <Card className="rounded-xl">
-      <HStack className="gap-5">
-        <Image src={app.icon} className="w-[104] h-[104] rounded-2xl" />
+    <Card className="rounded-xl shadow-lg">
+      <HStack className="items-center gap-5">
+        <Image src={app.icon} className="w-[104] h-[104] rounded-2xl object-cover" />
         <VStack className="flex-1 gap-1">
           <Text className="text-xs text-zinc-400">{app.subtitle}</Text>
-          <Text className="text-4xl font-bold">{app.title}</Text>
+          <Text className="text-4xl font-bold tracking-tight">{app.title}</Text>
           <Text className="text-lg text-zinc-400">{app.caption}</Text>
         </VStack>
         <VStack className="gap-3">
@@ -57,8 +57,8 @@ function MetricStrip() {
   const game: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
-    <Card className="rounded-xl">
-      <HStack className="gap-8">
+    <Card className="rounded-xl shadow-lg">
+      <HStack className="items-center gap-8">
         <MetricStat eyebrow="10 RATINGS" value={game.rating} subtitle="out of 5" />
         <MetricStat eyebrow="AGES" value="4+" subtitle="Years" />
         <MetricStat eyebrow="CATEGORY" value={game.genre} subtitle="Arcade" />
@@ -73,7 +73,7 @@ function MetricStrip() {
 
 function PlatformRow() {
   return (
-    <HStack className="gap-3">
+    <HStack className="items-center gap-3">
       <Symbol name="desktopcomputer" size={14} color="secondary" />
       <Symbol name="ipad" size={14} color="secondary" />
       <Symbol name="iphone" size={14} color="secondary" />
@@ -163,11 +163,11 @@ export function DetailScreen() {
       <VStack className="gap-8 p-4">
         <DetailTopBar />
         <DetailSummary />
-        <Image src={game.hero} className="w-[1110] h-[400] rounded-xl" />
+        <Image src={game.hero} className="w-[1110] h-[400] rounded-xl object-cover" />
         <MetricStrip />
         <HStack className="gap-4">
-          <Image src={game.screenOne} className="w-[548] h-[300] rounded-xl" />
-          <Image src={game.screenTwo} className="w-[548] h-[300] rounded-xl" />
+          <Image src={game.screenOne} className="w-[548] h-[300] rounded-xl object-cover" />
+          <Image src={game.screenTwo} className="w-[548] h-[300] rounded-xl object-cover" />
         </HStack>
         <PlatformRow />
         <AboutBlock />

@@ -27,7 +27,7 @@ function TopRail() {
   const [currentRoute, navigate] = useRoute('discover')
 
   return (
-    <HStack className="gap-3">
+    <HStack className="items-center gap-3">
       <Text className="text-xl font-bold">Apple Arcade</Text>
       <Text className="text-sm text-zinc-400">1 month free, then Rs. 99.00/month.</Text>
       <Spacer />
@@ -42,15 +42,15 @@ function Hero() {
   const [currentRoute, navigate] = useRoute('discover')
 
   return (
-    <Card className="rounded-xl">
+    <Card className="rounded-xl shadow-lg">
       <VStack className="gap-4">
-        <Image src={arcadeHeroImage} className="w-[1110] h-[490] rounded-xl" />
+        <Image src={arcadeHeroImage} className="w-[1110] h-[490] rounded-xl object-cover" />
         <VStack className="gap-1">
-          <Text className="text-xs text-zinc-400">Apple Arcade</Text>
-          <Text className="text-4xl font-bold">No In-App Purchases. No Ads. Just Fun.</Text>
+          <Text className="text-xs text-zinc-400 uppercase tracking-wide">Apple Arcade</Text>
+          <Text className="text-4xl font-bold tracking-tight leading-tight">No In-App Purchases. No Ads. Just Fun.</Text>
           <Text className="text-sm text-zinc-400">A native AppKit storefront rebuilt to match the App Store cadence instead of wrapping screenshots.</Text>
         </VStack>
-        <HStack className="gap-3">
+        <HStack className="items-center gap-3">
           <Button variant="primary" onClick={openStoreApp} tag={1}>Accept Offer</Button>
           <Text className="text-sm text-zinc-400">1 month free, then Rs. 99.00/month.</Text>
         </HStack>
@@ -63,7 +63,7 @@ function ChipRow() {
   const chips: string[] = arcadeChipList()
 
   return (
-    <HStack className="gap-2">
+    <HStack className="items-center gap-2">
       {chips.map(chip => {
         if (chip === 'All Games') {
           return <Button variant="primary">{chip}</Button>
