@@ -9,7 +9,7 @@
  *   npx tsx compiler/inspect.ts type <text>              — type into search field
  *   npx tsx compiler/inspect.ts typeid <id> <text>       — type into a specific input
  *   npx tsx compiler/inspect.ts find <text>              — find elements containing text
- *   npx tsx compiler/inspect.ts get <id> [prop]          — get element property
+ *   npx tsx compiler/inspect.ts get <id> [prop]          — get frame/text/value/placeholder/indeterminate/rows/columns/hidden/children/flex/type
  *   npx tsx compiler/inspect.ts --app dashboard tree     — target a specific running app
  */
 

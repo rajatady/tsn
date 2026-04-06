@@ -259,7 +259,28 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
             return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
         if ([view isKindOfClass:[NSSearchField class]])
             return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
+        if ([view isKindOfClass:[NSProgressIndicator class]]) {
+            NSProgressIndicator *pi = (NSProgressIndicator *)view;
+            if (pi.indeterminate) return @"indeterminate\n";
+            return [NSString stringWithFormat:@"%.2f\n", pi.doubleValue];
+        }
         return @"(no value)\n";
+    }
+    if ([prop isEqualToString:@"placeholder"]) {
+        if ([view isKindOfClass:[NSTextField class]]) {
+            NSString *placeholder = ((NSTextField *)view).placeholderString ?: @"";
+            return [NSString stringWithFormat:@"%@\n", placeholder];
+        }
+        if ([view isKindOfClass:[NSSearchField class]]) {
+            NSString *placeholder = ((NSSearchField *)view).placeholderString ?: @"";
+            return [NSString stringWithFormat:@"%@\n", placeholder];
+        }
+        return @"(no placeholder)\n";
+    }
+    if ([prop isEqualToString:@"indeterminate"]) {
+        if ([view isKindOfClass:[NSProgressIndicator class]])
+            return ((NSProgressIndicator *)view).indeterminate ? @"true\n" : @"false\n";
+        return @"false\n";
     }
     if ([prop isEqualToString:@"hidden"]) return view.isHidden ? @"true\n" : @"false\n";
     if ([prop isEqualToString:@"children"]) {
@@ -268,6 +289,26 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
             return [NSString stringWithFormat:@"%d children\n", count];
         }
         return [NSString stringWithFormat:@"%d subviews\n", (int)view.subviews.count];
+    }
+    if ([prop isEqualToString:@"rows"]) {
+        if ([view isKindOfClass:[NSScrollView class]]) {
+            NSView *document = ((NSScrollView *)view).documentView;
+            if ([document isKindOfClass:[NSTableView class]])
+                return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)document).numberOfRows];
+        }
+        if ([view isKindOfClass:[NSTableView class]])
+            return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)view).numberOfRows];
+        return @"0\n";
+    }
+    if ([prop isEqualToString:@"columns"]) {
+        if ([view isKindOfClass:[NSScrollView class]]) {
+            NSView *document = ((NSScrollView *)view).documentView;
+            if ([document isKindOfClass:[NSTableView class]])
+                return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)document).tableColumns.count];
+        }
+        if ([view isKindOfClass:[NSTableView class]])
+            return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)view).tableColumns.count];
+        return @"0\n";
     }
     if ([prop isEqualToString:@"flex"]) {
         if ([view isKindOfClass:[UIStackContainer class]])
@@ -372,7 +413,7 @@ static NSString *handle_command(NSString *cmd) {
     }
 
     if ([cmd isEqualToString:@"help"]) {
-        return @"Commands:\n  tree              — dump view hierarchy\n  screenshot        — save /tmp/strictts-screenshot.png\n  click <label>     — click button containing label\n  clickid <id>      — click element by inspector id\n  type <text>       — type into first search field\n  typeid <id> <txt> — type into specific input by inspector id\n  find <text>       — find elements containing text\n  get <id> [prop]   — get element property (frame/text/value/hidden/children/flex/type)\n  help              — this message\n";
+        return @"Commands:\n  tree              — dump view hierarchy\n  screenshot        — save /tmp/strictts-screenshot.png\n  click <label>     — click button containing label\n  clickid <id>      — click element by inspector id\n  type <text>       — type into first search field\n  typeid <id> <txt> — type into specific input by inspector id\n  find <text>       — find elements containing text\n  get <id> [prop]   — get element property (frame/text/value/placeholder/indeterminate/rows/columns/hidden/children/flex/type)\n  help              — this message\n";
     }
 
     return [NSString stringWithFormat:@"Unknown command: %@\nType 'help' for usage.\n", cmd];

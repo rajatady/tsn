@@ -20,6 +20,11 @@ export function MediaConformanceScreen() {
         <Image testId="media.icon.3" src={iconRuralLife} className="w-[64] h-[64] rounded-xl" />
       </HStack>
 
+      <HStack testId="media.avatar.row" className="gap-4">
+        <Image testId="media.avatar" src={iconHelloKitty} className="w-[96] h-[96] rounded-full" />
+        <Image testId="media.poster" src={iconDredge} className="w-[120] h-[120] rounded-2xl" />
+      </HStack>
+
       <HStack testId="media.screens.row" className="gap-4">
         <Image testId="media.screen.1" src={ruralScreenOneImage} className="w-[530] h-[300] rounded-2xl" />
         <Image testId="media.screen.2" src={ruralScreenTwoImage} className="w-[530] h-[300] rounded-2xl" />

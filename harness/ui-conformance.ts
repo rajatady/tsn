@@ -3,10 +3,11 @@ import { execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
+import { performance } from 'node:perf_hooks'
 
 import { assertExpectation } from '../packages/tsn-testing/src/index.js'
 import type { ConformanceAction, ConformanceCase, ConformanceSuite } from '../packages/tsn-testing/src/spec.js'
-import { assertUiConformanceCoverage } from '../conformance/ui/coverage.js'
+import { assertUiConformanceCoverage, summarizeUiConformanceCoverage } from '../conformance/ui/coverage.js'
 import { uiConformanceSuites } from '../conformance/ui/specs/registry.js'
 
 const root = '/Users/kumardivyarajat/WebstormProjects/bun-vite/vite'
@@ -126,6 +127,7 @@ async function getPropAsync(id: string, prop: string): Promise<string> {
 }
 
 async function runCase(suite: ConformanceSuite, testCase: ConformanceCase): Promise<void> {
+  const startedAt = performance.now()
   await resetCaseState()
 
   let i = 0
@@ -149,6 +151,17 @@ async function runCase(suite: ConformanceSuite, testCase: ConformanceCase): Prom
     assert.ok(shot.includes('Screenshot saved:'), `Expected screenshot output for ${prefix}, got: ${shot}`)
     copyLatestScreenshot(path.join(artifactRoot, `${prefix}.png`))
   }
+
+  const durationMs = Math.round(performance.now() - startedAt)
+  fs.writeFileSync(path.join(artifactRoot, `${prefix}.meta.json`), JSON.stringify({
+    suite: suite.id,
+    case: testCase.id,
+    label: testCase.label,
+    durationMs,
+    actions: testCase.actions.length,
+    expectations: testCase.expects.length,
+    coverage: testCase.coverage ?? [],
+  }, null, 2))
 }
 
 async function assertExpectationAsync(expectation: ConformanceCase['expects'][number], tree: string): Promise<void> {
@@ -169,6 +182,7 @@ async function assertExpectationAsync(expectation: ConformanceCase['expects'][nu
 }
 
 async function main(): Promise<void> {
+  const runStartedAt = performance.now()
   fs.rmSync(artifactRoot, { recursive: true, force: true })
   fs.mkdirSync(artifactRoot, { recursive: true })
 
@@ -187,9 +201,11 @@ async function main(): Promise<void> {
 
     const suites = uiConformanceSuites()
     assertUiConformanceCoverage(suites)
+    const suiteSummaries: { id: string, label: string, caseCount: number, durationMs: number }[] = []
     let i = 0
     while (i < suites.length) {
       const suite = suites[i]
+      const suiteStartedAt = performance.now()
       await selectSuite(suite)
       await captureArtifact(suite.artifactPrefix)
 
@@ -198,8 +214,40 @@ async function main(): Promise<void> {
         await runCase(suite, suite.cases[j])
         j = j + 1
       }
+      suiteSummaries.push({
+        id: suite.id,
+        label: suite.label,
+        caseCount: suite.cases.length,
+        durationMs: Math.round(performance.now() - suiteStartedAt),
+      })
       i = i + 1
     }
+
+    const coverageSummary = summarizeUiConformanceCoverage(suites)
+    const totalDurationMs = Math.round(performance.now() - runStartedAt)
+    fs.writeFileSync(path.join(artifactRoot, 'summary.json'), JSON.stringify({
+      totalDurationMs,
+      suiteCount: suites.length,
+      caseCount: coverageSummary.caseCount,
+      primitiveCount: coverageSummary.primitiveCount,
+      suites: suiteSummaries,
+      coverage: coverageSummary.primitives,
+    }, null, 2))
+
+    let summaryText = `UI conformance: ${coverageSummary.caseCount} cases, ${coverageSummary.primitiveCount} primitives, ${totalDurationMs}ms\n`
+    let k = 0
+    while (k < suiteSummaries.length) {
+      summaryText += `${suiteSummaries[k].id}: ${suiteSummaries[k].caseCount} cases, ${suiteSummaries[k].durationMs}ms\n`
+      k = k + 1
+    }
+    summaryText += '\nPrimitive coverage:\n'
+    let m = 0
+    while (m < coverageSummary.primitives.length) {
+      const primitive = coverageSummary.primitives[m]
+      summaryText += `${primitive.primitive}: props=${primitive.properties.join(',') || '-'} states=${primitive.states.join(',') || '-'} cases=${primitive.cases.length}\n`
+      m = m + 1
+    }
+    fs.writeFileSync(path.join(artifactRoot, 'summary.txt'), summaryText)
 
     console.log(`UI conformance artifacts saved to ${artifactRoot}`)
   } finally {

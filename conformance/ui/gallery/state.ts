@@ -69,6 +69,18 @@ export function onConformanceAction(tag: number): void {
   }
   if (tag === 105) {
     setLastAction('button-icon')
+    return
+  }
+  if (tag === 106) {
+    setLastAction('button-chip')
+    return
+  }
+  if (tag === 107) {
+    setLastAction('button-sidebar')
+    return
+  }
+  if (tag === 108) {
+    setLastAction('button-sidebar-active')
   }
 }
 
@@ -92,8 +104,4 @@ export function conformanceTableCell(row: number, col: number): string {
   if (col === 1) return 'Table Conformance'
   if (col === 2) return 'Stable'
   return ''
-}
-
-export function conformanceTableRows(): number {
-  return 3
 }

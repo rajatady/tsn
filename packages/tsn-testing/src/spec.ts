@@ -29,6 +29,12 @@ export type ConformanceExpectation =
   | FrameExpectation
   | TreeExpectation
 
+export interface PrimitiveCoverage {
+  primitive: string
+  properties: string[]
+  states?: string[]
+}
+
 export interface ConformanceActionClickById {
   kind: string
   id: string
@@ -55,6 +61,7 @@ export interface ConformanceCase {
   label: string
   actions: ConformanceAction[]
   expects: ConformanceExpectation[]
+  coverage?: PrimitiveCoverage[]
 }
 
 export interface ConformanceSuite {

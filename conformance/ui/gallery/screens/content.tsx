@@ -30,6 +30,17 @@ export function ContentConformanceScreen() {
           </HStack>
         </VStack>
       </Card>
+
+      <Card className="rounded-2xl bg-zinc-800">
+        <VStack className="gap-4 p-5">
+          <Text className="text-xs text-zinc-400">SHELL BUTTONS</Text>
+          <HStack testId="content.buttons.shell-row" className="gap-3">
+            <Button testId="content.button.chip" variant="chip" onClick={onConformanceAction} tag={106}>Chip</Button>
+            <Button testId="content.button.sidebar" variant="sidebar" icon="sidebar.left" onClick={onConformanceAction} tag={107}>Sidebar</Button>
+            <Button testId="content.button.sidebar-active" variant="sidebar-active" icon="sidebar.left" onClick={onConformanceAction} tag={108}>Sidebar Active</Button>
+          </HStack>
+        </VStack>
+      </Card>
     </VStack>
   )
 }

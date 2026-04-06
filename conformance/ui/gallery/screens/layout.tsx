@@ -56,9 +56,30 @@ export function LayoutConformanceScreen() {
         </VStack>
       </Card>
 
+      <HStack testId="layout.fixed.row" className="gap-4">
+        <Card testId="layout.fixed.card.1" className="w-[180] rounded-2xl bg-zinc-800">
+          <VStack className="gap-2 p-4">
+            <Text className="text-xs text-zinc-400">FIXED 180</Text>
+            <Text className="text-sm font-bold">Exact width case</Text>
+          </VStack>
+        </Card>
+        <Card testId="layout.fixed.card.2" className="w-[240] rounded-2xl bg-zinc-800">
+          <VStack className="gap-2 p-4">
+            <Text className="text-xs text-zinc-400">FIXED 240</Text>
+            <Text className="text-sm font-bold">Exact width case</Text>
+          </VStack>
+        </Card>
+        <Card testId="layout.fixed.card.3" className="w-[300] rounded-2xl bg-zinc-800">
+          <VStack className="gap-2 p-4">
+            <Text className="text-xs text-zinc-400">FIXED 300</Text>
+            <Text className="text-sm font-bold">Exact width case</Text>
+          </VStack>
+        </Card>
+      </HStack>
+
       <VStack testId="layout.footer-case" className="rounded-2xl bg-zinc-800 p-4 gap-4 h-[520]">
         <Text className="text-xs text-zinc-400">SIDEBAR FOOTER CASE</Text>
-        <Card className="rounded-xl bg-zinc-900">
+        <Card testId="layout.top-card" className="rounded-xl bg-zinc-900">
           <Text className="text-sm font-bold">Pinned top content</Text>
         </Card>
         <Spacer testId="layout.spacer" />

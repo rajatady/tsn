@@ -1,4 +1,4 @@
-import { incrementConformanceCounter, conformanceTableCell, conformanceTableRows } from '../state'
+import { incrementConformanceCounter, conformanceTableCell } from '../state'
 
 export function DataConformanceScreen() {
   return (
@@ -23,7 +23,7 @@ export function DataConformanceScreen() {
               { id: 'kind', title: 'Kind', width: 220 },
               { id: 'status', title: 'Status', width: 180 },
             ]}
-            rows={conformanceTableRows()}
+            rows={3}
             rowHeight={28}
             alternating
             cellFn={conformanceTableCell}
