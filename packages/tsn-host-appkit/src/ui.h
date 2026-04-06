@@ -28,6 +28,7 @@ UIHandle    ui_vstack(void);
 UIHandle    ui_hstack(void);
 UIHandle    ui_zstack(void);
 void        ui_set_clip(UIHandle v, int clip);
+void        ui_set_aspect(UIHandle v, int w, int h);
 void        ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
                             double r2, double g2, double b2, double a2, int direction);
 void        ui_set_padding(UIHandle v, int top, int right, int bottom, int left);

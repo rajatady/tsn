@@ -128,10 +128,24 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       continue
     }
 
-    // Text size
+    // Aspect ratio: aspect-[W/H] → emit ui_set_aspect(handle, W, H)
+    const aspectMatch = cls.match(/^aspect-\[(\d+)\/(\d+)\]$/)
+    if (aspectMatch) {
+      result.calls.push(`ui_set_aspect(${handle}, ${aspectMatch[1]}, ${aspectMatch[2]});`)
+      continue
+    }
+
+    // Text size (scale)
     const textMatch = cls.match(/^text-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl)$/)
     if (textMatch && textMatch[1] in TEXT_SIZES) {
       result.textSize = TEXT_SIZES[textMatch[1]]
+      continue
+    }
+
+    // Text size (arbitrary): text-[N] → font size N px
+    const textArbitrary = cls.match(/^text-\[(\d+)\]$/)
+    if (textArbitrary) {
+      result.textSize = parseInt(textArbitrary[1])
       continue
     }
 

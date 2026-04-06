@@ -8,6 +8,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
+#import <objc/runtime.h>
 #include <dlfcn.h>
 #include "ui.h"
 #include "runtime.h"

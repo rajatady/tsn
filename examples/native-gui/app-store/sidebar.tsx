@@ -41,8 +41,8 @@ function NavItem({ icon, label, route }: NavItemProps) {
 
 export function AppStoreSidebar() {
   return (
-    <VStack className="w-[184] gap-2 bg-zinc-900 p-3 rounded-xl">
-      <Search placeholder="Search" onChange={handleSidebarSearch} className="w-[156]" />
+    <VStack testId="sidebar" className="w-[240] gap-2 bg-zinc-900 p-3 rounded-xl">
+      <Search testId="sidebar-search" placeholder="Search" onChange={handleSidebarSearch} className="w-[216]" />
 
       <VStack className="gap-1">
         <NavItem icon="sparkle.magnifyingglass" label="Discover" route="discover" />

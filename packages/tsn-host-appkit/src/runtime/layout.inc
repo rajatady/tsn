@@ -2,6 +2,18 @@
 @interface UISpacer : NSView @end
 @implementation UISpacer @end
 
+/* ─── Aspect Ratio ──────────────────────────────────────────────── */
+
+static char kAspectRatioKey;
+
+static CGFloat aspect_height(NSView *view, CGFloat width) {
+    NSValue *val = objc_getAssociatedObject(view, &kAspectRatioKey);
+    if (!val) return -1;
+    NSSize ratio = [val sizeValue];
+    if (ratio.width <= 0) return -1;
+    return width * ratio.height / ratio.width;
+}
+
 /* ─── Stack Layout View ──────────────────────────────────────────── */
 
 @interface UIStackContainer : NSView
@@ -161,10 +173,16 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
             if (_direction == 0 && fh > 0) fixed_total += fh;
             else if (_direction == 1 && fw > 0) fixed_total += fw;
         } else {
-            NSSize intrinsic = child.intrinsicContentSize;
-            CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
-            if (_direction == 0) fixed_total += (intrinsic.height > 0 ? intrinsic.height : (fh > 0 ? fh : 24));
-            else fixed_total += (intrinsic.width > 0 ? intrinsic.width : (fw > 0 ? fw : 60));
+            /* Check aspect ratio first */
+            CGFloat ah = aspect_height(child, _direction == 0 ? avail_w : 0);
+            if (ah >= 0 && _direction == 0) {
+                fixed_total += ah;
+            } else {
+                NSSize intrinsic = child.intrinsicContentSize;
+                CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
+                if (_direction == 0) fixed_total += (intrinsic.height > 0 ? intrinsic.height : (fh > 0 ? fh : 24));
+                else fixed_total += (intrinsic.width > 0 ? intrinsic.width : (fw > 0 ? fw : 60));
+            }
         }
     }
     CGFloat spacing_total = (_children.count > 1) ? (_children.count - 1) * _spacing : 0;
@@ -242,6 +260,10 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                 ch = (frameH > 0) ? frameH : (intrinsic.height > 0 ? intrinsic.height : 24);
             }
         }
+
+        /* Aspect ratio: if set, override height based on computed width */
+        CGFloat ah = aspect_height(child, cw);
+        if (ah >= 0) ch = ah;
 
         if (child_flex > 0 && nflex > 0) {
             CGFloat portion = flex_space * child_flex / nflex;
@@ -345,6 +367,12 @@ UIHandle ui_zstack(void) {
     s.layer.masksToBounds = YES;
     retain_render(s);
     return (__bridge UIHandle)s;
+}
+
+void ui_set_aspect(UIHandle v, int w, int h) {
+    NSView *view = (__bridge NSView *)v;
+    NSValue *val = [NSValue valueWithSize:NSMakeSize(w, h)];
+    objc_setAssociatedObject(view, &kAspectRatioKey, val, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 void ui_set_clip(UIHandle v, int clip) {
