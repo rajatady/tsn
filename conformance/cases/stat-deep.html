@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; }
+    /* UIStatView: 160×80 intrinsic, rounded bg, accent bar, value+label */
+    .stat {
+      position: relative;
+      width: 160px;
+      height: 80px;
+      background: rgb(31,31,31);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .stat-bar {
+      position: absolute;
+      left: 0; top: 0;
+      width: 3px;
+      height: 100%;
+      border-radius: 1.5px;
+    }
+    .stat-value {
+      position: absolute;
+      left: 14px; top: 14px;
+      font-size: 28px;
+      font-weight: 700;
+      color: rgb(242,242,242);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label {
+      position: absolute;
+      left: 14px; top: 52px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgb(128,128,128);
+    }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-col gap-4 w-[560px] bg-zinc-900 p-4">
+    <div data-testid="row-colors" class="flex flex-row gap-3">
+      <div data-testid="stat-blue" class="stat">
+        <div class="stat-bar" style="background: rgb(0,122,255);"></div>
+        <span class="stat-value">1,284</span>
+        <span class="stat-label">Users</span>
+      </div>
+      <div data-testid="stat-green" class="stat">
+        <div class="stat-bar" style="background: rgb(52,199,89);"></div>
+        <span class="stat-value">98.2%</span>
+        <span class="stat-label">Uptime</span>
+      </div>
+      <div data-testid="stat-red" class="stat">
+        <div class="stat-bar" style="background: rgb(255,59,48);"></div>
+        <span class="stat-value">12</span>
+        <span class="stat-label">Errors</span>
+      </div>
+    </div>
+    <div data-testid="row-more" class="flex flex-row gap-3">
+      <div data-testid="stat-orange" class="stat">
+        <div class="stat-bar" style="background: rgb(255,149,0);"></div>
+        <span class="stat-value">47ms</span>
+        <span class="stat-label">Latency</span>
+      </div>
+      <div data-testid="stat-purple" class="stat">
+        <div class="stat-bar" style="background: rgb(175,82,222);"></div>
+        <span class="stat-value">3.2k</span>
+        <span class="stat-label">Events</span>
+      </div>
+      <div data-testid="stat-teal" class="stat">
+        <div class="stat-bar" style="background: rgb(90,200,250);"></div>
+        <span class="stat-value">512</span>
+        <span class="stat-label">Active</span>
+      </div>
+    </div>
+    <div data-testid="row-single" class="flex flex-row items-center gap-3">
+      <div data-testid="stat-solo" class="stat shrink-0">
+        <div class="stat-bar" style="background: rgb(0,122,255);"></div>
+        <span class="stat-value">42</span>
+        <span class="stat-label">Answer</span>
+      </div>
+      <div data-testid="filler" class="flex-1 h-[80px] rounded-xl bg-zinc-800"></div>
+    </div>
+  </div>
+</body>
+</html>

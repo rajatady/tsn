@@ -223,6 +223,20 @@ export const geometryCases: GeometryCase[] = [
                'object-cover', 'object-contain', 'items-center', 'flex-1'],
   },
 
+  // ─── Stat Primitive (deep) ───────────────────────────────────────
+  {
+    id: 'stat-deep',
+    label: 'Stat cards with value/label/color variants',
+    category: 'stat',
+    viewport: { width: 560, height: 300 },
+    testIds: ['root', 'row-colors', 'stat-blue', 'stat-green', 'stat-red',
+              'row-more', 'stat-orange', 'stat-purple', 'stat-teal',
+              'row-single', 'stat-solo', 'filler'],
+    tolerance: { position: 4, size: 4 },
+    features: ['Stat', 'value', 'label', 'color:blue', 'color:green', 'color:red',
+               'color:orange', 'color:purple', 'color:teal', 'items-center'],
+  },
+
   // ─── Badge Primitive (deep) ──────────────────────────────────────
   {
     id: 'badge-deep',
