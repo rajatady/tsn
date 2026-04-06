@@ -175,6 +175,22 @@ export const geometryCases: GeometryCase[] = [
                'leading-tight', 'leading-relaxed', 'p-5', 'p-6', 'px-4', 'py-3',
                'gap-2', 'gap-3', 'gap-0', 'items-center', 'rounded-full'],
   },
+
+  // ─── Button Primitive (deep) ────────────────────────────────────
+  {
+    id: 'button-variants',
+    label: 'All 8 button style variants in rows',
+    category: 'button',
+    viewport: { width: 500, height: 500 },
+    testIds: ['root', 'row-default', 'row-primary', 'row-destructive', 'row-ghost',
+              'row-get', 'row-chip', 'row-sidebar', 'row-sidebar-active',
+              'label-default', 'label-primary', 'label-destructive', 'label-ghost',
+              'label-get', 'label-chip', 'label-sidebar', 'label-sidebar-active'],
+    tolerance: { position: 4, size: 8 },
+    features: ['Button', 'variant:default', 'variant:primary', 'variant:destructive',
+               'variant:ghost', 'variant:get', 'variant:chip', 'variant:sidebar', 'variant:sidebar-active',
+               'items-center'],
+  },
 ]
 
 export function caseById(id: string): GeometryCase {

@@ -18,6 +18,7 @@ import { TextWeightsCase } from '../cases/text-weights'
 import { TextLineheightCase } from '../cases/text-lineheight'
 import { TextAlignTransformCase } from '../cases/text-align-transform'
 import { TextInCardCase } from '../cases/text-in-card'
+import { ButtonVariantsCase } from '../cases/button-variants'
 
 function onCaseClick(tag: number): void {
   const cases: string[] = [
@@ -25,6 +26,7 @@ function onCaseClick(tag: number): void {
     'flex-grow', 'spacer', 'fixed-sizes', 'nested-stacks',
     'max-width', 'app-row', 'stat-row', 'sidebar-shell',
     'text-sizes', 'text-weights', 'text-lineheight', 'text-align-transform', 'text-in-card',
+    'button-variants',
   ]
   const [_current, setCurrent] = useStore<string>('gallery:case', 'hstack-basic')
   if (tag >= 0 && tag < cases.length) {
@@ -50,6 +52,7 @@ function CaseContent() {
   if (current === 'text-lineheight') return <TextLineheightCase />
   if (current === 'text-align-transform') return <TextAlignTransformCase />
   if (current === 'text-in-card') return <TextInCardCase />
+  if (current === 'button-variants') return <ButtonVariantsCase />
   return <HstackBasicCase />
 }
 
@@ -94,6 +97,10 @@ function GallerySidebar() {
       <NavButton label="Line Height" tag={14} caseId="text-lineheight" />
       <NavButton label="Align + Transform" tag={15} caseId="text-align-transform" />
       <NavButton label="Text in Card" tag={16} caseId="text-in-card" />
+
+      <Divider />
+      <Text className="text-xs text-zinc-500 uppercase">Button Deep</Text>
+      <NavButton label="All Variants" tag={17} caseId="button-variants" />
     </VStack>
   )
 }

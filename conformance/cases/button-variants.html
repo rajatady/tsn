@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; }
+    /* Approximate NSButton heights — native buttons are 28-32px tall depending on style */
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: 28px; font-size: 13px; font-weight: 600; padding: 0 12px; border-radius: 6px; white-space: nowrap; }
+    .btn-default { background: rgb(41,41,43); color: rgb(235,235,235); }
+    .btn-primary { background: rgb(0,122,255); color: white; border-radius: 999px; padding: 0 20px; }
+    .btn-destructive { background: rgb(255,59,48); color: white; border-radius: 999px; padding: 0 16px; }
+    .btn-ghost { background: transparent; color: rgb(0,122,255); padding: 0 6px; border-radius: 0; }
+    .btn-get { background: white; color: rgb(59,110,245); border-radius: 999px; padding: 0 16px; }
+    .btn-chip { background: rgb(64,64,64); color: rgb(235,235,235); border-radius: 999px; padding: 0 12px; }
+    .btn-sidebar { background: transparent; color: rgb(224,224,224); text-align: left; justify-content: flex-start; padding: 0 12px; border-radius: 12px; font-weight: 500; }
+    .btn-sidebar-active { background: rgb(56,56,56); color: rgb(0,122,255); text-align: left; justify-content: flex-start; padding: 0 12px; border-radius: 12px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-col gap-3 w-[500px] bg-zinc-900 p-4">
+    <div data-testid="row-default" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-default" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-default" class="btn btn-default">Default</div>
+    </div>
+    <div data-testid="row-primary" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-primary" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-primary" class="btn btn-primary">Primary</div>
+    </div>
+    <div data-testid="row-destructive" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-destructive" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-destructive" class="btn btn-destructive">Delete</div>
+    </div>
+    <div data-testid="row-ghost" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-ghost" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-ghost" class="btn btn-ghost">Ghost</div>
+    </div>
+    <div data-testid="row-get" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-get" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-get" class="btn btn-get">Get</div>
+    </div>
+    <div data-testid="row-chip" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-chip" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-chip" class="btn btn-chip">Chip</div>
+    </div>
+    <div data-testid="row-sidebar" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-sidebar" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-sidebar" class="btn btn-sidebar">Sidebar</div>
+    </div>
+    <div data-testid="row-sidebar-active" class="flex flex-row items-center gap-3 h-[44px]">
+      <div data-testid="label-sidebar-active" class="w-[100px] h-[20px] rounded bg-zinc-800 shrink-0"></div>
+      <div data-testid="btn-sidebar-active" class="btn btn-sidebar-active">Active</div>
+    </div>
+  </div>
+</body>
+</html>
