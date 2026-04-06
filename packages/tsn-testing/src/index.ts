@@ -9,5 +9,6 @@ export function serializeLayoutGolden(node: LayoutSnapshotNode): string {
   return snapshotLayout(node)
 }
 
+export * from './spec.js'
+export * from './inspector.js'
 export * from './layout.js'
-export * from './gallery.js'

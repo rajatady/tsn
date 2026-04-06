@@ -180,14 +180,20 @@ typedef struct { char label[64]; double value; NSColor * __unsafe_unretained col
 
 /* ─── Search Field Delegate ──────────────────────────────────────── */
 
-@interface UISearchDelegate : NSObject <NSSearchFieldDelegate>
+@interface UISearchDelegate : NSObject <NSControlTextEditingDelegate>
 @property (nonatomic) UITextChangedFn callback;
 @end
 
 @implementation UISearchDelegate
 - (void)controlTextDidChange:(NSNotification *)n {
-    NSSearchField *f = n.object;
-    if (_callback) _callback(f.stringValue.UTF8String);
+    NSControl *control = n.object;
+    if ([control isKindOfClass:[NSSearchField class]]) {
+        if (_callback) _callback(((NSSearchField *)control).stringValue.UTF8String);
+        return;
+    }
+    if ([control isKindOfClass:[NSTextField class]]) {
+        if (_callback) _callback(((NSTextField *)control).stringValue.UTF8String);
+    }
 }
 @end
 

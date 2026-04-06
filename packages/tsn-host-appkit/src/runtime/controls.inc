@@ -66,7 +66,7 @@ void ui_on_text_changed(UIHandle field, UITextChangedFn fn) {
     if ([(__bridge NSView *)field isKindOfClass:[NSSearchField class]])
         ((NSSearchField *)(__bridge NSView *)field).delegate = d;
     else if ([(__bridge NSView *)field isKindOfClass:[NSTextField class]])
-        /* TODO: NSTextField delegate */;
+        ((NSTextField *)(__bridge NSView *)field).delegate = d;
 }
 
 void ui_text_input_set_value(UIHandle field, const char *text) {

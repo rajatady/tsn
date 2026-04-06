@@ -144,6 +144,8 @@ export class JsxEmitter {
     const create = (call: string) => {
       push(`UIHandle ${handle} = ${call};`)
       push(`ui_set_id(${handle}, "${handle}");`)
+      const testId = this.propsUtil.propCStr(props, 'testId')
+      if (testId) push(`ui_set_id(${handle}, ${testId});`)
     }
 
     switch (tag) {

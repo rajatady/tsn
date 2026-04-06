@@ -5,7 +5,9 @@
  *   npx tsx compiler/inspect.ts tree                     — dump view hierarchy
  *   npx tsx compiler/inspect.ts screenshot               — save screenshot to /tmp
  *   npx tsx compiler/inspect.ts click <label>            — click a button
+ *   npx tsx compiler/inspect.ts clickid <id>             — click a specific element
  *   npx tsx compiler/inspect.ts type <text>              — type into search field
+ *   npx tsx compiler/inspect.ts typeid <id> <text>       — type into a specific input
  *   npx tsx compiler/inspect.ts find <text>              — find elements containing text
  *   npx tsx compiler/inspect.ts get <id> [prop]          — get element property
  *   npx tsx compiler/inspect.ts --app dashboard tree     — target a specific running app

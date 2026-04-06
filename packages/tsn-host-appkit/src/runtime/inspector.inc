@@ -120,6 +120,32 @@ static NSString *click_button(NSString *label, NSView *view) {
     return nil;
 }
 
+static NSString *click_element(NSString *element_id) {
+    NSView *view = g_element_ids[element_id];
+    if (!view) return [NSString stringWithFormat:@"Element not found: %@", element_id];
+
+    if ([view isKindOfClass:[NSButton class]]) {
+        NSButton *btn = (NSButton *)view;
+        [btn performClick:nil];
+        return [NSString stringWithFormat:@"Clicked: %@", btn.title];
+    }
+
+    NSArray<NSGestureRecognizer *> *gestures = view.gestureRecognizers;
+    for (NSGestureRecognizer *gesture in gestures) {
+        id target = gesture.target;
+        SEL action = gesture.action;
+        if (target && action && [target respondsToSelector:action]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            [target performSelector:action withObject:gesture];
+#pragma clang diagnostic pop
+            return [NSString stringWithFormat:@"Clicked: %@", element_id];
+        }
+    }
+
+    return [NSString stringWithFormat:@"Element not clickable: %@", element_id];
+}
+
 static NSString *type_text(NSString *text, NSView *view) {
     if ([view isKindOfClass:[NSSearchField class]]) {
         NSSearchField *f = (NSSearchField *)view;
@@ -141,6 +167,33 @@ static NSString *type_text(NSString *text, NSView *view) {
         if (r) return r;
     }
     return nil;
+}
+
+static NSString *type_text_into(NSString *element_id, NSString *text) {
+    NSView *view = g_element_ids[element_id];
+    if (!view) return [NSString stringWithFormat:@"Element not found: %@", element_id];
+
+    if ([view isKindOfClass:[NSSearchField class]]) {
+        NSSearchField *f = (NSSearchField *)view;
+        f.stringValue = text;
+        NSNotification *n = [NSNotification notificationWithName:NSControlTextDidChangeNotification
+                                                          object:f];
+        if (f.delegate && [f.delegate respondsToSelector:@selector(controlTextDidChange:)])
+            [f.delegate controlTextDidChange:n];
+        return [NSString stringWithFormat:@"Typed into %@: %@", element_id, text];
+    }
+
+    if ([view isKindOfClass:[NSTextField class]]) {
+        NSTextField *f = (NSTextField *)view;
+        f.stringValue = text;
+        NSNotification *n = [NSNotification notificationWithName:NSControlTextDidChangeNotification
+                                                          object:f];
+        if (f.delegate && [f.delegate respondsToSelector:@selector(controlTextDidChange:)])
+            [f.delegate controlTextDidChange:n];
+        return [NSString stringWithFormat:@"Typed into %@: %@", element_id, text];
+    }
+
+    return [NSString stringWithFormat:@"Element is not text input: %@", element_id];
 }
 
 void ui_set_id(UIHandle v, const char *element_id) {
@@ -197,7 +250,16 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
             return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
         if ([view isKindOfClass:[NSButton class]])
             return [NSString stringWithFormat:@"%@\n", ((NSButton *)view).title];
+        if ([view isKindOfClass:[NSSearchField class]])
+            return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
         return @"(no text)\n";
+    }
+    if ([prop isEqualToString:@"value"]) {
+        if ([view isKindOfClass:[NSTextField class]])
+            return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
+        if ([view isKindOfClass:[NSSearchField class]])
+            return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
+        return @"(no value)\n";
     }
     if ([prop isEqualToString:@"hidden"]) return view.isHidden ? @"true\n" : @"false\n";
     if ([prop isEqualToString:@"children"]) {
@@ -253,6 +315,16 @@ static NSString *handle_command(NSString *cmd) {
         return result ?: [NSString stringWithFormat:@"Button not found: %@", label];
     }
 
+    if ([cmd hasPrefix:@"clickid "]) {
+        NSString *element_id = [cmd substringFromIndex:8];
+        if (!g_inspect_window) return @"No window\n";
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            result = click_element(element_id);
+        });
+        return result ?: [NSString stringWithFormat:@"Element not found: %@", element_id];
+    }
+
     if ([cmd hasPrefix:@"type "]) {
         NSString *text = [cmd substringFromIndex:5];
         if (!g_inspect_window) return @"No window\n";
@@ -261,6 +333,20 @@ static NSString *handle_command(NSString *cmd) {
             result = type_text(text, g_inspect_window.contentView);
         });
         return result ?: @"No search field found";
+    }
+
+    if ([cmd hasPrefix:@"typeid "]) {
+        NSString *args = [cmd substringFromIndex:7];
+        NSRange firstSpace = [args rangeOfString:@" "];
+        if (firstSpace.location == NSNotFound) return @"Usage: typeid <id> <text>\n";
+        NSString *element_id = [args substringToIndex:firstSpace.location];
+        NSString *text = [args substringFromIndex:firstSpace.location + 1];
+        if (!g_inspect_window) return @"No window\n";
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            result = type_text_into(element_id, text);
+        });
+        return result ?: [NSString stringWithFormat:@"Input not found: %@", element_id];
     }
 
     if ([cmd hasPrefix:@"find "]) {
@@ -286,7 +372,7 @@ static NSString *handle_command(NSString *cmd) {
     }
 
     if ([cmd isEqualToString:@"help"]) {
-        return @"Commands:\n  tree          — dump view hierarchy\n  screenshot    — save /tmp/strictts-screenshot.png\n  click <label> — click button containing label\n  type <text>   — type into search field\n  find <text>   — find elements containing text\n  get <id> [prop] — get element property (frame/text/hidden/children/flex/type)\n  help          — this message\n";
+        return @"Commands:\n  tree              — dump view hierarchy\n  screenshot        — save /tmp/strictts-screenshot.png\n  click <label>     — click button containing label\n  clickid <id>      — click element by inspector id\n  type <text>       — type into first search field\n  typeid <id> <txt> — type into specific input by inspector id\n  find <text>       — find elements containing text\n  get <id> [prop]   — get element property (frame/text/value/hidden/children/flex/type)\n  help              — this message\n";
     }
 
     return [NSString stringWithFormat:@"Unknown command: %@\nType 'help' for usage.\n", cmd];

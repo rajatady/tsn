@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
+import net from 'node:net'
 import path from 'node:path'
 
-import { gallerySuites } from '../examples/native-gui/ui-gallery/registry.js'
+import { assertExpectation } from '../packages/tsn-testing/src/index.js'
+import type { ConformanceAction, ConformanceCase, ConformanceSuite } from '../packages/tsn-testing/src/spec.js'
+import { assertUiConformanceCoverage } from '../conformance/ui/coverage.js'
+import { uiConformanceSuites } from '../conformance/ui/specs/registry.js'
 
 const root = '/Users/kumardivyarajat/WebstormProjects/bun-vite/vite'
 const artifactRoot = '/tmp/tsn-ui-conformance'
 const inspectApp = 'ui-gallery'
+const inspectSocket = `/tmp/strictts-inspect-${inspectApp}.sock`
+const captureCaseScreenshots = process.env.UI_CONFORMANCE_CASE_SCREENSHOTS === '1'
 
 function runCommand(file: string, args: string[]): string {
   return execFileSync(file, args, {
@@ -17,8 +23,27 @@ function runCommand(file: string, args: string[]): string {
   })
 }
 
-function inspect(args: string[]): string {
-  return runCommand('npx', ['tsx', 'compiler/inspect.ts', '--app', inspectApp, ...args]).trim()
+async function inspect(args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const client = net.createConnection(inspectSocket)
+    const chunks: Buffer[] = []
+
+    client.on('connect', () => {
+      client.write(args.join(' '))
+    })
+
+    client.on('data', (chunk) => {
+      chunks.push(chunk)
+    })
+
+    client.on('end', () => {
+      resolve(Buffer.concat(chunks).toString('utf8').trim())
+    })
+
+    client.on('error', (err) => {
+      reject(err)
+    })
+  })
 }
 
 function sleep(ms: number): Promise<void> {
@@ -27,13 +52,13 @@ function sleep(ms: number): Promise<void> {
 
 async function waitForInspector(): Promise<void> {
   let attempt = 0
-  while (attempt < 30) {
+  while (attempt < 40) {
     try {
-      const tree = inspect(['tree'])
+      const tree = await inspect(['tree'])
       if (tree.includes('Window "UI Gallery"')) return
     } catch (_err) {
     }
-    attempt += 1
+    attempt = attempt + 1
     await sleep(250)
   }
   throw new Error('UI Gallery inspector did not become ready in time')
@@ -47,27 +72,110 @@ function copyLatestScreenshot(targetPath: string): void {
   fs.copyFileSync(source, targetPath)
 }
 
-async function captureSuite(label: string, prefix: string): Promise<void> {
-  const clickResult = inspect(['click', label])
-  assert.ok(clickResult.includes('Clicked:'), `Expected click result for ${label}, got: ${clickResult}`)
-  await sleep(200)
-
-  const tree = inspect(['tree'])
+async function captureArtifact(prefix: string): Promise<void> {
+  const tree = await inspect(['tree'])
   fs.writeFileSync(path.join(artifactRoot, `${prefix}.tree.txt`), tree)
 
-  const shot = inspect(['screenshot'])
-  assert.ok(shot.includes('Screenshot saved:'), `Expected screenshot output for ${label}, got: ${shot}`)
+  const shot = await inspect(['screenshot'])
+  assert.ok(shot.includes('Screenshot saved:'), `Expected screenshot output for ${prefix}, got: ${shot}`)
   copyLatestScreenshot(path.join(artifactRoot, `${prefix}.png`))
+}
+
+async function clickById(id: string): Promise<void> {
+  const result = await inspect(['clickid', id])
+  assert.ok(result.includes('Clicked:'), `Expected click result for ${id}, got: ${result}`)
+  await sleep(25)
+}
+
+async function clickByLabel(label: string): Promise<void> {
+  const result = await inspect(['click', label])
+  assert.ok(result.includes('Clicked:'), `Expected click result for ${label}, got: ${result}`)
+  await sleep(25)
+}
+
+async function typeInto(id: string, text: string): Promise<void> {
+  const result = await inspect(['typeid', id, text])
+  assert.ok(result.includes('Typed into'), `Expected typed result for ${id}, got: ${result}`)
+  await sleep(25)
+}
+
+async function runAction(action: ConformanceAction): Promise<void> {
+  if (action.kind === 'click-id') {
+    await clickById(action.id)
+    return
+  }
+  if (action.kind === 'click-label') {
+    await clickByLabel(action.label)
+    return
+  }
+  await typeInto(action.id, action.text)
+}
+
+async function selectSuite(suite: ConformanceSuite): Promise<void> {
+  await clickById(suite.navTestId)
+}
+
+async function resetCaseState(): Promise<void> {
+  await clickById('shell.reset')
+}
+
+async function getPropAsync(id: string, prop: string): Promise<string> {
+  const result = await inspect(['get', id, prop])
+  assert.ok(!result.includes('Element not found:'), `Missing inspector element ${id}.${prop}: ${result}`)
+  return result
+}
+
+async function runCase(suite: ConformanceSuite, testCase: ConformanceCase): Promise<void> {
+  await resetCaseState()
+
+  let i = 0
+  while (i < testCase.actions.length) {
+    await runAction(testCase.actions[i])
+    i = i + 1
+  }
+
+  const tree = await inspect(['tree'])
+  let j = 0
+  while (j < testCase.expects.length) {
+    const expectation = testCase.expects[j]
+    await assertExpectationAsync(expectation, tree)
+    j = j + 1
+  }
+
+  const prefix = `${suite.artifactPrefix}.${testCase.id}`
+  fs.writeFileSync(path.join(artifactRoot, `${prefix}.tree.txt`), tree)
+  if (captureCaseScreenshots) {
+    const shot = await inspect(['screenshot'])
+    assert.ok(shot.includes('Screenshot saved:'), `Expected screenshot output for ${prefix}, got: ${shot}`)
+    copyLatestScreenshot(path.join(artifactRoot, `${prefix}.png`))
+  }
+}
+
+async function assertExpectationAsync(expectation: ConformanceCase['expects'][number], tree: string): Promise<void> {
+  const getProp = (id: string, prop: string) => {
+    throw new Error(`Synchronous getProp called for ${id}.${prop}`)
+  }
+  if (expectation.kind === 'tree') {
+    assertExpectation(expectation, getProp, tree)
+    return
+  }
+  if (expectation.kind === 'frame') {
+    const raw = await getPropAsync(expectation.id, 'frame')
+    assertExpectation(expectation, () => raw, tree)
+    return
+  }
+  const raw = await getPropAsync(expectation.id, expectation.prop)
+  assertExpectation(expectation, () => raw, tree)
 }
 
 async function main(): Promise<void> {
   fs.rmSync(artifactRoot, { recursive: true, force: true })
   fs.mkdirSync(artifactRoot, { recursive: true })
 
-  console.log('Building UI Gallery...')
+  console.log('Building UI conformance gallery...')
   runCommand('./strictts', ['build', 'examples/native-gui/ui-gallery.tsx'])
 
-  console.log('Launching UI Gallery...')
+  console.log('Launching UI conformance gallery...')
   const child = spawn('./build/ui-gallery', [], {
     cwd: root,
     stdio: 'ignore',
@@ -75,39 +183,24 @@ async function main(): Promise<void> {
 
   try {
     await waitForInspector()
+    await captureArtifact('home')
 
-    const initialTree = inspect(['tree'])
-    assert.ok(initialTree.includes('Window "UI Gallery"'))
-    fs.writeFileSync(path.join(artifactRoot, 'home.tree.txt'), initialTree)
-    inspect(['screenshot'])
-    copyLatestScreenshot(path.join(artifactRoot, 'home.png'))
-
-    const suites = gallerySuites()
+    const suites = uiConformanceSuites()
+    assertUiConformanceCoverage(suites)
     let i = 0
     while (i < suites.length) {
       const suite = suites[i]
-      await captureSuite(suite.label, suite.artifactPrefix)
+      await selectSuite(suite)
+      await captureArtifact(suite.artifactPrefix)
+
+      let j = 0
+      while (j < suite.cases.length) {
+        await runCase(suite, suite.cases[j])
+        j = j + 1
+      }
       i = i + 1
     }
 
-    const typed = inspect(['type', 'latency'])
-    assert.ok(typed.includes('Typed: latency'))
-    const queryResult = inspect(['find', 'latency'])
-    assert.ok(queryResult.toLowerCase().includes('latency'))
-
-    const firstIncrement = inspect(['click', 'Increment Counter'])
-    assert.ok(firstIncrement.includes('Increment Counter'))
-    const secondIncrement = inspect(['click', 'Increment Counter'])
-    assert.ok(secondIncrement.includes('Increment Counter'))
-    const counterTwo = inspect(['find', 'Counter 2'])
-    assert.ok(counterTwo.includes('Counter 2'))
-
-    const reset = inspect(['click', 'Reset Demo'])
-    assert.ok(reset.includes('Reset Demo'))
-    const counterZero = inspect(['find', 'Counter 0'])
-    assert.ok(counterZero.includes('Counter 0'))
-
-    fs.writeFileSync(path.join(artifactRoot, 'interaction.find.txt'), inspect(['find', 'Counter']))
     console.log(`UI conformance artifacts saved to ${artifactRoot}`)
   } finally {
     child.kill('SIGTERM')
