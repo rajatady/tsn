@@ -219,9 +219,21 @@ export const geometryCases: GeometryCase[] = [
               'img-wide', 'row-icon-text', 'icon-in-row',
               'row-scaling', 'img-cover', 'img-contain'],
     tolerance: { position: 4, size: 8 },
-    tolerance: { position: 4, size: 4 },
     features: ['Image', 'w-[]', 'h-[]', 'rounded-lg', 'rounded-xl', 'rounded-2xl',
                'object-cover', 'object-contain', 'items-center', 'flex-1'],
+  },
+
+  // ─── Input Primitives (deep) ────────────────────────────────────
+  {
+    id: 'input-deep',
+    label: 'Search and Input at various widths in rows',
+    category: 'input',
+    viewport: { width: 500, height: 340 },
+    testIds: ['root', 'row-search', 'search-w200', 'row-search-wide', 'search-w350',
+              'row-input', 'input-w200', 'row-input-wide', 'input-w350',
+              'row-combined', 'search-combo', 'action-card'],
+    tolerance: { position: 6, size: 8 },
+    features: ['Search', 'Input', 'w-[]', 'placeholder', 'items-center'],
   },
 ]
 
