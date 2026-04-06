@@ -1,9 +1,12 @@
 /*
  * StrictTS Crash Handler — SIGSEGV/SIGABRT → TypeScript stack trace
  *
- * Uses macOS backtrace() + atos for symbolication.
+ * Platform-specific symbolication:
+ *   macOS:  backtrace() + atos (Mach-O DWARF)
+ *   Linux:  backtrace() + addr2line (ELF DWARF)
+ *
  * The #line directives in generated C create DWARF mappings,
- * so atos resolves directly to .tsx source lines.
+ * so the symbolication tool resolves directly to .tsx source lines.
  *
  * In UI apps, shows a red error overlay (like Next.js) before exiting.
  */
@@ -12,19 +15,27 @@
 #define STRICTTS_CRASH_H
 
 #include <signal.h>
-#include <execinfo.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <libgen.h>
-#include <mach-o/dyld.h>
 
-/* Store binary path for atos symbolication */
+#ifdef __APPLE__
+#include <execinfo.h>
+#include <mach-o/dyld.h>
+#elif defined(__linux__)
+#include <execinfo.h>
+#endif
+
+/* Store binary path for symbolication */
 static char g_crash_binary[1024] = {0};
 
-/* Build atos-symbolicated stack trace into a buffer.
- * Returns number of frames written, or 0 on failure. */
+/* ─── Platform-specific stack trace symbolication ───────────────── */
+
+#ifdef __APPLE__
+
+/* macOS: use atos for symbolication */
 static int ts_build_stack_trace(void **frames, int count, char *out, int out_size) {
     if (g_crash_binary[0] == '\0' || count <= 0) return 0;
 
@@ -64,6 +75,59 @@ static int ts_build_stack_trace(void **frames, int count, char *out, int out_siz
     return written;
 }
 
+#elif defined(__linux__)
+
+/* Linux: use addr2line for symbolication */
+static int ts_build_stack_trace(void **frames, int count, char *out, int out_size) {
+    if (g_crash_binary[0] == '\0' || count <= 0) return 0;
+
+    int written = 0;
+    int out_off = 0;
+    int start = 2;
+    if (start >= count) start = 0;
+
+    for (int i = start; i < count && written < 15; i++) {
+        char cmd[2048];
+        snprintf(cmd, sizeof(cmd), "addr2line -e '%s' -f -p %p 2>/dev/null",
+                 g_crash_binary, frames[i]);
+
+        FILE *proc = popen(cmd, "r");
+        if (!proc) continue;
+
+        char line[1024];
+        if (fgets(line, sizeof(line), proc)) {
+            int len = (int)strlen(line);
+            if (len > 0 && line[len - 1] == '\n') line[len - 1] = '\0';
+
+            /* Skip internal frames and unknown symbols */
+            if (strstr(line, "ts_crash_handler") || strstr(line, "ts_bounds_error") ||
+                strstr(line, "??:") || strstr(line, "?? "))
+            {
+                pclose(proc);
+                continue;
+            }
+
+            int n = snprintf(out + out_off, out_size - out_off, "#%d  %s\n", written, line);
+            if (n > 0 && out_off + n < out_size) out_off += n;
+            written++;
+        }
+        pclose(proc);
+    }
+    return written;
+}
+
+#else
+
+/* Unsupported platform — no symbolication, fallback only */
+static int ts_build_stack_trace(void **frames, int count, char *out, int out_size) {
+    (void)frames; (void)count; (void)out; (void)out_size;
+    return 0;
+}
+
+#endif /* platform symbolication */
+
+/* ─── Crash handler (shared across platforms) ───────────────────── */
+
 static void ts_crash_handler(int sig) {
     const char *name = sig == SIGSEGV ? "Segmentation Fault" :
                        sig == SIGABRT ? "Abort" :
@@ -81,21 +145,18 @@ static void ts_crash_handler(int sig) {
     char crash_file[512] = {0};
     int crash_line = 0;
     if (stack_frames > 0) {
-        /* Scan stack_buf for first .ts: or .tsx: */
         const char *p = stack_buf;
         while (*p) {
             const char *ts_ext = strstr(p, ".ts:");
             if (!ts_ext) ts_ext = strstr(p, ".tsx:");
             if (ts_ext) {
-                /* Walk backwards to find start of path (after '(' or space) */
                 const char *path_start = ts_ext;
                 while (path_start > p && *(path_start - 1) != '(' && *(path_start - 1) != ' ')
                     path_start--;
-                /* Find the colon after .ts/.tsx */
                 const char *colon = strstr(ts_ext, ".ts:");
                 if (!colon) colon = strstr(ts_ext, ".tsx:");
                 if (colon) {
-                    colon = strchr(colon + 3, ':'); /* skip past .ts or .tsx */
+                    colon = strchr(colon + 3, ':');
                     if (!colon) colon = strchr(ts_ext + 3, ':');
                 }
                 if (colon) {
@@ -108,7 +169,6 @@ static void ts_crash_handler(int sig) {
                 }
                 break;
             }
-            /* Move to next line */
             const char *nl = strchr(p, '\n');
             if (!nl) break;
             p = nl + 1;
@@ -119,7 +179,6 @@ static void ts_crash_handler(int sig) {
     fprintf(stderr, "\n\033[31m━━━ %s ━━━\033[0m\n\n", name);
 
     if (stack_frames > 0) {
-        /* Print with coloring */
         const char *line_start = stack_buf;
         while (*line_start) {
             const char *nl = strchr(line_start, '\n');
@@ -134,9 +193,12 @@ static void ts_crash_handler(int sig) {
             line_start = nl + 1;
         }
         fprintf(stderr, "\n\033[90m  Binary: %s\033[0m\n", g_crash_binary);
+#ifdef __APPLE__
         fprintf(stderr, "\033[90m  Debug:  lldb %s\033[0m\n\n", g_crash_binary);
+#else
+        fprintf(stderr, "\033[90m  Debug:  gdb %s\033[0m\n\n", g_crash_binary);
+#endif
     } else {
-        /* Fallback: backtrace_symbols */
         char **syms = backtrace_symbols(frames, count);
         if (syms) {
             for (int i = 2; i < count && i < 22; i++)
@@ -165,6 +227,8 @@ static void ts_crash_handler(int sig) {
     _exit(128 + sig);
 }
 
+/* ─── Install crash handler ─────────────────────────────────────── */
+
 static void ts_install_crash_handler(const char *binary_path) {
     if (binary_path) {
         char *resolved = realpath(binary_path, NULL);
@@ -175,8 +239,13 @@ static void ts_install_crash_handler(const char *binary_path) {
             strncpy(g_crash_binary, binary_path, sizeof(g_crash_binary) - 1);
         }
     } else {
+#ifdef __APPLE__
         uint32_t size = sizeof(g_crash_binary);
         _NSGetExecutablePath(g_crash_binary, &size);
+#elif defined(__linux__)
+        ssize_t len = readlink("/proc/self/exe", g_crash_binary, sizeof(g_crash_binary) - 1);
+        if (len > 0) g_crash_binary[len] = '\0';
+#endif
     }
 
     struct sigaction sa;

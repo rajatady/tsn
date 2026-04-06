@@ -4,9 +4,10 @@ import { execSync } from 'node:child_process'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
-import { appKitHostRoot, appKitSourcePath } from '../../tsn-host-appkit/src/index.js'
+import { resolveHostPlatform } from './platform.js'
 
 export function buildStrictTS(inputPath: string, argv: string[] = []): void {
+  const platform = resolveHostPlatform()
   const absolutePath = path.resolve(inputPath)
   const ext = path.extname(inputPath)
   const baseName = path.basename(inputPath, ext)
@@ -42,22 +43,16 @@ export function buildStrictTS(inputPath: string, argv: string[] = []): void {
   console.log(`  → ${cPath} (${cCode.length} bytes)`)
 
   const isDebug = argv.includes('--debug') || argv.includes('-g')
-  const optFlag = isDebug ? '-O0 -g -DSTRICTTS_DEBUG' : '-O2'
-  console.log(`[4/4] Compiling with clang${isDebug ? ' (debug)' : ''}...`)
+  console.log(`[4/4] Compiling with clang${isDebug ? ' (debug)' : ''} [${platform.name}]...`)
   const binaryPath = path.join('build', baseName)
   const hasUi = cCode.includes('#include "ui.h"')
 
   try {
-    if (hasUi) {
-      const runtimeDir = path.join('compiler', 'runtime')
-      execSync(
-        `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} -I ${appKitHostRoot} -I ${runtimeDir} -o ${binaryPath}`,
-        { stdio: 'inherit' }
-      )
-    } else {
-      execSync(`clang ${optFlag} -o ${binaryPath} ${cPath} -lm -I compiler/runtime`, { stdio: 'inherit' })
-    }
+    const flagOpts = { debug: isDebug, cPath, binaryPath }
+    const cmd = hasUi
+      ? platform.uiClangFlags(flagOpts)
+      : platform.cliClangFlags(flagOpts)
+    execSync(cmd, { stdio: 'inherit' })
 
     const size = fs.statSync(binaryPath).size
     const sizeStr = size > 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${(size / 1024).toFixed(0)} KB`
