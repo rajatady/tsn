@@ -13,12 +13,18 @@ import { MaxWidthCase } from '../cases/max-width'
 import { AppRowCase } from '../cases/app-row'
 import { StatRowCase } from '../cases/stat-row'
 import { SidebarShellCase } from '../cases/sidebar-shell'
+import { TextSizesCase } from '../cases/text-sizes'
+import { TextWeightsCase } from '../cases/text-weights'
+import { TextLineheightCase } from '../cases/text-lineheight'
+import { TextAlignTransformCase } from '../cases/text-align-transform'
+import { TextInCardCase } from '../cases/text-in-card'
 
 function onCaseClick(tag: number): void {
   const cases: string[] = [
     'hstack-basic', 'align-center', 'justify-between', 'padding-gap',
     'flex-grow', 'spacer', 'fixed-sizes', 'nested-stacks',
     'max-width', 'app-row', 'stat-row', 'sidebar-shell',
+    'text-sizes', 'text-weights', 'text-lineheight', 'text-align-transform', 'text-in-card',
   ]
   const [_current, setCurrent] = useStore<string>('gallery:case', 'hstack-basic')
   if (tag >= 0 && tag < cases.length) {
@@ -39,6 +45,11 @@ function CaseContent() {
   if (current === 'app-row') return <AppRowCase />
   if (current === 'stat-row') return <StatRowCase />
   if (current === 'sidebar-shell') return <SidebarShellCase />
+  if (current === 'text-sizes') return <TextSizesCase />
+  if (current === 'text-weights') return <TextWeightsCase />
+  if (current === 'text-lineheight') return <TextLineheightCase />
+  if (current === 'text-align-transform') return <TextAlignTransformCase />
+  if (current === 'text-in-card') return <TextInCardCase />
   return <HstackBasicCase />
 }
 
@@ -75,6 +86,14 @@ function GallerySidebar() {
       <NavButton label="App Row" tag={9} caseId="app-row" />
       <NavButton label="Stat Row" tag={10} caseId="stat-row" />
       <NavButton label="Sidebar Shell" tag={11} caseId="sidebar-shell" />
+
+      <Divider />
+      <Text className="text-xs text-zinc-500 uppercase">Text Deep</Text>
+      <NavButton label="Text Sizes" tag={12} caseId="text-sizes" />
+      <NavButton label="Text Weights" tag={13} caseId="text-weights" />
+      <NavButton label="Line Height" tag={14} caseId="text-lineheight" />
+      <NavButton label="Align + Transform" tag={15} caseId="text-align-transform" />
+      <NavButton label="Text in Card" tag={16} caseId="text-in-card" />
     </VStack>
   )
 }

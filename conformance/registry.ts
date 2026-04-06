@@ -124,6 +124,57 @@ export const geometryCases: GeometryCase[] = [
     testIds: ['root', 'sidebar', 'content'],
     features: ['HStack', 'w-[]', 'flex-1', 'gap', 'h-[]'],
   },
+
+  // ─── Text Primitive (deep) ──────────────────────────────────────
+  {
+    id: 'text-sizes',
+    label: 'All text size classes (xs through 4xl)',
+    category: 'text',
+    viewport: { width: 400, height: 500 },
+    testIds: ['root', 'row-xs', 'row-sm', 'row-base', 'row-lg', 'row-xl', 'row-2xl', 'row-3xl', 'row-4xl',
+              'label-xs', 'label-sm', 'label-base', 'label-lg', 'label-xl', 'label-2xl', 'label-3xl', 'label-4xl'],
+    features: ['text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl',
+               'font-bold', 'items-center'],
+  },
+  {
+    id: 'text-weights',
+    label: 'All font weight classes (thin through black)',
+    category: 'text',
+    viewport: { width: 500, height: 320 },
+    testIds: ['root', 'row-thin', 'row-light', 'row-normal', 'row-medium', 'row-semibold', 'row-bold', 'row-black',
+              'swatch-thin', 'swatch-light', 'swatch-normal', 'swatch-medium', 'swatch-semibold', 'swatch-bold', 'swatch-black'],
+    features: ['font-thin', 'font-light', 'font-normal', 'font-medium', 'font-semibold', 'font-bold', 'font-black',
+               'items-center'],
+  },
+  {
+    id: 'text-lineheight',
+    label: 'Line-height variants inside padded cards',
+    category: 'text',
+    viewport: { width: 500, height: 500 },
+    testIds: ['root', 'card-none', 'card-tight', 'card-snug', 'card-normal', 'card-relaxed'],
+    features: ['leading-none', 'leading-tight', 'leading-snug', 'leading-normal', 'leading-relaxed',
+               'font-semibold', 'text-2xl', 'p-4', 'rounded-xl'],
+  },
+  {
+    id: 'text-align-transform',
+    label: 'Text alignment and text-transform',
+    category: 'text',
+    viewport: { width: 400, height: 400 },
+    testIds: ['root', 'align-left', 'align-center', 'align-right', 'upper-card', 'lower-card'],
+    features: ['text-left', 'text-center', 'text-right', 'uppercase', 'lowercase', 'tracking-wide'],
+  },
+  {
+    id: 'text-in-card',
+    label: 'Text inside padded cards (eyebrow + heading + body)',
+    category: 'text',
+    viewport: { width: 500, height: 500 },
+    testIds: ['root', 'card-simple', 'card-hero', 'card-compact', 'avatar'],
+    tolerance: { position: 12, size: 12 },
+    features: ['text-xs', 'text-2xl', 'text-4xl', 'text-sm', 'text-base',
+               'font-bold', 'font-semibold', 'uppercase', 'tracking-wide', 'tracking-tight',
+               'leading-tight', 'leading-relaxed', 'p-5', 'p-6', 'px-4', 'py-3',
+               'gap-2', 'gap-3', 'gap-0', 'items-center', 'rounded-full'],
+  },
 ]
 
 export function caseById(id: string): GeometryCase {

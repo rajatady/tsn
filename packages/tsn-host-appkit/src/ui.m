@@ -301,9 +301,15 @@ void ui_text_set_line_height(UIHandle t, double mult) {
     NSView *view = (__bridge NSView *)t;
     if (![view isKindOfClass:[NSTextField class]]) return;
     NSTextField *field = (NSTextField *)view;
+    /* CSS line-height is font-size * multiplier. NSParagraphStyle lineHeightMultiple
+       multiplies the natural line height (ascender+descender), which is already ~1.2x
+       the font size. To match CSS, use explicit min/max line height = font-size * mult. */
+    CGFloat fontSize = field.font.pointSize;
+    CGFloat targetLineHeight = fontSize * mult;
     NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
     NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
-    style.lineHeightMultiple = mult;
+    style.minimumLineHeight = targetLineHeight;
+    style.maximumLineHeight = targetLineHeight;
     [attrStr addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0, attrStr.length)];
     field.attributedStringValue = attrStr;
     [field sizeToFit];
