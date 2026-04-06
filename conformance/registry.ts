@@ -253,6 +253,19 @@ export const geometryCases: GeometryCase[] = [
                'color:purple', 'color:pink', 'color:teal', 'items-center'],
   },
 
+  // ─── Progress Primitive (deep) ───────────────────────────────────
+  {
+    id: 'progress-deep',
+    label: 'Progress bars at various fill levels in cards',
+    category: 'progress',
+    viewport: { width: 500, height: 400 },
+    testIds: ['root', 'card-25', 'bar-25', 'card-50', 'bar-50',
+              'card-75', 'bar-75', 'card-100', 'bar-100',
+              'row-inline', 'inline-label', 'bar-wrap'],
+    tolerance: { position: 12, size: 12 },
+    features: ['Progress', 'value', 'p-4', 'rounded-xl', 'gap-2', 'items-center'],
+  },
+
   // ─── Input Primitives (deep) ────────────────────────────────────
   {
     id: 'input-deep',

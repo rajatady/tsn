@@ -111,6 +111,35 @@ typedef struct { char label[64]; double value; NSColor * __unsafe_unretained col
 }
 @end
 
+/* ─── Progress Bar View ──────────────────────────────────────────── */
+
+@interface UIProgressBar : NSView
+@property (nonatomic) double progress;
+@end
+
+@implementation UIProgressBar {
+    CALayer *_fill;
+}
+- (instancetype)init {
+    self = [super init];
+    self.wantsLayer = YES;
+    self.layer.backgroundColor = [NSColor colorWithWhite:0.24 alpha:1].CGColor;
+    self.layer.cornerRadius = 3;
+    _fill = [CALayer layer];
+    _fill.backgroundColor = NSColor.systemBlueColor.CGColor;
+    _fill.cornerRadius = 3;
+    [self.layer addSublayer:_fill];
+    return self;
+}
+- (BOOL)isFlipped { return YES; }
+- (NSSize)intrinsicContentSize { return NSMakeSize(NSViewNoIntrinsicMetric, 6); }
+- (void)layout {
+    [super layout];
+    CGFloat w = self.bounds.size.width * (_progress >= 0 ? _progress : 0);
+    _fill.frame = CGRectMake(0, 0, w, self.bounds.size.height);
+}
+@end
+
 /* ─── Stat Card View ─────────────────────────────────────────────── */
 
 @interface UIStatView : NSView
@@ -375,18 +404,18 @@ void ui_toggle_on_change(UIHandle tog, UIToggleFn fn) { /* TODO */ }
 
 /* ─── Progress ───────────────────────────────────────────────────── */
 UIHandle ui_progress(double value) {
-    NSProgressIndicator *pi = [NSProgressIndicator new];
-    pi.style = NSProgressIndicatorStyleBar;
-    pi.minValue = 0; pi.maxValue = 1;
-    if (value < 0) { pi.indeterminate = YES; [pi startAnimation:nil]; }
-    else { pi.indeterminate = NO; pi.doubleValue = value; }
-    retain_render(pi);
-    return (__bridge UIHandle)pi;
+    UIProgressBar *bar = [UIProgressBar new];
+    bar.progress = value;
+    retain_render(bar);
+    return (__bridge UIHandle)bar;
 }
 
 void ui_progress_set(UIHandle p, double value) {
-    NSProgressIndicator *pi = (__bridge NSProgressIndicator *)p;
-    if ([pi isKindOfClass:[NSProgressIndicator class]]) pi.doubleValue = value;
+    UIProgressBar *bar = (__bridge UIProgressBar *)p;
+    if ([bar isKindOfClass:[UIProgressBar class]]) {
+        bar.progress = value;
+        [bar setNeedsLayout:YES];
+    }
 }
 
 /* ─── Badge ──────────────────────────────────────────────────────── */
