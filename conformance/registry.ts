@@ -266,6 +266,18 @@ export const geometryCases: GeometryCase[] = [
     features: ['Progress', 'value', 'p-4', 'rounded-xl', 'gap-2', 'items-center'],
   },
 
+  // ─── Divider Primitive (deep) ────────────────────────────────────
+  {
+    id: 'divider-deep',
+    label: 'Dividers between content blocks and before rows',
+    category: 'divider',
+    viewport: { width: 500, height: 350 },
+    testIds: ['root', 'block-a', 'div-1', 'block-b', 'div-2',
+              'block-c', 'div-3', 'row-after', 'left', 'right'],
+    tolerance: { position: 4, size: 4 },
+    features: ['Divider', 'gap-3', 'rounded-xl', 'items-center'],
+  },
+
   // ─── Input Primitives (deep) ────────────────────────────────────
   {
     id: 'input-deep',
