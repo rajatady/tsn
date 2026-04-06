@@ -31,11 +31,11 @@ function DiscoverEditorialCard(idx: number, eyebrow: string, title: string, subt
     <VStack testId={eid} className="flex-1 gap-0">
       <Image testId={eid + '-img'} src={image} className="rounded-xl aspect-[16/10] object-cover" />
       <VStack className="h-[8]" />
-      <Text testId={eid + '-eyebrow'} className="text-[11] font-semibold text-white/25 uppercase tracking-wide">{eyebrow}</Text>
+      <Text testId={eid + '-eyebrow'} className="text-[11] font-semibold text-white/25 uppercase tracking-wide truncate">{eyebrow}</Text>
       <VStack className="h-[2]" />
-      <Text testId={eid + '-title'} className="text-[15] font-semibold">{title}</Text>
+      <Text testId={eid + '-title'} className="text-[15] font-semibold truncate">{title}</Text>
       <VStack className="h-[2]" />
-      <Text testId={eid + '-subtitle'} className="text-[13] text-white/40">{subtitle}</Text>
+      <Text testId={eid + '-subtitle'} className="text-[13] text-white/40 truncate">{subtitle}</Text>
     </VStack>
   )
 }

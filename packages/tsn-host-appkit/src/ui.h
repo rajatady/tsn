@@ -61,6 +61,7 @@ void        ui_text_set_line_height(UIHandle t, double mult); /* line height mul
 void        ui_text_set_tracking(UIHandle t, double kern);   /* letter-spacing in points */
 void        ui_text_set_transform(UIHandle t, int xform);    /* 0=none, 1=uppercase, 2=lowercase */
 void        ui_text_set_align(UIHandle t, int align);        /* 0=left, 1=center, 2=right */
+void        ui_text_set_truncate(UIHandle t);                /* single-line with tail truncation */
 UIHandle    ui_label(const char *content);  /* small gray secondary text */
 
 /* ─── SF Symbols ─────────────────────────────────────────────────── */

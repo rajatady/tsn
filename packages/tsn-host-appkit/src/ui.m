@@ -387,6 +387,17 @@ void ui_text_set_align(UIHandle t, int align) {
     else if (align == 2) field.alignment = NSTextAlignmentRight;
 }
 
+void ui_text_set_truncate(UIHandle t) {
+    NSView *view = (__bridge NSView *)t;
+    if (![view isKindOfClass:[NSTextField class]]) return;
+    NSTextField *field = (NSTextField *)view;
+    field.maximumNumberOfLines = 1;
+    field.lineBreakMode = NSLineBreakByTruncatingTail;
+    [field setUsesSingleLineMode:YES];
+    [[field cell] setWraps:NO];
+    [field sizeToFit];
+}
+
 UIHandle ui_label(const char *content) {
     UIHandle h = ui_text(content, 11, false);
     ui_text_set_color_system(h, 2);

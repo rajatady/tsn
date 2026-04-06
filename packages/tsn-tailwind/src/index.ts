@@ -316,6 +316,9 @@ export function parseTailwind(className: string, handle: string): TailwindResult
     if (cls === 'object-contain') { result.calls.push(`ui_image_set_scaling(${handle}, 0);`); continue }
     if (cls === 'object-fill')    { result.calls.push(`ui_image_set_scaling(${handle}, 2);`); continue }
 
+    // Text truncation
+    if (cls === 'truncate') { result.calls.push(`ui_text_set_truncate(${handle});`); continue }
+
     // Overflow
     if (cls === 'overflow-hidden') { result.calls.push(`ui_set_clip(${handle}, 1);`); continue }
 

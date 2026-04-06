@@ -145,9 +145,13 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                     NSTextField *field = (NSTextField *)child;
                     CGFloat fs = field.font.pointSize;
                     CGFloat cssLH = fs * 1.5;
-                    CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, inner_w, CGFLOAT_MAX)].height;
-                    int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
-                    h += nlines * cssLH;
+                    if (field.maximumNumberOfLines == 1) {
+                        h += cssLH;  /* truncated: always 1 line */
+                    } else {
+                        CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, inner_w, CGFLOAT_MAX)].height;
+                        int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
+                        h += nlines * cssLH;
+                    }
                 } else {
                     CGFloat fh = child.frame.size.height;
                     NSSize intrinsic = child.intrinsicContentSize;
