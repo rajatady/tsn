@@ -108,10 +108,26 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
     return apply_stack_constraints(self, NSMakeSize(w, h));
 }
 
+/* Read the actual CSS line height from a text field's paragraph style.
+   Returns fontSize * 1.5 as default if no explicit style is set. */
+static CGFloat css_line_height(NSTextField *field) {
+    CGFloat fs = field.font.pointSize;
+    CGFloat lh = fs * 1.5;  /* Tailwind preflight default */
+    NSAttributedString *attr = field.attributedStringValue;
+    if (attr.length > 0) {
+        NSParagraphStyle *ps = [attr attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL];
+        if (ps && ps.maximumLineHeight > 0) lh = ps.maximumLineHeight;
+    }
+    return lh;
+}
+
 /* Compute height assuming a given available width.
    Unlike naturalSize, this accounts for flex distribution and aspect ratios.
    Used by parent VStacks to correctly size HStack/ZStack children. */
 - (CGFloat)heightForWidth:(CGFloat)width {
+    /* Explicit fixed height always wins */
+    if (_fixed_height > 0) return _fixed_height;
+
     CGFloat inner_w = width - _padding_left - _padding_right;
     if (inner_w <= 0) return [self naturalSize].height;
 
@@ -143,8 +159,7 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                 if (ah >= 0) { h += ah; continue; }
                 if ([child isKindOfClass:[NSTextField class]]) {
                     NSTextField *field = (NSTextField *)child;
-                    CGFloat fs = field.font.pointSize;
-                    CGFloat cssLH = fs * 1.5;
+                    CGFloat cssLH = css_line_height(field);
                     if (field.maximumNumberOfLines == 1) {
                         h += cssLH;  /* truncated: always 1 line */
                     } else {
@@ -281,8 +296,7 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                 fixed_total += ah;
             } else if ([child isKindOfClass:[NSTextField class]] && _direction == 0) {
                 NSTextField *field = (NSTextField *)child;
-                CGFloat fs = field.font.pointSize;
-                CGFloat cssLH = fs * 1.5;
+                CGFloat cssLH = css_line_height(field);
                 CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, avail_w, CGFLOAT_MAX)].height;
                 int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
                 fixed_total += nlines * cssLH;
@@ -360,8 +374,7 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
                 } else {
                     /* VStack: text fills available width like CSS block elements */
                     cw = avail_w;
-                    CGFloat fs = field.font.pointSize;
-                    CGFloat cssLH = fs * 1.5;
+                    CGFloat cssLH = css_line_height(field);
                     CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, cw, CGFLOAT_MAX)].height;
                     int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
                     ch = nlines * cssLH;
