@@ -208,6 +208,21 @@ export const geometryCases: GeometryCase[] = [
     features: ['Card', 'p-3', 'p-5', 'px-4', 'py-2', 'rounded-sm', 'rounded-xl', 'rounded-2xl',
                'shadow-lg', 'bg-[#hex]', 'bg-zinc-*', 'nested-cards'],
   },
+
+  // ─── Image Primitive (deep) ─────────────────────────────────────
+  {
+    id: 'image-deep',
+    label: 'Image sizes, scaling modes, rounded, in-row',
+    category: 'image',
+    viewport: { width: 600, height: 600 },
+    testIds: ['root', 'row-sizes', 'img-sm', 'img-md', 'img-lg',
+              'img-wide', 'row-icon-text', 'icon-in-row',
+              'row-scaling', 'img-cover', 'img-contain'],
+    tolerance: { position: 4, size: 8 },
+    tolerance: { position: 4, size: 4 },
+    features: ['Image', 'w-[]', 'h-[]', 'rounded-lg', 'rounded-xl', 'rounded-2xl',
+               'object-cover', 'object-contain', 'items-center', 'flex-1'],
+  },
 ]
 
 export function caseById(id: string): GeometryCase {
