@@ -425,6 +425,83 @@ static NSString *handle_command(NSString *cmd) {
         return result;
     }
 
+    /* ── Probe command — box model inspector ────────────────────── */
+
+    if ([cmd hasPrefix:@"probe "]) {
+        NSString *eid = [cmd substringFromIndex:6];
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            NSView *view = g_element_ids[eid];
+            if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+
+            NSRect f = view.frame;
+            NSMutableString *out = [NSMutableString new];
+            [out appendFormat:@"probe %@\n", eid];
+            [out appendFormat:@"  self: %.0f×%.0f at %.0f,%.0f\n", f.size.width, f.size.height, f.origin.x, f.origin.y];
+
+            /* Parent info */
+            NSView *parent = view.superview;
+            if (parent) {
+                NSRect pf = parent.frame;
+                [out appendFormat:@"  parent: %.0f×%.0f at %.0f,%.0f", pf.size.width, pf.size.height, pf.origin.x, pf.origin.y];
+                if ([parent isKindOfClass:[UIStackContainer class]]) {
+                    UIStackContainer *sc = (UIStackContainer *)parent;
+                    [out appendFormat:@" (%@)", sc.direction == 0 ? @"VStack" : @"HStack"];
+                }
+                [out appendString:@"\n"];
+
+                /* Edge gaps: how far is this element from parent edges */
+                CGFloat gapLeft = f.origin.x;
+                CGFloat gapTop = f.origin.y;
+                CGFloat gapRight = pf.size.width - (f.origin.x + f.size.width);
+                CGFloat gapBottom = pf.size.height - (f.origin.y + f.size.height);
+                [out appendFormat:@"  edges: left=%.0f top=%.0f right=%.0f bottom=%.0f\n", gapLeft, gapTop, gapRight, gapBottom];
+            } else {
+                [out appendString:@"  parent: (none)\n"];
+            }
+
+            /* If this element IS a UIStackContainer, report its padding */
+            if ([view isKindOfClass:[UIStackContainer class]]) {
+                UIStackContainer *sc = (UIStackContainer *)view;
+                [out appendFormat:@"  padding: top=%d right=%d bottom=%d left=%d\n",
+                    sc.padding_top, sc.padding_right, sc.padding_bottom, sc.padding_left];
+                [out appendFormat:@"  spacing: %d  align_items: %d  justify: %d\n",
+                    (int)sc.spacing, sc.align_items, sc.justify_content];
+                [out appendFormat:@"  children: %lu\n", (unsigned long)sc.children.count];
+
+                /* Report each child's frame */
+                for (NSUInteger i = 0; i < sc.children.count; i++) {
+                    NSView *child = sc.children[i];
+                    NSRect cf = child.frame;
+                    NSString *childType = @"?";
+                    if ([child isKindOfClass:[UIStackContainer class]])
+                        childType = ((UIStackContainer *)child).direction == 0 ? @"VStack" : @"HStack";
+                    else if ([child isKindOfClass:[NSTextField class]])
+                        childType = @"Text";
+                    else if ([child isKindOfClass:[NSImageView class]])
+                        childType = @"Image";
+                    else if ([child isKindOfClass:[NSButton class]])
+                        childType = @"Button";
+                    else if ([child isKindOfClass:[NSBox class]])
+                        childType = @"Divider";
+                    else
+                        childType = NSStringFromClass([child class]);
+
+                    /* Find element ID if registered */
+                    NSString *childId = @"";
+                    for (NSString *key in g_element_ids) {
+                        if (g_element_ids[key] == child) { childId = key; break; }
+                    }
+                    [out appendFormat:@"    [%lu] %@ %@  %.0f×%.0f at %.0f,%.0f\n",
+                        (unsigned long)i, childType, childId,
+                        cf.size.width, cf.size.height, cf.origin.x, cf.origin.y];
+                }
+            }
+            result = out;
+        });
+        return result;
+    }
+
     /* ── Scroll commands ─────────────────────────────────────────── */
 
     /* Helper: find deepest vertical NSScrollView in view hierarchy */
@@ -577,6 +654,7 @@ static NSString *handle_command(NSString *cmd) {
                "  typeid <id> <txt>     — type into specific input by inspector id\n"
                "  find <text>           — find elements containing text\n"
                "  get <id> [prop]       — get element property\n"
+               "  probe <id>           — box model: edges, padding, children\n"
                "  scroll <id> <ticks>   — scroll by ticks (80px each, negative=up)\n"
                "  scrollto <id> [margin]— scroll element to top of scroll view\n"
                "  scrolltop <id>        — scroll to top\n"

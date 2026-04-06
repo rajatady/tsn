@@ -34,7 +34,9 @@ UIHandle ui_image(const char *path) {
     iv.imageAlignment = NSImageAlignCenter;
     iv.wantsLayer = YES;
     iv.layer.masksToBounds = YES;
-    if (img) iv.frame = NSMakeRect(0, 0, img.size.width, img.size.height);
+    /* Don't pre-set frame to natural image size — let Tailwind w-[]/h-[] and
+       the layout system control sizing. Images without explicit dimensions will
+       get avail_w/avail_h from their parent container (correct CSS behavior). */
     retain_render(iv);
     return (__bridge UIHandle)iv;
 }
