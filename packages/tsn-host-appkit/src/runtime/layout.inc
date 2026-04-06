@@ -154,6 +154,14 @@ static CGFloat css_line_height(NSTextField *field) {
                 h += ch2;
             } else if ([child isKindOfClass:[UISpacer class]]) {
                 /* skip */
+            } else if ([child isKindOfClass:[NSScrollView class]]) {
+                /* Scroll view: height from inner content */
+                NSScrollView *sv = (NSScrollView *)child;
+                NSView *doc = sv.documentView;
+                if ([doc isKindOfClass:[UIStackContainer class]]) {
+                    UIStackContainer *stack = (UIStackContainer *)doc;
+                    h += [stack heightForWidth:inner_w];
+                } else h += 100;
             } else {
                 CGFloat ah = aspect_height(child, inner_w);
                 if (ah >= 0) { h += ah; continue; }
@@ -286,9 +294,20 @@ static CGFloat css_line_height(NSTextField *field) {
         } else if ([child isKindOfClass:[UISpacer class]]) {
             /* Spacers absorb remaining space — don't count as fixed */
         } else if ([child isKindOfClass:[NSScrollView class]]) {
+            NSScrollView *sv = (NSScrollView *)child;
             CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
-            if (_direction == 0 && fh > 0) fixed_total += fh;
-            else if (_direction == 1 && fw > 0) fixed_total += fw;
+            if (_direction == 0) {
+                if (fh > 0) { fixed_total += fh; }
+                else {
+                    /* Horizontal scroll in VStack: height from content */
+                    NSView *doc = sv.documentView;
+                    if ([doc isKindOfClass:[UIStackContainer class]]) {
+                        UIStackContainer *stack = (UIStackContainer *)doc;
+                        CGFloat nh = [stack heightForWidth:avail_w];
+                        fixed_total += (nh > 0) ? nh : 100;
+                    } else fixed_total += 100;
+                }
+            } else if (_direction == 1 && fw > 0) fixed_total += fw;
         } else {
             /* Check aspect ratio first */
             CGFloat ah = aspect_height(child, _direction == 0 ? avail_w : 0);
@@ -357,10 +376,20 @@ static CGFloat css_line_height(NSTextField *field) {
             cw = clamp_dimension(cw, sc.min_width, sc.max_width);
             ch = clamp_dimension(ch, sc.min_height, sc.max_height);
         } else if ([child isKindOfClass:[NSScrollView class]]) {
+            NSScrollView *sv = (NSScrollView *)child;
             CGFloat fw = child.frame.size.width;
             CGFloat fh = child.frame.size.height;
             cw = (fw > 0) ? fw : avail_w;
-            ch = (fh > 0) ? fh : avail_h;
+            if (fh > 0) { ch = fh; }
+            else if (_direction == 0 && sv.hasHorizontalScroller && !sv.hasVerticalScroller) {
+                /* Horizontal scroll in VStack: height from content, not avail_h */
+                NSView *doc = sv.documentView;
+                if ([doc isKindOfClass:[UIStackContainer class]]) {
+                    UIStackContainer *stack = (UIStackContainer *)doc;
+                    CGFloat nh = [stack heightForWidth:cw];
+                    ch = (nh > 0) ? nh : avail_h;
+                } else ch = avail_h;
+            } else { ch = avail_h; }
         } else {
             NSSize intrinsic = child.intrinsicContentSize;
             CGFloat frameW = child.frame.size.width;
