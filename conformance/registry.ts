@@ -191,6 +191,23 @@ export const geometryCases: GeometryCase[] = [
                'variant:ghost', 'variant:get', 'variant:chip', 'variant:sidebar', 'variant:sidebar-active',
                'items-center'],
   },
+
+  // ─── Card Primitive (deep) ──────────────────────────────────────
+  {
+    id: 'card-deep',
+    label: 'Card padding, radius, shadow, colors, nesting',
+    category: 'card',
+    viewport: { width: 500, height: 700 },
+    testIds: ['root', 'card-p3', 'inner-p3', 'card-p5', 'inner-p5',
+              'card-px4-py2', 'inner-px4',
+              'card-r-sm', 'card-r-2xl',
+              'card-shadow', 'inner-shadow',
+              'card-hex', 'inner-hex',
+              'card-nested', 'nested-inner', 'nested-a', 'deep-a', 'nested-b', 'deep-b'],
+    tolerance: { position: 4, size: 4 },
+    features: ['Card', 'p-3', 'p-5', 'px-4', 'py-2', 'rounded-sm', 'rounded-xl', 'rounded-2xl',
+               'shadow-lg', 'bg-[#hex]', 'bg-zinc-*', 'nested-cards'],
+  },
 ]
 
 export function caseById(id: string): GeometryCase {
