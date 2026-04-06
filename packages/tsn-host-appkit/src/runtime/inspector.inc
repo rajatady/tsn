@@ -20,7 +20,7 @@ static void dump_tree(NSView *view, int depth, NSMutableString *out) {
 
     if ([view isKindOfClass:[UIStackContainer class]]) {
         UIStackContainer *sc = (UIStackContainer *)view;
-        type = sc.direction == 0 ? @"VStack" : @"HStack";
+        type = sc.direction == 0 ? @"VStack" : (sc.direction == 2 ? @"ZStack" : @"HStack");
         NSString *extra = @"";
         if (sc.flex > 0) extra = [extra stringByAppendingFormat:@" flex=%d", sc.flex];
         if (sc.fixed_width > 0) extra = [extra stringByAppendingFormat:@" fw=%d", sc.fixed_width];

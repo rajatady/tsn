@@ -26,6 +26,10 @@ void        ui_window_fullsize_content(UIHandle w);
 /* ─── Layout ─────────────────────────────────────────────────────── */
 UIHandle    ui_vstack(void);
 UIHandle    ui_hstack(void);
+UIHandle    ui_zstack(void);
+void        ui_set_clip(UIHandle v, int clip);
+void        ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
+                            double r2, double g2, double b2, double a2, int direction);
 void        ui_set_padding(UIHandle v, int top, int right, int bottom, int left);
 void        ui_set_spacing(UIHandle v, int spacing);
 void        ui_set_flex(UIHandle v, int flex);

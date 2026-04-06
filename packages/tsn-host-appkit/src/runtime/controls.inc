@@ -50,7 +50,8 @@ void ui_image_set_scaling(UIHandle img, int mode) {
             iv.imageScaling = NSImageScaleProportionallyUpOrDown;
             break;
         case 1: /* cover — aspect-fill with cropping */
-            iv.imageScaling = NSImageScaleProportionallyUpOrDown;
+            iv.imageScaling = NSImageScaleAxesIndependently;
+            iv.imageAlignment = NSImageAlignCenter;
             iv.wantsLayer = YES;
             iv.layer.contentsGravity = kCAGravityResizeAspectFill;
             iv.layer.masksToBounds = YES;

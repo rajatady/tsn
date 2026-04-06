@@ -302,6 +302,9 @@ export function parseTailwind(className: string, handle: string): TailwindResult
     if (cls === 'object-contain') { result.calls.push(`ui_image_set_scaling(${handle}, 0);`); continue }
     if (cls === 'object-fill')    { result.calls.push(`ui_image_set_scaling(${handle}, 2);`); continue }
 
+    // Overflow
+    if (cls === 'overflow-hidden') { result.calls.push(`ui_set_clip(${handle}, 1);`); continue }
+
     // Scroll axis hints. These are meaningful on <Scroll>.
     if (cls === 'overflow-x-auto') {
       result.calls.push(`ui_scroll_set_axis(${handle}, 1);`)

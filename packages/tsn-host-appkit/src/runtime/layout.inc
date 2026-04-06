@@ -77,7 +77,11 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
             ch = intrinsic.height > 0 ? intrinsic.height : (fh > 0 ? fh : 0);
         }
 
-        if (_direction == 0) {
+        if (_direction == 2) {
+            /* ZStack: max of all children */
+            if (cw > w - _padding_left - _padding_right) w = cw + _padding_left + _padding_right;
+            if (ch > h - _padding_top - _padding_bottom) h = ch + _padding_top + _padding_bottom;
+        } else if (_direction == 0) {
             if (cw > w - _padding_left - _padding_right) w = cw + _padding_left + _padding_right;
             h += ch;
         } else {
@@ -87,7 +91,7 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
     }
 
     if (_direction == 0) h += spacing_total;
-    else w += spacing_total;
+    else if (_direction == 1) w += spacing_total;
 
     return apply_stack_constraints(self, NSMakeSize(w, h));
 }
@@ -99,6 +103,31 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
     CGFloat y = _padding_top;
     CGFloat avail_w = b.size.width - _padding_left - _padding_right;
     CGFloat avail_h = b.size.height - _padding_top - _padding_bottom;
+
+    /* ZStack: all children fill the container, layered on top of each other */
+    if (_direction == 2) {
+        for (NSView *child in _children) {
+            CGFloat cw = avail_w, ch = avail_h;
+            if ([child isKindOfClass:[UIStackContainer class]]) {
+                UIStackContainer *sc = (UIStackContainer *)child;
+                if (sc.fixed_width > 0) cw = sc.fixed_width;
+                if (sc.fixed_height > 0) ch = sc.fixed_height;
+            } else {
+                CGFloat fw = child.frame.size.width, fh = child.frame.size.height;
+                /* For images/views with explicit sizes, respect them */
+                if (fw > 0) cw = fw;
+                if (fh > 0) ch = fh;
+                /* But if no explicit size, fill container */
+                if (fw <= 0) cw = avail_w;
+                if (fh <= 0) ch = avail_h;
+            }
+            child.frame = NSMakeRect(x, y, cw, ch);
+            if ([child isKindOfClass:[UIStackContainer class]]) {
+                [(UIStackContainer *)child layout];
+            }
+        }
+        return;
+    }
 
     /* Count flex children and fixed sizes */
     int nflex = 0;
@@ -307,6 +336,40 @@ UIHandle ui_hstack(void) {
     s.direction = 1;
     retain_render(s);
     return (__bridge UIHandle)s;
+}
+
+UIHandle ui_zstack(void) {
+    UIStackContainer *s = [UIStackContainer new];
+    s.direction = 2;
+    s.wantsLayer = YES;
+    s.layer.masksToBounds = YES;
+    retain_render(s);
+    return (__bridge UIHandle)s;
+}
+
+void ui_set_clip(UIHandle v, int clip) {
+    NSView *view = (__bridge NSView *)v;
+    view.wantsLayer = YES;
+    view.layer.masksToBounds = (clip != 0);
+}
+
+void ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
+                     double r2, double g2, double b2, double a2, int direction) {
+    NSView *view = (__bridge NSView *)v;
+    view.wantsLayer = YES;
+    CAGradientLayer *gl = [CAGradientLayer layer];
+    gl.colors = @[
+        (id)[NSColor colorWithRed:r1 green:g1 blue:b1 alpha:a1].CGColor,
+        (id)[NSColor colorWithRed:r2 green:g2 blue:b2 alpha:a2].CGColor,
+    ];
+    /* direction: 0=to-top, 1=to-bottom, 2=to-left, 3=to-right */
+    if (direction == 0) { gl.startPoint = CGPointMake(0.5, 1); gl.endPoint = CGPointMake(0.5, 0); }
+    else if (direction == 1) { gl.startPoint = CGPointMake(0.5, 0); gl.endPoint = CGPointMake(0.5, 1); }
+    else if (direction == 2) { gl.startPoint = CGPointMake(1, 0.5); gl.endPoint = CGPointMake(0, 0.5); }
+    else { gl.startPoint = CGPointMake(0, 0.5); gl.endPoint = CGPointMake(1, 0.5); }
+    gl.frame = view.bounds;
+    gl.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
+    [view.layer addSublayer:gl];
 }
 
 void ui_set_padding(UIHandle v, int t, int r, int b, int l) {

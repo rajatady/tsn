@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Store for Mac</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', sans-serif; -webkit-font-smoothing: antialiased; background: #000; color: #f5f5f7; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    .nav-item { transition: background 0.12s; cursor: default; }
+    .nav-item:hover { background: rgba(255,255,255,0.05); }
+    .nav-item.active { background: rgba(255,255,255,0.08); }
+    .view-btn {
+      background: rgba(50,130,246,0.14);
+      color: #3b9aff;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 16px;
+      padding: 4px 18px;
+      border: none;
+      cursor: pointer;
+    }
+    .view-btn:hover { background: rgba(50,130,246,0.22); }
+    .carousel {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+    }
+    .carousel > * { scroll-snap-align: start; flex-shrink: 0; }
+    .carousel-3 > * { width: calc(33.333% - 11px); min-width: 340px; }
+    .app-carousel {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .app-carousel > .app-col { scroll-snap-align: start; flex-shrink: 0; width: calc(33.333%); }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.85);
+      cursor: pointer;
+    }
+    .chip:hover { background: rgba(255,255,255,0.1); }
+    .ranked-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 16px 20px;
+      min-width: 190px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .ranked-card:hover { background: rgba(255,255,255,0.07); }
+    .page { display: none; }
+    .page.active { display: block; }
+    .hero-carousel {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      gap: 0;
+    }
+    .hero-carousel > * { scroll-snap-align: center; flex-shrink: 0; width: 100%; }
+  </style>
+</head>
+<body class="h-screen flex overflow-hidden select-none">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="w-[240px] min-w-[240px] h-full bg-[#1a1a1c] flex flex-col">
+    <div class="h-[52px] flex items-end px-5 pb-2">
+      <div class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-[#3b9aff]" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16z"/></svg>
+        <span class="text-[15px] font-semibold text-white/90 tracking-tight">App Store</span>
+        <span class="text-[13px] text-white/40 ml-0.5">for Mac</span>
+        <span class="text-white/25 text-[11px] ml-0.5">&#9662;</span>
+      </div>
+    </div>
+
+    <div class="px-4 mt-3 mb-3">
+      <div class="flex items-center gap-2 bg-white/[0.04] rounded-lg px-2.5 py-[6px] text-white/25 text-[13px]">
+        <svg class="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        Search
+      </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-3">
+      <div class="space-y-[1px]">
+        <a onclick="showPage('discover')" id="nav-discover" class="nav-item active flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] font-medium text-white">
+          <span class="text-[#3b9aff]">&#10022;</span> Discover
+        </a>
+        <a onclick="showPage('arcade')" id="nav-arcade" class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75">
+          <span class="text-white/40">&#9878;</span> Arcade
+        </a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9998;</span> Create</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#10148;</span> Work</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9654;</span> Play</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&lt;/&gt;</span> Develop</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9783;</span> Categories</a>
+      </div>
+      <div class="my-4 mx-1 border-t border-white/[0.05]"></div>
+      <p class="px-3 mb-2 text-[11px] font-semibold text-white/20 uppercase tracking-wider">Categories</p>
+      <div class="space-y-[1px]">
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9783;</span> Categories</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-[#3b9aff]">&#10148;</span> Productivity</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9881;</span> Utilities</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#128247;</span> Photo &amp; Video</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#127918;</span> Games</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#128188;</span> Business</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#127891;</span> Education</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#127925;</span> Music</a>
+        <a class="nav-item flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#128172;</span> Social Networking</a>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="flex-1 overflow-y-auto bg-[#161617]">
+
+    <!-- ══════════════════════════════════════
+         DISCOVER PAGE
+         ══════════════════════════════════════ -->
+    <div id="page-discover" class="page active">
+      <div class="px-8 pt-5 pb-12">
+
+        <!-- Page title -->
+        <h1 class="text-[32px] font-bold tracking-tight mb-5">Discover</h1>
+
+        <!-- ── HERO CAROUSEL ── -->
+        <div class="hero-carousel rounded-2xl overflow-hidden mb-6">
+          <!-- Slide 1 -->
+          <div class="relative cursor-pointer">
+            <img src="../../examples/native-gui/app-store/assets/rural-hero.png" class="w-full aspect-[22/10] object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 p-8">
+              <p class="text-[11px] font-bold text-white/50 uppercase tracking-[0.15em] mb-1">Games We Love</p>
+              <h2 class="text-[34px] font-bold leading-tight tracking-tight mb-1">Rural Life Village</h2>
+              <p class="text-[15px] text-white/55 max-w-md">Farm, craft, and explore a peaceful countryside — in this charming adventure.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── EDITORIAL CARDS CAROUSEL ── -->
+        <div class="carousel carousel-3 mb-10">
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-card-1.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">New Game</p>
+            <p class="text-[15px] font-semibold mt-0.5">Slide into adventure in Arranger</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Rearrange the furniture...and everything else.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-card-2.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Major Update</p>
+            <p class="text-[15px] font-semibold mt-0.5">Can you save a dying world?</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Battle the darkness with furry friend Neva.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-card-3.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Apple Arcade</p>
+            <p class="text-[15px] font-semibold mt-0.5">Can you build a lasting empire?</p>
+            <p class="text-[13px] text-white/40 mt-0.5">A new Civilization is here.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/develop-hero.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Editor's Pick</p>
+            <p class="text-[15px] font-semibold mt-0.5">Build something incredible</p>
+            <p class="text-[13px] text-white/40 mt-0.5">The best developer tools this month.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/develop-spotlight.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Behind the App</p>
+            <p class="text-[15px] font-semibold mt-0.5">Meet the team behind Mercury Weather</p>
+            <p class="text-[13px] text-white/40 mt-0.5">A small studio with big ambitions.</p>
+          </div>
+        </div>
+
+        <!-- ── APPS WE LOVE — horizontal scroll of 3-col app lists ── -->
+        <div class="flex items-center gap-1.5 mb-4">
+          <h2 class="text-[22px] font-bold tracking-tight">Apps and Games We Love Right Now</h2>
+          <span class="text-[#3b9aff] text-[20px] font-light">&#8250;</span>
+        </div>
+
+        <div class="app-carousel mb-10">
+          <!-- Column 1 -->
+          <div class="app-col pr-5">
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-oceanhorn.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Oceanhorn</p><p class="text-[12px] text-white/35 truncate">Monster of Uncharted Seas</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-bloons.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Bloons TD 6+</p><p class="text-[12px] text-white/35 truncate">Tower Defense</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3">
+              <img src="../../examples/native-gui/app-store/assets/icon-pacman.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Pac-Man Party Royale</p><p class="text-[12px] text-white/35 truncate">Classic Arcade Fun</p></div>
+              <button class="view-btn">View</button>
+            </div>
+          </div>
+          <!-- Column 2 -->
+          <div class="app-col pr-5">
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-angry-birds.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Angry Birds Reloaded</p><p class="text-[12px] text-white/35 truncate">Slingshot Fun Returns</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-sneaky.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Sneaky Sasquatch</p><p class="text-[12px] text-white/35 truncate">Open World Adventure</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3">
+              <img src="../../examples/native-gui/app-store/assets/icon-cooking.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Cooking Mama: Cuisine!</p><p class="text-[12px] text-white/35 truncate">Let's Cook!</p></div>
+              <button class="view-btn">View</button>
+            </div>
+          </div>
+          <!-- Column 3 -->
+          <div class="app-col pr-5">
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-cult.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Cult of the Lamb</p><p class="text-[12px] text-white/35 truncate">Build Your Own Cult</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-dredge.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">DREDGE</p><p class="text-[12px] text-white/35 truncate">A lo-fi fishing adventure</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3">
+              <img src="../../examples/native-gui/app-store/assets/icon-hello-kitty.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Hello Kitty Island</p><p class="text-[12px] text-white/35 truncate">Explore a Tropical Paradise</p></div>
+              <button class="view-btn">View</button>
+            </div>
+          </div>
+          <!-- Column 4 (scrolls into view) -->
+          <div class="app-col pr-5">
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-lego.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">LEGO Builder's Journey</p><p class="text-[12px] text-white/35 truncate">Puzzle &middot; Relaxation</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-naruto.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Naruto x Boruto</p><p class="text-[12px] text-white/35 truncate">Action &middot; RPG</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3">
+              <img src="../../examples/native-gui/app-store/assets/icon-tmnt.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">TMNT: Splintered Fate</p><p class="text-[12px] text-white/35 truncate">Action</p></div>
+              <button class="view-btn">View</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── MUST-PLAY GAMES CAROUSEL ── -->
+        <h2 class="text-[22px] font-bold tracking-tight mb-4">The Latest Must-Play Mac Games</h2>
+
+        <div class="carousel carousel-3 mb-10">
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/rural-screen-1.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">New Game</p>
+            <p class="text-[15px] font-semibold mt-0.5">Explore ancient shrines</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Rural Life Village is full of secrets.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/rural-screen-2.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Major Update</p>
+            <p class="text-[15px] font-semibold mt-0.5">Tend your garden</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Grow rare plants and discover new recipes.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-hero.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Apple Arcade</p>
+            <p class="text-[15px] font-semibold mt-0.5">Can you build a lasting empire?</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Civilization awaits your command.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/develop-hero.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Spotlight</p>
+            <p class="text-[15px] font-semibold mt-0.5">Code faster with Xcode extensions</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Developer tools that supercharge your workflow.</p>
+          </div>
+        </div>
+
+        <!-- ── TRY THESE FAVOURITES — horizontal scroll app list ── -->
+        <div class="flex items-center gap-1.5 mb-4">
+          <h2 class="text-[22px] font-bold tracking-tight">Try These Mac Favourites</h2>
+          <span class="text-[#3b9aff] text-[20px] font-light">&#8250;</span>
+        </div>
+
+        <div class="app-carousel mb-10">
+          <div class="app-col pr-5">
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-spongebob.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">SpongeBob: Patty Pursuit</p><p class="text-[12px] text-white/35 truncate">Arcade &middot; Adventure</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-felicity.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Stitch &amp; Felicity</p><p class="text-[12px] text-white/35 truncate">Puzzle &middot; Cozy</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3">
+              <img src="../../examples/native-gui/app-store/assets/icon-cozy.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Cozy Grove</p><p class="text-[12px] text-white/35 truncate">Simulation &middot; Life</p></div>
+              <button class="view-btn">View</button>
+            </div>
+          </div>
+          <div class="app-col pr-5">
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-dreamlight.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Dreamlight Valley</p><p class="text-[12px] text-white/35 truncate">Simulation &middot; Disney</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-rural-life.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Rural Life Village</p><p class="text-[12px] text-white/35 truncate">Simulation &middot; Farming</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3">
+              <img src="../../examples/native-gui/app-store/assets/icon-lego.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">LEGO Builder's Journey</p><p class="text-[12px] text-white/35 truncate">Puzzle</p></div>
+              <button class="view-btn">View</button>
+            </div>
+          </div>
+          <div class="app-col pr-5">
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-tmnt.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">TMNT: Splintered Fate</p><p class="text-[12px] text-white/35 truncate">Action</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3 border-b border-white/[0.04]">
+              <img src="../../examples/native-gui/app-store/assets/icon-naruto.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">Naruto x Boruto</p><p class="text-[12px] text-white/35 truncate">Action &middot; RPG</p></div>
+              <button class="view-btn">View</button>
+            </div>
+            <div class="flex items-center gap-3 py-3">
+              <img src="../../examples/native-gui/app-store/assets/icon-dredge.png" class="w-[52px] h-[52px] rounded-[13px]" />
+              <div class="flex-1 min-w-0"><p class="text-[14px] font-medium truncate">DREDGE</p><p class="text-[12px] text-white/35 truncate">Adventure</p></div>
+              <button class="view-btn">View</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CATEGORIES CAROUSEL ── -->
+        <h2 class="text-[22px] font-bold tracking-tight mb-4">Explore by Category</h2>
+        <div class="carousel mb-6" style="gap:12px">
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/category-puzzle.png" class="w-full aspect-[13/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">Puzzle</p>
+          </div>
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/category-strategy.png" class="w-full aspect-[13/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">Strategy</p>
+          </div>
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/category-sim.png" class="w-full aspect-[13/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">Simulation</p>
+          </div>
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/category-family.png" class="w-full aspect-[13/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">Family</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         ARCADE PAGE
+         ══════════════════════════════════════ -->
+    <div id="page-arcade" class="page">
+      <div class="px-8 pt-5 pb-12">
+
+        <h1 class="text-[32px] font-bold tracking-tight mb-5">Arcade</h1>
+
+        <!-- Hero carousel -->
+        <div class="hero-carousel rounded-2xl overflow-hidden mb-5">
+          <div class="relative cursor-pointer">
+            <img src="../../examples/native-gui/app-store/assets/hero-arcade.png" class="w-full aspect-[23/10] object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-7">
+              <p class="text-[11px] font-bold text-white/50 uppercase tracking-[0.15em] mb-1">New Game</p>
+              <h2 class="text-[36px] font-bold leading-tight tracking-tight mb-1">Rural Life Village</h2>
+              <p class="text-[15px] text-white/55 mb-4">Farm, craft, and explore a peaceful countryside</p>
+              <div class="flex items-center gap-3">
+                <img src="../../examples/native-gui/app-store/assets/icon-rural-life.png" class="w-11 h-11 rounded-xl" />
+                <div>
+                  <p class="text-[11px] font-bold text-white/40 uppercase tracking-wider">New Game</p>
+                  <p class="text-[14px] font-semibold">Rural Life Village</p>
+                  <p class="text-[12px] text-white/35">A magical farming RPG.</p>
+                </div>
+                <button class="view-btn ml-2">View</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category chips — horizontal scroll -->
+        <div class="carousel mb-6" style="gap:8px">
+          <span class="chip">&#128165; Action</span>
+          <span class="chip">&#127956; Adventure</span>
+          <span class="chip">&#127922; Casual</span>
+          <span class="chip">&#128106; Family</span>
+          <span class="chip">&#129513; Puzzle</span>
+          <span class="chip">&#127950; Racing</span>
+          <span class="chip">&#127918; Simulation</span>
+          <span class="chip">&#9917; Sports</span>
+          <span class="chip">&#9876; Strategy</span>
+          <span class="chip">&#128172; Word</span>
+        </div>
+
+        <!-- Top Arcade — horizontal scroll of ranked cards -->
+        <h2 class="text-[22px] font-bold tracking-tight mb-4">Top Arcade Games</h2>
+
+        <div class="carousel mb-10" style="gap:12px">
+          <div class="ranked-card">
+            <p class="text-[36px] font-bold text-white/12 mb-1">1</p>
+            <img src="../../examples/native-gui/app-store/assets/icon-sneaky.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+            <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+            <p class="text-[13px] font-semibold mt-0.5">Sneaky Sasquatch</p>
+          </div>
+          <div class="ranked-card">
+            <p class="text-[36px] font-bold text-white/12 mb-1">2</p>
+            <img src="../../examples/native-gui/app-store/assets/icon-naruto.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+            <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+            <p class="text-[13px] font-semibold mt-0.5">Naruto x Boruto</p>
+          </div>
+          <div class="ranked-card">
+            <p class="text-[36px] font-bold text-white/12 mb-1">3</p>
+            <img src="../../examples/native-gui/app-store/assets/icon-bloons.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+            <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+            <p class="text-[13px] font-semibold mt-0.5">Bloons TD 6+</p>
+          </div>
+          <div class="ranked-card">
+            <p class="text-[36px] font-bold text-white/12 mb-1">4</p>
+            <img src="../../examples/native-gui/app-store/assets/icon-dredge.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+            <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+            <p class="text-[13px] font-semibold mt-0.5">DREDGE+</p>
+          </div>
+          <div class="ranked-card">
+            <p class="text-[36px] font-bold text-white/12 mb-1">5</p>
+            <img src="../../examples/native-gui/app-store/assets/icon-cooking.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+            <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+            <p class="text-[13px] font-semibold mt-0.5">Cooking Mama</p>
+          </div>
+          <div class="ranked-card">
+            <p class="text-[36px] font-bold text-white/12 mb-1">6</p>
+            <img src="../../examples/native-gui/app-store/assets/icon-cult.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+            <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+            <p class="text-[13px] font-semibold mt-0.5">Cult of the Lamb+</p>
+          </div>
+          <div class="ranked-card">
+            <p class="text-[36px] font-bold text-white/12 mb-1">7</p>
+            <img src="../../examples/native-gui/app-store/assets/icon-hello-kitty.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+            <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+            <p class="text-[13px] font-semibold mt-0.5">Hello Kitty Island</p>
+          </div>
+        </div>
+
+        <!-- What to Play editorial carousel -->
+        <h2 class="text-[22px] font-bold tracking-tight mb-4">What to Play</h2>
+
+        <div class="carousel carousel-3 mb-10">
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-card-3.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Best New Games</p>
+            <p class="text-[15px] font-semibold mt-0.5">Draft your destiny in Blue Prince</p>
+            <p class="text-[13px] text-white/40 mt-0.5">A world of adventure awaits.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-hero.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Apple Arcade</p>
+            <p class="text-[15px] font-semibold mt-0.5">Can you build a lasting empire?</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Civilization awaits your command.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/rural-screen-1.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Games We Love</p>
+            <p class="text-[15px] font-semibold mt-0.5">Explore ancient shrines</p>
+            <p class="text-[13px] text-white/40 mt-0.5">Rural Life Village is full of secrets.</p>
+          </div>
+          <div class="cursor-pointer group">
+            <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-card-1.png" class="w-full aspect-[16/10] object-cover group-hover:scale-[1.02] transition-transform duration-200" /></div>
+            <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Editor's Pick</p>
+            <p class="text-[15px] font-semibold mt-0.5">Warp reality in Control</p>
+            <p class="text-[13px] text-white/40 mt-0.5">A mind-bending action game.</p>
+          </div>
+        </div>
+
+        <!-- Perks carousel -->
+        <h2 class="text-[22px] font-bold tracking-tight mb-4">Perks of Apple Arcade</h2>
+        <div class="carousel mb-6" style="gap:12px">
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/perk-overview.png" class="w-full aspect-[16/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">Overview</p>
+          </div>
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/perk-new-games.png" class="w-full aspect-[16/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">New Games Weekly</p>
+          </div>
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/perk-no-ads.png" class="w-full aspect-[16/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">No Ads</p>
+          </div>
+          <div class="cursor-pointer group" style="flex-shrink:0;width:calc(25% - 9px);min-width:200px">
+            <div class="rounded-xl overflow-hidden"><img src="../../examples/native-gui/app-store/assets/perk-family.png" class="w-full aspect-[16/9] object-cover group-hover:scale-[1.03] transition-transform duration-200" /></div>
+            <p class="text-[13px] font-medium text-white/70 mt-2">Family Sharing</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    function showPage(name) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('page-' + name).classList.add('active');
+      document.getElementById('nav-' + name).classList.add('active');
+      document.querySelector('main').scrollTop = 0;
+    }
+  </script>
+</body>
+</html>

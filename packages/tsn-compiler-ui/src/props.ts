@@ -60,6 +60,20 @@ export class JsxProps {
     return '""'
   }
 
+  parseGradientColor(spec: string): { r: number, g: number, b: number, a: number } {
+    if (spec === 'transparent') return { r: 0, g: 0, b: 0, a: 0 }
+    // Parse "black/60" → rgba(0,0,0,0.6)
+    const parts = spec.split('/')
+    const colorName = parts[0]
+    const alpha = parts.length > 1 ? parseInt(parts[1]) / 100 : 1.0
+    const colors: Record<string, [number, number, number]> = {
+      'black': [0, 0, 0],
+      'white': [1, 1, 1],
+    }
+    const rgb = colors[colorName] ?? [0, 0, 0]
+    return { r: rgb[0], g: rgb[1], b: rgb[2], a: alpha }
+  }
+
   colorIndex(name: string): number {
     const map: Record<string, number> = {
       'label': 0, 'secondary': 1, 'tertiary': 2,

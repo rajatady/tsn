@@ -12,31 +12,30 @@ import {
 
 function DiscoverHero() {
   return (
-    <Card className="rounded-2xl p-0 bg-zinc-800">
-      <VStack className="gap-0">
-        <Image src="examples/native-gui/app-store/assets/develop-spotlight.png" className="h-[420] rounded-2xl object-cover" />
-        <VStack className="gap-1 px-5 py-4">
-          <Text className="text-xs text-zinc-500 uppercase tracking-wide font-semibold">Try Something New</Text>
-          <Text className="text-3xl font-bold tracking-tight leading-tight">Indispensable affordable apps</Text>
-          <Text className="text-sm text-zinc-400">Simple but super-useful apps that won't break the bank.</Text>
-        </VStack>
+    <ZStack className="rounded-2xl overflow-hidden">
+      <Image src="examples/native-gui/app-store/assets/rural-hero.png" className="h-[420] object-cover" />
+      <Gradient from="black/60" to="transparent" direction="to-top" />
+      <VStack className="justify-end p-8 gap-1">
+        <Text className="text-xs text-white/50 uppercase tracking-wide font-semibold">Games We Love</Text>
+        <Text className="text-4xl font-bold tracking-tight leading-tight">Rural Life Village</Text>
+        <Text className="text-sm text-white/55">Farm, craft, and explore a peaceful countryside — in this charming adventure.</Text>
       </VStack>
-    </Card>
+    </ZStack>
   )
 }
 
 function FeatureCard(eyebrow: string, title: string, subtitle: string, image: string) {
   return (
-    <Card className="flex-1 rounded-2xl p-0 bg-zinc-800">
-      <VStack className="gap-0">
-        <Image src={image} className="h-[200] rounded-2xl object-cover" />
-        <VStack className="gap-1 px-4 py-3">
-          <Text className="text-xs text-zinc-500 uppercase tracking-wide font-semibold">{eyebrow}</Text>
-          <Text className="text-lg font-bold leading-tight">{title}</Text>
-          <Text className="text-sm text-zinc-400">{subtitle}</Text>
-        </VStack>
+    <VStack className="flex-1 gap-0">
+      <Card className="rounded-xl p-0 overflow-hidden">
+        <Image src={image} className="h-[200] object-cover" />
+      </Card>
+      <VStack className="gap-1 py-2">
+        <Text className="text-xs text-white/25 uppercase tracking-wide font-semibold">{eyebrow}</Text>
+        <Text className="text-base font-semibold leading-tight">{title}</Text>
+        <Text className="text-sm text-white/40">{subtitle}</Text>
       </VStack>
-    </Card>
+    </VStack>
   )
 }
 
@@ -56,7 +55,7 @@ function LovedAppsGrid() {
   const apps: StoreApp[] = discoverLovedApps()
 
   return (
-    <HStack className="gap-8">
+    <HStack className="gap-0">
       <VStack className="flex-1 gap-0">
         <AppRow app={apps[0]} />
         <Divider />
@@ -82,14 +81,16 @@ function LovedAppsGrid() {
   )
 }
 
-function GameCard(eyebrow: string, title: string, subtitle: string, image: string) {
+function GameEditorialCard(eyebrow: string, title: string, subtitle: string, image: string) {
   return (
     <VStack className="flex-1 gap-0">
-      <Image src={image} className="h-[200] rounded-2xl object-cover" />
-      <VStack className="gap-1 py-3">
-        <Text className="text-xs text-zinc-500 uppercase tracking-wide font-semibold">{eyebrow}</Text>
-        <Text className="text-lg font-bold leading-tight">{title}</Text>
-        <Text className="text-sm text-zinc-400">{subtitle}</Text>
+      <Card className="rounded-xl p-0 overflow-hidden">
+        <Image src={image} className="h-[200] object-cover" />
+      </Card>
+      <VStack className="gap-1 py-2">
+        <Text className="text-xs text-white/25 uppercase tracking-wide font-semibold">{eyebrow}</Text>
+        <Text className="text-base font-semibold leading-tight">{title}</Text>
+        <Text className="text-sm text-white/40">{subtitle}</Text>
       </VStack>
     </VStack>
   )
@@ -100,9 +101,9 @@ function LatestGamesGrid() {
 
   return (
     <HStack className="gap-4">
-      {GameCard(cards[0].eyebrow, cards[0].title, cards[0].subtitle, cards[0].image)}
-      {GameCard(cards[1].eyebrow, cards[1].title, cards[1].subtitle, cards[1].image)}
-      {GameCard(cards[2].eyebrow, cards[2].title, cards[2].subtitle, cards[2].image)}
+      {GameEditorialCard(cards[0].eyebrow, cards[0].title, cards[0].subtitle, cards[0].image)}
+      {GameEditorialCard(cards[1].eyebrow, cards[1].title, cards[1].subtitle, cards[1].image)}
+      {GameEditorialCard(cards[2].eyebrow, cards[2].title, cards[2].subtitle, cards[2].image)}
     </HStack>
   )
 }

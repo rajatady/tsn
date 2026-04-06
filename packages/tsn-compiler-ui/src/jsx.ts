@@ -166,6 +166,27 @@ export class JsxEmitter {
         return handle
       }
 
+      case 'ZStack': {
+        create(`ui_zstack()`)
+        if (tw) for (const c of tw.calls) push(c)
+        this.emitChildren(children, handle)
+        return handle
+      }
+
+      case 'Gradient': {
+        // Gradient overlay — from/to/direction props
+        const from = this.propsUtil.propStr(props, 'from') ?? 'black/60'
+        const to = this.propsUtil.propStr(props, 'to') ?? 'transparent'
+        const dir = this.propsUtil.propStr(props, 'direction') ?? 'to-top'
+        const dirMap: Record<string, number> = { 'to-top': 0, 'to-bottom': 1, 'to-left': 2, 'to-right': 3 }
+        const dirNum = dirMap[dir] ?? 0
+        const c1 = this.propsUtil.parseGradientColor(from)
+        const c2 = this.propsUtil.parseGradientColor(to)
+        create(`ui_vstack()`)
+        push(`ui_set_gradient(${handle}, ${c1.r}, ${c1.g}, ${c1.b}, ${c1.a}, ${c2.r}, ${c2.g}, ${c2.b}, ${c2.a}, ${dirNum});`)
+        return handle
+      }
+
       case 'VStack':
       case 'HStack': {
         const fn = tag === 'VStack' ? 'ui_vstack' : 'ui_hstack'

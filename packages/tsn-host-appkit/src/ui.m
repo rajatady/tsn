@@ -449,6 +449,7 @@ UIHandle ui_card(void) {
     c.wantsLayer = YES;
     c.layer.backgroundColor = [NSColor colorWithWhite:0.12 alpha:1].CGColor;
     c.layer.cornerRadius = 12;
+    c.layer.masksToBounds = YES;
     c.padding_top = 12; c.padding_right = 12; c.padding_bottom = 12; c.padding_left = 12;
     retain_render(c);
     return (__bridge UIHandle)c;
