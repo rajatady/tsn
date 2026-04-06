@@ -206,7 +206,7 @@ export class JsxEmitter {
           for (const c of tw.calls) push(c)
           if (tw.textWeight >= 0) push(`ui_text_set_weight(${handle}, ${tw.textWeight});`)
           if (tw.textLineHeight >= 0) push(`ui_text_set_line_height(${handle}, ${tw.textLineHeight});`)
-          if (!Number.isNaN(tw.textTracking)) push(`ui_text_set_tracking(${handle}, ${tw.textTracking});`)
+          if (!Number.isNaN(tw.textTracking)) push(`ui_text_set_tracking(${handle}, ${(tw.textTracking * size).toFixed(4)});`)
           if (tw.textTransform > 0) push(`ui_text_set_transform(${handle}, ${tw.textTransform});`)
           if (tw.textAlign >= 0) push(`ui_text_set_align(${handle}, ${tw.textAlign});`)
         }

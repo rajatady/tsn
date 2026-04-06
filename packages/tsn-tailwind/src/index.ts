@@ -228,10 +228,10 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       if (val) { result.textLineHeight = parseFloat(val[1]); continue }
     }
 
-    // Letter spacing
+    // Letter spacing (em values matching CSS, multiplied by font size at emit time)
     const TRACKING: Record<string, number> = {
-      'tracking-tighter': -0.8, 'tracking-tight': -0.4, 'tracking-normal': 0,
-      'tracking-wide': 0.4, 'tracking-wider': 0.8, 'tracking-widest': 1.6,
+      'tracking-tighter': -0.05, 'tracking-tight': -0.025, 'tracking-normal': 0,
+      'tracking-wide': 0.025, 'tracking-wider': 0.05, 'tracking-widest': 0.1,
     }
     if (cls in TRACKING) { result.textTracking = TRACKING[cls]; continue }
     if (cls.startsWith('tracking-[')) {

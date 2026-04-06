@@ -185,9 +185,9 @@ test('leading-none sets textLineHeight 1.0', () => {
   assert.equal(r.textLineHeight, 1.0)
 })
 
-test('tracking-tight sets textTracking -0.4', () => {
+test('tracking-tight sets textTracking -0.025 (em)', () => {
   const r = parseTailwind('tracking-tight', 'h')
-  assert.equal(r.textTracking, -0.4)
+  assert.equal(r.textTracking, -0.025)
 })
 
 test('tracking-[-0.04em] sets textTracking -0.04', () => {
