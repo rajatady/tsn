@@ -58,8 +58,13 @@ export function buildStrictTS(inputPath: string, argv: string[] = []): void {
     const sizeStr = size > 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${(size / 1024).toFixed(0)} KB`
     console.log(`  → ${binaryPath} (${sizeStr})`)
     console.log(`\nDone! Run: ./${binaryPath}`)
-  } catch {
-    console.error('Compilation failed. Check the generated C code in build/')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : ''
+    if (msg.includes('GTK4') || msg.includes('not yet supported')) {
+      console.error(`\n${msg}`)
+    } else {
+      console.error('Compilation failed. Check the generated C code in build/')
+    }
     process.exit(1)
   }
 }

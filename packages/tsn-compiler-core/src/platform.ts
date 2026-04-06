@@ -13,6 +13,7 @@
 
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { execSync } from 'node:child_process'
 
 // ─── Contract ────────────────────────────────────────────────────────
 
@@ -66,19 +67,33 @@ const darwinPlatform: HostPlatform = {
   },
 }
 
-// ─── Linux ───────────────────────────────────────────────────────────
+// ─── Linux (GTK4) ───────────────────────────────────────────────────
 
 const linuxPlatform: HostPlatform = {
   name: 'linux',
-  supportsUi: false,        // no native UI host yet
-  uiHeaderRoot: null,
-  uiSourcePath: null,
+  supportsUi: true,
 
-  uiClangFlags() {
-    throw new Error(
-      'Native UI (JSX) targets are not yet supported on Linux.\n' +
-      'CLI targets (.ts) work. UI targets (.tsx) require a host implementation.\n' +
-      'Contribute one at packages/tsn-host-linux/'
+  uiHeaderRoot: path.join('packages', 'tsn-host-gtk', 'src'),
+  uiSourcePath: path.join('packages', 'tsn-host-gtk', 'src', 'ui.c'),
+
+  uiClangFlags({ debug, cPath, binaryPath }) {
+    // Verify GTK4 dev headers are installed
+    try {
+      execSync('pkg-config --exists gtk4', { stdio: 'pipe' })
+    } catch {
+      throw new Error(
+        'GTK4 development headers not found.\n' +
+        'Install with: sudo apt-get install libgtk-4-dev\n' +
+        'CLI targets (.ts) work without GTK4. Only UI targets (.tsx) need it.'
+      )
+    }
+
+    const uiSrc = this.uiSourcePath!
+    const uiInc = this.uiHeaderRoot!
+    return (
+      `clang ${optFlag(debug)} ` +
+      `${cPath} ${uiSrc} -I ${uiInc} -I ${runtimeDir} ` +
+      `$(pkg-config --cflags --libs gtk4) -lm -o ${binaryPath}`
     )
   },
 
