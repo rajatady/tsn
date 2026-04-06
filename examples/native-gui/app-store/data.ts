@@ -351,6 +351,33 @@ export function playCards(): EditorialCard[] {
   return cards
 }
 
+export function discoverHeroCards(): EditorialCard[] {
+  const cards: EditorialCard[] = [
+    {
+      eyebrow: 'GAMES WE LOVE',
+      title: 'Rural Life Village',
+      subtitle: 'Farm, craft, and explore a peaceful countryside.',
+      image: ruralHeroImage,
+      route: 'discover',
+    },
+    {
+      eyebrow: 'NOW AVAILABLE',
+      title: 'Embark on a New Adventure',
+      subtitle: 'Explore vast open worlds and forge your path.',
+      image: playHeroImage,
+      route: 'play',
+    },
+    {
+      eyebrow: 'DEVELOPER SPOTLIGHT',
+      title: 'Build What Matters',
+      subtitle: 'Powerful tools for the modern developer.',
+      image: developHeroImage,
+      route: 'develop',
+    },
+  ]
+  return cards
+}
+
 export function discoverFeatureCards(): EditorialCard[] {
   const cards: EditorialCard[] = [
     {
@@ -363,16 +390,30 @@ export function discoverFeatureCards(): EditorialCard[] {
     {
       eyebrow: 'GET STARTED',
       title: 'Explore Apple Creator Studio',
-      subtitle: 'Powerful creativity apps and premium productivity features.',
+      subtitle: 'Powerful creativity apps.',
       image: developSpotlightImage,
       route: 'discover',
     },
     {
       eyebrow: "LET'S PLAY",
-      title: "Don't miss these amazing games",
-      subtitle: 'Download the latest and greatest on Mac.',
+      title: "Don't miss these games",
+      subtitle: 'Download the latest on Mac.',
       image: playCardTwoImage,
       route: 'play',
+    },
+    {
+      eyebrow: 'NEW RELEASE',
+      title: 'Level up with Bluey',
+      subtitle: 'A charming family adventure.',
+      image: playCardOneImage,
+      route: 'play',
+    },
+    {
+      eyebrow: 'FEATURED',
+      title: 'Craft your perfect day',
+      subtitle: 'Productivity tools for everyone.',
+      image: playCardThreeImage,
+      route: 'discover',
     },
   ]
   return cards
@@ -398,21 +439,35 @@ export function discoverLatestGames(): EditorialCard[] {
     {
       eyebrow: 'GAMES WE LOVE',
       title: 'Draft your destiny in Blue Prince',
-      subtitle: 'Investigate a mysterious mansion by building it on the fly.',
+      subtitle: 'Investigate a mysterious mansion.',
       image: playCardThreeImage,
       route: 'play',
     },
     {
       eyebrow: 'NEW GAME',
-      title: "Beat the king in Let's! Revolution!",
-      subtitle: 'Fight hidden foes on dangerous roads.',
-      image: playCardOneImage,
+      title: 'Explore ancient shrines',
+      subtitle: 'Rural Life Village is full of secrets.',
+      image: ruralScreenOneImage,
+      route: 'play',
+    },
+    {
+      eyebrow: 'MAJOR UPDATE',
+      title: 'Tend your garden',
+      subtitle: 'Grow rare plants and discover recipes.',
+      image: ruralScreenTwoImage,
       route: 'play',
     },
     {
       eyebrow: 'WORLD PREMIERE',
       title: 'Embark on a Bluey Adventure',
-      subtitle: 'Can you track down the elusive gold pen?',
+      subtitle: 'Track down the elusive gold pen.',
+      image: playCardOneImage,
+      route: 'play',
+    },
+    {
+      eyebrow: 'APPLE ARCADE',
+      title: "Beat the king in Let's! Revolution!",
+      subtitle: 'Fight hidden foes on dangerous roads.',
       image: playCardTwoImage,
       route: 'play',
     },

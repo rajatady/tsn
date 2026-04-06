@@ -41,33 +41,27 @@ function NavItem({ icon, label, route }: NavItemProps) {
 
 export function AppStoreSidebar() {
   return (
-    <VStack testId="sidebar" className="w-[240] gap-2 bg-[#1a1a1c] p-3">
-      <Search testId="sidebar-search" placeholder="Search" onChange={handleSidebarSearch} className="w-[216]" />
+    <VStack testId="sidebar" className="w-[240] gap-0 bg-[#1a1a1c]">
+      <VStack className="h-[52] justify-end px-5 pb-2">
+        <HStack className="items-center gap-1">
+          <Text className="text-[15] font-semibold text-white/90 tracking-tight">App Store</Text>
+          <Text className="text-[13] text-white/40">for Mac</Text>
+        </HStack>
+      </VStack>
 
-      <VStack className="gap-1">
+      <VStack className="px-4 py-3">
+        <Search testId="sidebar-search" placeholder="Search" onChange={handleSidebarSearch} />
+      </VStack>
+
+      <VStack className="flex-1 px-3 gap-1">
         <NavItem icon="sparkle.magnifyingglass" label="Discover" route="discover" />
         <NavItem icon="gamecontroller.fill" label="Arcade" route="arcade" />
         <NavItem icon="paintbrush.pointed.fill" label="Create" route="discover" />
         <NavItem icon="paperplane.fill" label="Work" route="discover" />
         <NavItem icon="play.fill" label="Play" route="play" />
         <NavItem icon="hammer.fill" label="Develop" route="develop" />
+        <NavItem icon="square.grid.2x2" label="Categories" route="discover" />
       </VStack>
-
-      <VStack className="gap-1">
-        <Button variant="sidebar" icon="square.grid.2x2">Categories</Button>
-        <Button variant="sidebar" icon="arrow.down.circle">Updates</Button>
-      </VStack>
-
-      <Spacer />
-
-      <Card className="rounded-xl shadow-lg">
-        <HStack className="items-center gap-3">
-          <Card className="w-[32] h-[32] rounded-full bg-zinc-700 items-center justify-center">
-            <Text className="text-sm font-bold">KR</Text>
-          </Card>
-          <Text className="text-sm font-bold">Kumar Divya Rajat</Text>
-        </HStack>
-      </Card>
     </VStack>
   )
 }
