@@ -245,6 +245,19 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
         return [NSString stringWithFormat:@"%.0f×%.0f at %.0f,%.0f\n",
             f.size.width, f.size.height, f.origin.x, f.origin.y];
     }
+    if ([prop isEqualToString:@"wframe"]) {
+        /* Window-relative frame in top-left coordinates (matching browser convention).
+           AppKit's convertRect:toView:nil returns bottom-left origin coords,
+           so we flip Y relative to the content view height. */
+        NSRect local = view.bounds;
+        NSRect windowRect = [view convertRect:local toView:nil];
+        NSView *contentView = view.window.contentView;
+        CGFloat contentHeight = contentView ? contentView.frame.size.height : windowRect.origin.y + windowRect.size.height;
+        CGFloat flippedY = contentHeight - windowRect.origin.y - windowRect.size.height;
+        return [NSString stringWithFormat:@"%.0f×%.0f at %.0f,%.0f\n",
+            windowRect.size.width, windowRect.size.height,
+            windowRect.origin.x, flippedY];
+    }
     if ([prop isEqualToString:@"text"]) {
         if ([view isKindOfClass:[NSTextField class]])
             return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-row items-center gap-3 p-4 h-[80px] w-[500px] bg-zinc-900">
+    <div data-testid="icon" class="w-[52px] h-[52px] rounded-xl bg-zinc-700 shrink-0"></div>
+    <div data-testid="text" class="flex-1 flex flex-col gap-0">
+      <span class="text-lg font-semibold text-white">App Name</span>
+      <span class="text-sm text-zinc-400">Subtitle</span>
+    </div>
+    <div data-testid="action" class="w-[60px] h-[32px] rounded-full bg-zinc-700 shrink-0"></div>
+  </div>
+</body>
+</html>

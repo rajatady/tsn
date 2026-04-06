@@ -3,4 +3,4 @@
 set -e
 cd "$(dirname "$0")/.."
 
-npx tsx harness/ui-conformance.ts
+npx tsx conformance/harness.ts
