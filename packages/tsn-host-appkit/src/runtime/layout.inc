@@ -12,7 +12,9 @@
 @property int fixed_width, fixed_height;
 @property int min_width, min_height;
 @property int max_width, max_height;
-@property int alignment;
+@property int alignment;        /* per-child self-alignment: 0=default, 1=center, 2=end */
+@property int align_items;      /* container cross-axis: 0=start, 1=center, 2=end, 3=stretch(default) */
+@property int justify_content;  /* container main-axis: 0=start, 1=center, 2=end, 3=space-between */
 @property (nonatomic, strong) NSMutableArray<NSView *> *children;
 @end
 
@@ -46,6 +48,8 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
     _max_width = -1;
     _max_height = -1;
     _alignment = 0;
+    _align_items = 3;      /* stretch by default */
+    _justify_content = 0;  /* start by default */
     return self;
 }
 - (BOOL)isFlipped { return YES; }
@@ -138,6 +142,24 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
     CGFloat flex_space = (_direction == 0 ? avail_h : avail_w) - fixed_total - spacing_total;
     if (flex_space < 0) flex_space = 0;
 
+    /* justify-content: compute main-axis offset and adjusted spacing */
+    CGFloat justify_offset = 0;
+    CGFloat justify_spacing = _spacing;
+    if (_justify_content > 0) {
+        CGFloat total_main = fixed_total + spacing_total;
+        CGFloat main_avail = (_direction == 0) ? avail_h : avail_w;
+        CGFloat remaining = main_avail - total_main;
+        if (remaining > 0) {
+            if (_justify_content == 1) justify_offset = remaining * 0.5;        /* center */
+            else if (_justify_content == 2) justify_offset = remaining;          /* end */
+            else if (_justify_content == 3 && _children.count > 1) {             /* space-between */
+                justify_spacing = _spacing + remaining / (_children.count - 1);
+            }
+        }
+    }
+    if (_direction == 0) y += justify_offset;
+    else x += justify_offset;
+
     for (NSView *child in _children) {
         CGFloat cw, ch;
         int child_flex = 0;
@@ -215,10 +237,21 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
 
         CGFloat child_x = x;
         CGFloat child_y = y;
-        if ([child isKindOfClass:[UIStackContainer class]]) {
-            UIStackContainer *sc = (UIStackContainer *)child;
-            if (_direction == 0) child_x = child_cross_origin(_padding_left, avail_w, cw, sc.alignment);
-            else child_y = child_cross_origin(_padding_top, avail_h, ch, sc.alignment);
+        {
+            /* Resolve cross-axis alignment: child self-alignment wins, then container align_items */
+            int cross_align = 0;
+            if ([child isKindOfClass:[UIStackContainer class]]) {
+                UIStackContainer *sc = (UIStackContainer *)child;
+                cross_align = sc.alignment;  /* per-child override */
+            }
+            /* Fall back to container align_items if child has no self-alignment */
+            if (cross_align == 0 && _align_items != 3) {
+                cross_align = _align_items;  /* 0=start, 1=center, 2=end */
+            }
+            if (cross_align > 0) {
+                if (_direction == 0) child_x = child_cross_origin(_padding_left, avail_w, cw, cross_align);
+                else child_y = child_cross_origin(_padding_top, avail_h, ch, cross_align);
+            }
         }
 
         child.frame = NSMakeRect(child_x, child_y, cw, ch);
@@ -244,8 +277,8 @@ static CGFloat child_cross_origin(CGFloat base, CGFloat available, CGFloat size,
             }
         }
 
-        if (_direction == 0) y += ch + _spacing;
-        else x += cw + _spacing;
+        if (_direction == 0) y += ch + justify_spacing;
+        else x += cw + justify_spacing;
     }
 }
 @end
@@ -318,6 +351,20 @@ void ui_set_alignment(UIHandle v, int a) {
     NSView *view = (__bridge NSView *)v;
     if ([view isKindOfClass:[UIStackContainer class]]) {
         ((UIStackContainer *)view).alignment = a;
+    }
+}
+
+void ui_set_align_items(UIHandle v, int a) {
+    NSView *view = (__bridge NSView *)v;
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        ((UIStackContainer *)view).align_items = a;
+    }
+}
+
+void ui_set_justify_content(UIHandle v, int j) {
+    NSView *view = (__bridge NSView *)v;
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        ((UIStackContainer *)view).justify_content = j;
     }
 }
 

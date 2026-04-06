@@ -271,6 +271,72 @@ void ui_text_set_selectable(UIHandle t, bool sel) {
         ((NSTextField *)(__bridge NSView *)t).selectable = sel;
 }
 
+static CGFloat font_weight_value(int w) {
+    /* Map 0-9 to NSFontWeight constants */
+    switch (w) {
+        case 0: return NSFontWeightUltraLight;
+        case 1: return NSFontWeightThin;
+        case 2: return NSFontWeightLight;
+        case 3: return NSFontWeightRegular;
+        case 4: return NSFontWeightMedium;
+        case 5: return NSFontWeightMedium;
+        case 6: return NSFontWeightSemibold;
+        case 7: return NSFontWeightBold;
+        case 8: return NSFontWeightHeavy;
+        case 9: return NSFontWeightBlack;
+        default: return NSFontWeightRegular;
+    }
+}
+
+void ui_text_set_weight(UIHandle t, int weight) {
+    NSView *view = (__bridge NSView *)t;
+    if (![view isKindOfClass:[NSTextField class]]) return;
+    NSTextField *field = (NSTextField *)view;
+    CGFloat size = field.font.pointSize;
+    field.font = [NSFont systemFontOfSize:size weight:font_weight_value(weight)];
+    [field sizeToFit];
+}
+
+void ui_text_set_line_height(UIHandle t, double mult) {
+    NSView *view = (__bridge NSView *)t;
+    if (![view isKindOfClass:[NSTextField class]]) return;
+    NSTextField *field = (NSTextField *)view;
+    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
+    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
+    style.lineHeightMultiple = mult;
+    [attrStr addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0, attrStr.length)];
+    field.attributedStringValue = attrStr;
+    [field sizeToFit];
+}
+
+void ui_text_set_tracking(UIHandle t, double kern) {
+    NSView *view = (__bridge NSView *)t;
+    if (![view isKindOfClass:[NSTextField class]]) return;
+    NSTextField *field = (NSTextField *)view;
+    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
+    [attrStr addAttribute:NSKernAttributeName value:@(kern) range:NSMakeRange(0, attrStr.length)];
+    field.attributedStringValue = attrStr;
+    [field sizeToFit];
+}
+
+void ui_text_set_transform(UIHandle t, int xform) {
+    NSView *view = (__bridge NSView *)t;
+    if (![view isKindOfClass:[NSTextField class]]) return;
+    NSTextField *field = (NSTextField *)view;
+    if (xform == 1) field.stringValue = [field.stringValue uppercaseString];
+    else if (xform == 2) field.stringValue = [field.stringValue lowercaseString];
+    [field sizeToFit];
+}
+
+void ui_text_set_align(UIHandle t, int align) {
+    NSView *view = (__bridge NSView *)t;
+    if (![view isKindOfClass:[NSTextField class]]) return;
+    NSTextField *field = (NSTextField *)view;
+    if (align == 0) field.alignment = NSTextAlignmentLeft;
+    else if (align == 1) field.alignment = NSTextAlignmentCenter;
+    else if (align == 2) field.alignment = NSTextAlignmentRight;
+}
+
 UIHandle ui_label(const char *content) {
     UIHandle h = ui_text(content, 11, false);
     ui_text_set_color_system(h, 2);
@@ -485,6 +551,21 @@ void ui_set_border(UIHandle v, double r, double g, double b, double w) {
     view.wantsLayer = YES;
     view.layer.borderColor = [NSColor colorWithRed:r green:g blue:b alpha:1].CGColor;
     view.layer.borderWidth = w;
+}
+
+void ui_set_shadow(UIHandle v, double ox, double oy, double radius, double opacity) {
+    NSView *view = (__bridge NSView *)v;
+    view.wantsLayer = YES;
+    view.layer.shadowColor = NSColor.blackColor.CGColor;
+    view.layer.shadowOffset = CGSizeMake(ox, oy);
+    view.layer.shadowRadius = radius;
+    view.layer.shadowOpacity = opacity;
+    /* Use shadowPath to allow shadows even with masksToBounds on corner-radiused views */
+    if (view.layer.cornerRadius > 0) {
+        CGRect bounds = view.bounds.size.width > 0 ? view.bounds : NSMakeRect(0, 0, 100, 100);
+        view.layer.shadowPath = CGPathCreateWithRoundedRect(bounds, view.layer.cornerRadius, view.layer.cornerRadius, NULL);
+        view.layer.masksToBounds = NO;
+    }
 }
 
 /* ─── Animation ──────────────────────────────────────────────────── */

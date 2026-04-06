@@ -39,6 +39,26 @@ UIHandle ui_image(const char *path) {
     return (__bridge UIHandle)iv;
 }
 
+void ui_image_set_scaling(UIHandle img, int mode) {
+    NSView *view = (__bridge NSView *)img;
+    if (![view isKindOfClass:[NSImageView class]]) return;
+    NSImageView *iv = (NSImageView *)view;
+    switch (mode) {
+        case 0: /* contain */
+            iv.imageScaling = NSImageScaleProportionallyUpOrDown;
+            break;
+        case 1: /* cover — aspect-fill with cropping */
+            iv.imageScaling = NSImageScaleProportionallyUpOrDown;
+            iv.wantsLayer = YES;
+            iv.layer.contentsGravity = kCAGravityResizeAspectFill;
+            iv.layer.masksToBounds = YES;
+            break;
+        case 2: /* fill — stretch */
+            iv.imageScaling = NSImageScaleAxesIndependently;
+            break;
+    }
+}
+
 /* ─── Search Field ───────────────────────────────────────────────── */
 
 UIHandle ui_search_field(const char *placeholder) {

@@ -33,6 +33,8 @@ void        ui_set_size(UIHandle v, int w, int h);  /* -1 = auto */
 void        ui_set_min_size(UIHandle v, int w, int h);
 void        ui_set_max_size(UIHandle v, int w, int h);
 void        ui_set_alignment(UIHandle v, int align); /* child self-alignment on cross-axis: 0=leading, 1=center, 2=trailing */
+void        ui_set_align_items(UIHandle v, int align);    /* container cross-axis: 0=start, 1=center, 2=end, 3=stretch */
+void        ui_set_justify_content(UIHandle v, int just); /* container main-axis: 0=start, 1=center, 2=end, 3=space-between */
 void        ui_add_child(UIHandle parent, UIHandle child);
 UIHandle    ui_spacer(void);
 UIHandle    ui_divider(void);
@@ -49,6 +51,11 @@ void        ui_text_set_color_system(UIHandle t, int color);
 /* system colors: 0=label, 1=secondaryLabel, 2=tertiaryLabel, 3=blue, 4=green,
    5=red, 6=orange, 7=yellow, 8=purple, 9=pink, 10=teal, 11=indigo, 12=cyan */
 void        ui_text_set_selectable(UIHandle t, bool sel);
+void        ui_text_set_weight(UIHandle t, int weight);      /* 0=thin..4=regular..6=semibold..7=bold..9=black */
+void        ui_text_set_line_height(UIHandle t, double mult); /* line height multiplier, e.g. 1.2 */
+void        ui_text_set_tracking(UIHandle t, double kern);   /* letter-spacing in points */
+void        ui_text_set_transform(UIHandle t, int xform);    /* 0=none, 1=uppercase, 2=lowercase */
+void        ui_text_set_align(UIHandle t, int align);        /* 0=left, 1=center, 2=right */
 UIHandle    ui_label(const char *content);  /* small gray secondary text */
 
 /* ─── SF Symbols ─────────────────────────────────────────────────── */
@@ -57,6 +64,7 @@ void        ui_symbol_set_color(UIHandle s, int system_color);
 
 /* ─── Images ─────────────────────────────────────────────────────── */
 UIHandle    ui_image(const char *path);
+void        ui_image_set_scaling(UIHandle img, int mode); /* 0=contain, 1=cover, 2=fill */
 
 /* ─── Text Field / Search ────────────────────────────────────────── */
 UIHandle    ui_text_field(const char *placeholder);
@@ -133,6 +141,9 @@ void        ui_show_popover(UIHandle anchor, UIHandle content, int width, int he
 
 /* ─── Alert / Dialog ─────────────────────────────────────────────── */
 void        ui_alert(const char *title, const char *message, const char *button);
+
+/* ─── Shadow ─────────────────────────────────────────────────────── */
+void        ui_set_shadow(UIHandle v, double ox, double oy, double radius, double opacity);
 
 /* ─── Background Color ──────────────────────────────────────────── */
 void        ui_set_background_rgb(UIHandle v, double r, double g, double b, double a);

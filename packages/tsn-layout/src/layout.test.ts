@@ -78,6 +78,73 @@ test('horizontal rails preserve overflowing content width', () => {
   assert.equal(resolved.children[2].x, 688)
 })
 
+test('align-items center vertically centers children in horizontal stack', () => {
+  const row: LayoutNode = {
+    id: 'row',
+    kind: 'stack',
+    axis: 'horizontal',
+    alignItems: 'center',
+    constraints: {
+      width: 400,
+      height: 80,
+      gap: 10,
+    },
+    children: [
+      { id: 'icon', kind: 'box', constraints: { width: 52, height: 52 }, children: [] },
+      { id: 'text', kind: 'box', constraints: { width: 200, height: 20 }, children: [] },
+      { id: 'button', kind: 'box', constraints: { width: 60, height: 32 }, children: [] },
+    ],
+  }
+
+  const resolved = resolveLayout(row, { width: 400, height: 80 })
+  // Icon (52px tall) centered in 80px: y = (80-52)/2 = 14
+  assert.equal(resolved.children[0].y, 14)
+  // Text (20px tall) centered in 80px: y = (80-20)/2 = 30
+  assert.equal(resolved.children[1].y, 30)
+  // Button (32px tall) centered in 80px: y = (80-32)/2 = 24
+  assert.equal(resolved.children[2].y, 24)
+})
+
+test('justify-content space-between distributes children along main axis', () => {
+  const row: LayoutNode = {
+    id: 'row',
+    kind: 'stack',
+    axis: 'horizontal',
+    justifyContent: 'space-between',
+    constraints: {
+      width: 400,
+      height: 40,
+    },
+    children: [
+      { id: 'left', kind: 'box', constraints: { width: 80, height: 40 }, children: [] },
+      { id: 'right', kind: 'box', constraints: { width: 80, height: 40 }, children: [] },
+    ],
+  }
+
+  const resolved = resolveLayout(row, { width: 400, height: 40 })
+  assert.equal(resolved.children[0].x, 0)
+  assert.equal(resolved.children[1].x, 320)
+})
+
+test('justify-content center centers children on main axis', () => {
+  const col: LayoutNode = {
+    id: 'col',
+    kind: 'stack',
+    axis: 'vertical',
+    justifyContent: 'center',
+    constraints: {
+      width: 200,
+      height: 400,
+    },
+    children: [
+      { id: 'child', kind: 'box', constraints: { width: 200, height: 100 }, children: [] },
+    ],
+  }
+
+  const resolved = resolveLayout(col, { width: 200, height: 400 })
+  assert.equal(resolved.children[0].y, 150)
+})
+
 test('vertical stacks stretch children across the cross axis', () => {
   const stack: LayoutNode = {
     id: 'stack',
