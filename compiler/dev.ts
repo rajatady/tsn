@@ -13,6 +13,7 @@ import { execSync, spawn, type ChildProcess } from 'node:child_process'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
+import { appKitHostRoot, appKitSourcePath } from '../packages/tsn-host-appkit/src/index.js'
 
 const inputPath = process.argv[2]
 if (!inputPath) {
@@ -63,17 +64,11 @@ function compile(): boolean {
     const hasUi = cCode.includes('#include "ui.h"')
 
     if (hasUi) {
-      const uiFrameworkDir = path.join(path.dirname(absolutePath), 'framework')
-      let uiMPath = path.join(uiFrameworkDir, 'ui.m')
-      if (!fs.existsSync(uiMPath)) {
-        uiMPath = path.join('examples', 'native-gui', 'framework', 'ui.m')
-      }
-      const uiHDir = path.dirname(uiMPath)
       const runtimeDir = path.join('compiler', 'runtime')
 
       execSync(
         `clang -O0 -g -DSTRICTTS_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${uiMPath} -I ${uiHDir} -I ${runtimeDir} -o ${binaryPath}`,
+        `${cPath} ${appKitSourcePath} -I ${appKitHostRoot} -I ${runtimeDir} -o ${binaryPath}`,
         { stdio: 'pipe' }
       )
     } else {

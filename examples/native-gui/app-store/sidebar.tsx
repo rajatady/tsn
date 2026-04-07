@@ -56,11 +56,11 @@ export function AppStoreSidebar() {
       <VStack className="flex-1 px-3 gap-1">
         <NavItem icon="sparkle.magnifyingglass" label="Discover" route="discover" />
         <NavItem icon="gamecontroller.fill" label="Arcade" route="arcade" />
-        <NavItem icon="paintbrush.pointed.fill" label="Create" route="discover" />
-        <NavItem icon="paperplane.fill" label="Work" route="discover" />
+        <NavItem icon="paintbrush.pointed.fill" label="Create" route="create" />
+        <NavItem icon="paperplane.fill" label="Work" route="work" />
         <NavItem icon="play.fill" label="Play" route="play" />
         <NavItem icon="hammer.fill" label="Develop" route="develop" />
-        <NavItem icon="square.grid.2x2" label="Categories" route="discover" />
+        <NavItem icon="square.grid.2x2" label="Categories" route="categories" />
       </VStack>
     </VStack>
   )

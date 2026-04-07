@@ -1,222 +1,294 @@
-import { useRoute, useState, useStore } from '../../../../packages/tsn-ui/src/react'
-import {
-  AppRow,
-  InfoPairView,
-  MetricStat,
-  NativeHud,
-  ReviewCardView,
-  SectionHeader,
-} from '../components'
+import { useRoute, useStore } from '../../../../packages/tsn-ui/src/react'
+import { AppRow, NativeHud } from '../components'
 import { detailBaseFromAppId, fameGames, storeAppFromId, type GameDetail, type StoreApp } from '../data'
 import { goBackToStorefront } from '../store'
 
-function DetailTopBar() {
-  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
-  const app: StoreApp = storeAppFromId(selectedAppId)
-
-  return (
-    <HStack className="items-center gap-3">
-      <Button variant="ghost" icon="chevron.left" onClick={goBackToStorefront}>Back</Button>
-      <Spacer />
-      <HStack className="items-center gap-2">
-        <Image src={app.icon} className="w-[22] h-[22] rounded-lg object-cover" />
-        <Text className="text-base font-bold">{app.title}</Text>
-      </HStack>
-      <Spacer />
-      <Button variant="get">Get</Button>
-      <Button variant="ghost" icon="square.and.arrow.up">Share</Button>
-    </HStack>
-  )
-}
-
-function DetailSummary() {
+function DetailHero() {
   const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
   const app: StoreApp = storeAppFromId(selectedAppId)
   const detail: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
-    <Card className="rounded-xl shadow-lg">
-      <HStack className="items-center gap-5">
-        <Image src={app.icon} className="w-[104] h-[104] rounded-2xl object-cover" />
+    <ZStack className="rounded-2xl overflow-hidden">
+      <Image src={detail.hero} className="aspect-[22/8] object-cover" />
+      <Gradient from="black/80" to="transparent" direction="to-top" />
+      <HStack className="items-end p-8 gap-6">
+        <Image src={app.icon} className="w-[128] h-[128] rounded-3xl object-cover" />
         <VStack className="flex-1 gap-1">
-          <Text className="text-xs text-zinc-400">{app.subtitle}</Text>
-          <Text className="text-4xl font-bold tracking-tight">{app.title}</Text>
-          <Text className="text-lg text-zinc-400">{app.caption}</Text>
+          <Text className="text-[28] font-bold tracking-tight truncate">{app.title}</Text>
+          <Text className="text-[15] text-white/55 truncate">{detail.subtitle}</Text>
+          <VStack className="h-[4]" />
+          <Text className="text-[13] text-white/40 truncate">{app.action} · In-App Purchases</Text>
         </VStack>
-        <VStack className="gap-3">
+        <VStack className="gap-3 items-end">
           <Button variant="get">Get</Button>
-          <Text className="text-sm text-zinc-400">{detail.genre}</Text>
         </VStack>
       </HStack>
-    </Card>
+    </ZStack>
   )
 }
 
-function MetricStrip() {
+function DetailMetricStrip() {
   const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
-  const game: GameDetail = detailBaseFromAppId(selectedAppId)
+  const detail: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
-    <Card className="rounded-xl shadow-lg">
-      <HStack className="items-center gap-8">
-        <MetricStat eyebrow="10 RATINGS" value={game.rating} subtitle="out of 5" />
-        <MetricStat eyebrow="AGES" value="4+" subtitle="Years" />
-        <MetricStat eyebrow="CATEGORY" value={game.genre} subtitle="Arcade" />
-        <MetricStat eyebrow="PLAYERS" value="1" subtitle="Single" />
-        <MetricStat eyebrow="DEVELOPER" value={game.studio} subtitle="Verified" />
-        <MetricStat eyebrow="LANGUAGE" value="EN" subtitle="+14 More" />
-        <MetricStat eyebrow="SIZE" value="233.8" subtitle="MB" />
+    <HStack className="items-center py-4">
+      <VStack className="flex-1 items-center gap-1">
+        <Text className="text-[11] font-bold text-white/40 uppercase tracking-wide">10 Ratings</Text>
+        <Text className="text-[22] font-bold">{detail.rating}</Text>
+        <Text className="text-[11] text-white/40">★★★★★</Text>
+      </VStack>
+      <Divider />
+      <VStack className="flex-1 items-center gap-1">
+        <Text className="text-[11] font-bold text-white/40 uppercase tracking-wide">Ages</Text>
+        <Text className="text-[22] font-bold">4+</Text>
+        <Text className="text-[11] text-white/40">Years</Text>
+      </VStack>
+      <Divider />
+      <VStack className="flex-1 items-center gap-1">
+        <Text className="text-[11] font-bold text-white/40 uppercase tracking-wide">Category</Text>
+        <Text className="text-[16] text-white/50">{detail.genre}</Text>
+        <Text className="text-[11] text-white/40">{detail.genre}</Text>
+      </VStack>
+      <Divider />
+      <VStack className="flex-1 items-center gap-1">
+        <Text className="text-[11] font-bold text-white/40 uppercase tracking-wide">Developer</Text>
+        <Text className="text-[16] text-white/50">{detail.studio}</Text>
+        <Text className="text-[11] text-white/40 truncate">{detail.studio}</Text>
+      </VStack>
+      <Divider />
+      <VStack className="flex-1 items-center gap-1">
+        <Text className="text-[11] font-bold text-white/40 uppercase tracking-wide">Language</Text>
+        <Text className="text-[22] font-bold">EN</Text>
+        <Text className="text-[11] text-white/40">+14 More</Text>
+      </VStack>
+      <Divider />
+      <VStack className="flex-1 items-center gap-1">
+        <Text className="text-[11] font-bold text-white/40 uppercase tracking-wide">Size</Text>
+        <Text className="text-[22] font-bold">233.8</Text>
+        <Text className="text-[11] text-white/40">MB</Text>
+      </VStack>
+    </HStack>
+  )
+}
+
+function DetailScreenshots() {
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const detail: GameDetail = detailBaseFromAppId(selectedAppId)
+
+  return (
+    <Scroll className="overflow-x-auto rounded-2xl">
+      <HStack className="gap-4">
+        <Image src={detail.screenOne} className="w-[548] rounded-2xl aspect-[16/10] object-cover" />
+        <Image src={detail.screenTwo} className="w-[548] rounded-2xl aspect-[16/10] object-cover" />
       </HStack>
-    </Card>
+    </Scroll>
   )
 }
 
-function PlatformRow() {
-  return (
-    <HStack className="items-center gap-3">
-      <Symbol name="desktopcomputer" size={14} color="secondary" />
-      <Symbol name="ipad" size={14} color="secondary" />
-      <Symbol name="iphone" size={14} color="secondary" />
-      <Symbol name="tv" size={14} color="secondary" />
-      <Text className="text-sm text-zinc-400">Mac, iPad, iPhone, Apple TV</Text>
-    </HStack>
-  )
-}
-
-function AboutBlock() {
+function DetailDescription() {
   const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
-  const game: GameDetail = detailBaseFromAppId(selectedAppId)
+  const detail: GameDetail = detailBaseFromAppId(selectedAppId)
 
   return (
-    <HStack className="gap-8">
-      <VStack className="flex-1 gap-1">
-        <Text className="text-base font-bold">{game.tagline}</Text>
-        <Text className="text-sm text-zinc-400">{game.summary}</Text>
-      </VStack>
-      <VStack className="gap-1">
-        <Text className="text-sm text-zinc-400">DEVELOPER</Text>
-        <Text className="text-base font-bold">{game.studio}</Text>
-        <Button variant="link">Support</Button>
-      </VStack>
-    </HStack>
+    <VStack className="gap-2">
+      <Text className="text-[14] text-white/70">{detail.summary}</Text>
+    </VStack>
+  )
+}
+
+function DetailRatings() {
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const detail: GameDetail = detailBaseFromAppId(selectedAppId)
+
+  return (
+    <VStack className="gap-4">
+      <Text className="text-[22] font-bold tracking-tight">Ratings & Reviews</Text>
+      <HStack className="gap-6">
+        <VStack className="items-center gap-1">
+          <Text className="text-[48] font-bold tracking-tight">{detail.rating}</Text>
+          <Text className="text-[13] text-white/40">out of 5</Text>
+        </VStack>
+        <VStack className="flex-1 gap-2">
+          <HStack className="items-center gap-2">
+            <Text className="text-[11] text-white/40">★★★★★</Text>
+            <Progress value={80} className="flex-1" />
+          </HStack>
+          <HStack className="items-center gap-2">
+            <Text className="text-[11] text-white/40">★★★★☆</Text>
+            <Progress value={15} className="flex-1" />
+          </HStack>
+          <HStack className="items-center gap-2">
+            <Text className="text-[11] text-white/40">★★★☆☆</Text>
+            <Progress value={3} className="flex-1" />
+          </HStack>
+          <HStack className="items-center gap-2">
+            <Text className="text-[11] text-white/40">★★☆☆☆</Text>
+            <Progress value={1} className="flex-1" />
+          </HStack>
+          <HStack className="items-center gap-2">
+            <Text className="text-[11] text-white/40">★☆☆☆☆</Text>
+            <Progress value={1} className="flex-1" />
+          </HStack>
+        </VStack>
+        <Text className="text-[13] text-white/40">10 Ratings</Text>
+      </HStack>
+      <HStack className="gap-4">
+        <VStack className="flex-1 gap-2 rounded-xl bg-white/5 p-4">
+          <Text className="text-[15] font-bold truncate">{detail.reviews[0].title}</Text>
+          <Text className="text-[11] text-white/40">★★★★★</Text>
+          <Text className="text-[13] text-white/50">{detail.reviews[0].body}</Text>
+          <HStack className="items-center gap-2">
+            <Text className="text-[11] text-white/30">{detail.reviews[0].author}</Text>
+            <Spacer />
+            <Text className="text-[11] text-white/30">{detail.reviews[0].age}</Text>
+          </HStack>
+        </VStack>
+        <VStack className="flex-1 gap-2 rounded-xl bg-white/5 p-4">
+          <Text className="text-[15] font-bold truncate">{detail.reviews[1].title}</Text>
+          <Text className="text-[11] text-white/40">★★★★★</Text>
+          <Text className="text-[13] text-white/50">{detail.reviews[1].body}</Text>
+          <HStack className="items-center gap-2">
+            <Text className="text-[11] text-white/30">{detail.reviews[1].author}</Text>
+            <Spacer />
+            <Text className="text-[11] text-white/30">{detail.reviews[1].age}</Text>
+          </HStack>
+        </VStack>
+      </HStack>
+    </VStack>
+  )
+}
+
+function DetailWhatsNew() {
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const detail: GameDetail = detailBaseFromAppId(selectedAppId)
+
+  return (
+    <VStack className="gap-3">
+      <HStack className="items-center">
+        <Text className="text-[22] font-bold tracking-tight">What's New</Text>
+        <Spacer />
+        <VStack className="items-end gap-0">
+          <Text className="text-[13] text-white/40">Version 119.0</Text>
+        </VStack>
+      </HStack>
+      <Text className="text-[14] text-white/50">{detail.whatsNew}</Text>
+    </VStack>
+  )
+}
+
+function DetailInformation() {
+  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
+  const detail: GameDetail = detailBaseFromAppId(selectedAppId)
+
+  return (
+    <VStack className="gap-3">
+      <Text className="text-[22] font-bold tracking-tight">Information</Text>
+      <HStack className="gap-8">
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Provider</Text>
+          <Text className="text-[14] text-white/70">{detail.studio}</Text>
+        </VStack>
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Category</Text>
+          <Text className="text-[14] text-white/70">{detail.genre}</Text>
+        </VStack>
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Size</Text>
+          <Text className="text-[14] text-white/70">{detail.info[0].value}</Text>
+        </VStack>
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Compatibility</Text>
+          <Text className="text-[14] text-white/70">{detail.info[1].value}</Text>
+        </VStack>
+      </HStack>
+      <HStack className="gap-8">
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Language</Text>
+          <Text className="text-[14] text-white/70">{detail.info[2].value}</Text>
+        </VStack>
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Age Rating</Text>
+          <Text className="text-[14] text-white/70">{detail.info[3].value}</Text>
+        </VStack>
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Collection</Text>
+          <Text className="text-[14] text-white/70">{detail.collection}</Text>
+        </VStack>
+        <VStack className="flex-1 gap-1">
+          <Text className="text-[11] text-white/30 uppercase tracking-wide">Price</Text>
+          <Text className="text-[14] text-white/70">Free</Text>
+        </VStack>
+      </HStack>
+    </VStack>
+  )
+}
+
+function DetailMoreApps() {
+  const moreApps: StoreApp[] = fameGames()
+
+  return (
+    <VStack className="gap-3">
+      <Text className="text-[22] font-bold tracking-tight">You Might Also Like</Text>
+      <HStack className="gap-0">
+        <VStack className="flex-1 gap-0">
+          <AppRow app={moreApps[0]} testId="dm-0" />
+          <Divider />
+          <AppRow app={moreApps[3]} testId="dm-3" />
+          <Divider />
+          <AppRow app={moreApps[6]} testId="dm-6" />
+        </VStack>
+        <VStack className="flex-1 gap-0">
+          <AppRow app={moreApps[1]} testId="dm-1" />
+          <Divider />
+          <AppRow app={moreApps[4]} testId="dm-4" />
+          <Divider />
+          <AppRow app={moreApps[7]} testId="dm-7" />
+        </VStack>
+        <VStack className="flex-1 gap-0">
+          <AppRow app={moreApps[2]} testId="dm-2" />
+          <Divider />
+          <AppRow app={moreApps[5]} testId="dm-5" />
+          <Divider />
+          <AppRow app={moreApps[8]} testId="dm-8" />
+        </VStack>
+      </HStack>
+    </VStack>
   )
 }
 
 export function DetailScreen() {
-  const [route, navigate] = useRoute('discover')
-  const [selectedAppId, setSelectedAppId] = useStore<string>('app-store:selected-app-id', 'rural-life')
-  const game: GameDetail = detailBaseFromAppId(selectedAppId)
-  const [section, setSection] = useState('reviews')
-  const moreGames: StoreApp[] = fameGames()
-
-  let sectionBody: JSX.Element = (
-    <VStack className="gap-4">
-      <SectionHeader title="Ratings & Reviews" action="See All" route="arcade" />
-      <HStack className="gap-4">
-        <Card className="rounded-xl">
-          <VStack className="gap-2">
-            <Text className="text-6xl font-bold">{game.rating}</Text>
-            <Text className="text-base text-zinc-400">out of 5</Text>
-            <Text className="text-sm text-zinc-400">10 Ratings</Text>
-          </VStack>
-        </Card>
-        <VStack className="flex-1 gap-3">
-          <HStack className="gap-2">
-            <Text className="text-sm text-zinc-400">★★★★★</Text>
-            <Divider />
-          </HStack>
-          <HStack className="gap-2">
-            <Text className="text-sm text-zinc-400">★★★★☆</Text>
-            <Divider />
-          </HStack>
-          <HStack className="gap-2">
-            <Text className="text-sm text-zinc-400">★★★☆☆</Text>
-            <Divider />
-          </HStack>
-        </VStack>
-      </HStack>
-      <HStack className="gap-4">
-        <ReviewCardView review={game.reviews[0]} />
-        <ReviewCardView review={game.reviews[1]} />
-      </HStack>
-    </VStack>
-  )
-
-  if (section === 'privacy') {
-    sectionBody = (
-      <VStack className="gap-4">
-        <SectionHeader title="App Privacy" action="See Details" route="arcade" />
-        <Card className="rounded-xl">
-          <VStack className="gap-2">
-            <Symbol name="hand.raised.slash" size={34} color="blue" />
-            <Text className="text-2xl font-bold">Data Not Linked to You</Text>
-            <Text className="text-sm text-zinc-400">The following data may be collected but it is not linked to your identity.</Text>
-            <Text className="text-sm text-zinc-400">Usage Data</Text>
-          </VStack>
-        </Card>
-      </VStack>
-    )
-  }
-
   return (
-    <Scroll className="flex-1">
-      <VStack className="gap-8 p-4">
-        <DetailTopBar />
-        <DetailSummary />
-        <Image src={game.hero} className="w-[1110] h-[400] rounded-xl object-cover" />
-        <MetricStrip />
-        <HStack className="gap-4">
-          <Image src={game.screenOne} className="w-[548] h-[300] rounded-xl object-cover" />
-          <Image src={game.screenTwo} className="w-[548] h-[300] rounded-xl object-cover" />
+    <Scroll className="flex-1 overflow-y-auto">
+      <VStack className="gap-0 px-8 py-5">
+        <HStack className="items-center gap-3 pb-4">
+          <Button variant="ghost" icon="chevron.left" onClick={goBackToStorefront}>Back</Button>
         </HStack>
-        <PlatformRow />
-        <AboutBlock />
-
-        <Card className="rounded-xl">
-          <HStack className="gap-2">
-            <Button variant="chip" onClick={() => setSection('reviews')}>Ratings & Reviews</Button>
-            <Button variant="chip" onClick={() => setSection('privacy')}>App Privacy</Button>
-          </HStack>
-        </Card>
-
-        {sectionBody}
-
-        <VStack className="gap-2">
-          <SectionHeader title="What's New" action="Version History" route="arcade" />
-          <Text className="text-base font-bold">{game.whatsNew}</Text>
-          <Text className="text-sm text-zinc-400">Version 119.0</Text>
-        </VStack>
-
-        <VStack className="gap-4">
-          <SectionHeader title="Information" action="" route="arcade" />
-          <Card className="rounded-xl">
-            <HStack className="gap-8">
-              <InfoPairView item={game.info[0]} />
-              <InfoPairView item={game.info[1]} />
-              <InfoPairView item={game.info[2]} />
-              <InfoPairView item={game.info[3]} />
-            </HStack>
-          </Card>
-        </VStack>
-
-        <VStack className="gap-4">
-          <SectionHeader title="More From Apple Arcade" action="See All" route="arcade" />
-          <HStack className="gap-8">
-            <VStack className="flex-1 gap-4">
-              <AppRow app={moreGames[0]} testId="dm-0" />
-              <AppRow app={moreGames[3]} testId="dm-3" />
-            </VStack>
-            <VStack className="flex-1 gap-4">
-              <AppRow app={moreGames[1]} testId="dm-1" />
-              <AppRow app={moreGames[4]} testId="dm-4" />
-            </VStack>
-            <VStack className="flex-1 gap-4">
-              <AppRow app={moreGames[2]} testId="dm-2" />
-              <AppRow app={moreGames[5]} testId="dm-5" />
-            </VStack>
-          </HStack>
-        </VStack>
-
+        <DetailHero />
+        <VStack className="h-[4]" />
+        <DetailMetricStrip />
+        <VStack className="h-[4]" />
+        <DetailScreenshots />
+        <VStack className="h-[32]" />
+        <DetailDescription />
+        <VStack className="h-[32]" />
+        <Divider />
+        <VStack className="h-[32]" />
+        <DetailRatings />
+        <VStack className="h-[32]" />
+        <Divider />
+        <VStack className="h-[32]" />
+        <DetailWhatsNew />
+        <VStack className="h-[32]" />
+        <Divider />
+        <VStack className="h-[32]" />
+        <DetailInformation />
+        <VStack className="h-[32]" />
+        <Divider />
+        <VStack className="h-[32]" />
+        <DetailMoreApps />
+        <VStack className="h-[40]" />
         <NativeHud />
       </VStack>
     </Scroll>

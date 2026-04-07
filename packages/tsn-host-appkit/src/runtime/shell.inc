@@ -62,9 +62,44 @@ void ui_sidebar_item_set_badge(UIHandle item, const char *badge) {
     /* TODO: add badge view next to the button */
 }
 
+/* ─── Scroll View subclass (forwards vertical events when horizontal-only) */
+
+@interface UIScrollViewForwarding : NSScrollView
+@end
+
+@implementation UIScrollViewForwarding
+
+- (void)scrollWheel:(NSEvent *)event {
+    /* Only intercept when configured as horizontal-only */
+    if (!self.hasHorizontalScroller || self.hasVerticalScroller) {
+        [super scrollWheel:event];
+        return;
+    }
+
+    /* If the scroll is predominantly vertical, forward to the nearest
+       ancestor vertical scroll view instead of swallowing it. */
+    if (fabs(event.scrollingDeltaY) > fabs(event.scrollingDeltaX)) {
+        NSView *ancestor = self.superview;
+        while (ancestor) {
+            if ([ancestor isKindOfClass:[NSScrollView class]]) {
+                NSScrollView *parentSV = (NSScrollView *)ancestor;
+                if (parentSV.hasVerticalScroller) {
+                    [parentSV scrollWheel:event];
+                    return;
+                }
+            }
+            ancestor = ancestor.superview;
+        }
+    }
+
+    [super scrollWheel:event];
+}
+
+@end
+
 /* ─── Scroll View ────────────────────────────────────────────────── */
 UIHandle ui_scroll(void) {
-    NSScrollView *sv = [NSScrollView new];
+    UIScrollViewForwarding *sv = [UIScrollViewForwarding new];
     sv.hasVerticalScroller = YES;
     sv.hasHorizontalScroller = NO;
     sv.drawsBackground = NO;

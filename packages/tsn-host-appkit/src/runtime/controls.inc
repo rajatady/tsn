@@ -192,12 +192,12 @@ void ui_button_set_style(UIHandle b, int style) {
                                  NSTextAlignmentCenter, 4, 6, 4, 6, NSFontWeightSemibold);
             break;
         case 4:
-            style_button_surface(btn, nil, [NSColor colorWithWhite:0.88 alpha:1], 12, NO,
-                                 NSTextAlignmentLeft, 8, 12, 8, 12, NSFontWeightMedium);
+            style_button_surface(btn, nil, [NSColor colorWithWhite:0.88 alpha:1], 6, NO,
+                                 NSTextAlignmentLeft, 10, 12, 10, 12, NSFontWeightMedium);
             break;
         case 5:
-            style_button_surface(btn, [NSColor colorWithWhite:0.22 alpha:1], NSColor.systemBlueColor, 12, NO,
-                                 NSTextAlignmentLeft, 8, 12, 8, 12, NSFontWeightSemibold);
+            style_button_surface(btn, [NSColor colorWithWhite:0.22 alpha:1], NSColor.systemBlueColor, 6, NO,
+                                 NSTextAlignmentLeft, 10, 12, 10, 12, NSFontWeightSemibold);
             break;
         case 6:
             style_button_surface(btn, NSColor.whiteColor, NSColor.systemBlueColor, 999, NO,

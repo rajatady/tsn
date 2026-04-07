@@ -412,7 +412,8 @@ static CGFloat css_line_height(NSTextField *field) {
                 cw = (frameW > 0) ? frameW : (intrinsic.width > 0 ? intrinsic.width : 60);
                 ch = (frameH > 0) ? frameH : avail_h;
             } else {
-                cw = (frameW > 0) ? frameW : avail_w;
+                /* VStack: children fill available width (CSS block behavior) */
+                cw = avail_w;
                 ch = (frameH > 0) ? frameH : (intrinsic.height > 0 ? intrinsic.height : 24);
             }
         }
