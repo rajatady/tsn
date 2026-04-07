@@ -22,9 +22,12 @@ static void dump_tree(NSView *view, int depth, NSMutableString *out) {
         UIStackContainer *sc = (UIStackContainer *)view;
         type = sc.direction == 0 ? @"VStack" : (sc.direction == 2 ? @"ZStack" : @"HStack");
         NSString *extra = @"";
-        if (sc.flex > 0) extra = [extra stringByAppendingFormat:@" flex=%d", sc.flex];
-        if (sc.fixed_width > 0) extra = [extra stringByAppendingFormat:@" fw=%d", sc.fixed_width];
-        if (sc.fixed_height > 0) extra = [extra stringByAppendingFormat:@" fh=%d", sc.fixed_height];
+        float fg = YGNodeStyleGetFlexGrow(sc.ygNode);
+        if (fg > 0) extra = [extra stringByAppendingFormat:@" flex=%.0f", fg];
+        YGValue yw = YGNodeStyleGetWidth(sc.ygNode);
+        if (yw.unit == YGUnitPoint) extra = [extra stringByAppendingFormat:@" fw=%.0f", yw.value];
+        YGValue yh = YGNodeStyleGetHeight(sc.ygNode);
+        if (yh.unit == YGUnitPoint) extra = [extra stringByAppendingFormat:@" fh=%.0f", yh.value];
         [out appendFormat:@"%@%@ (%.0f×%.0f at %.0f,%.0f)%@\n", indent, type,
             f.size.width, f.size.height, f.origin.x, f.origin.y, extra];
     } else if ([view isKindOfClass:[NSTextField class]]) {
@@ -325,7 +328,7 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
     }
     if ([prop isEqualToString:@"flex"]) {
         if ([view isKindOfClass:[UIStackContainer class]])
-            return [NSString stringWithFormat:@"%d\n", ((UIStackContainer *)view).flex];
+            return [NSString stringWithFormat:@"%.0f\n", YGNodeStyleGetFlexGrow(((UIStackContainer *)view).ygNode)];
         return @"0\n";
     }
     if ([prop isEqualToString:@"type"]) {
@@ -463,10 +466,15 @@ static NSString *handle_command(NSString *cmd) {
             /* If this element IS a UIStackContainer, report its padding */
             if ([view isKindOfClass:[UIStackContainer class]]) {
                 UIStackContainer *sc = (UIStackContainer *)view;
-                [out appendFormat:@"  padding: top=%d right=%d bottom=%d left=%d\n",
-                    sc.padding_top, sc.padding_right, sc.padding_bottom, sc.padding_left];
-                [out appendFormat:@"  spacing: %d  align_items: %d  justify: %d\n",
-                    (int)sc.spacing, sc.align_items, sc.justify_content];
+                YGNodeRef yn = sc.ygNode;
+                [out appendFormat:@"  padding: top=%.0f right=%.0f bottom=%.0f left=%.0f\n",
+                    YGNodeStyleGetPadding(yn, YGEdgeTop).value,
+                    YGNodeStyleGetPadding(yn, YGEdgeRight).value,
+                    YGNodeStyleGetPadding(yn, YGEdgeBottom).value,
+                    YGNodeStyleGetPadding(yn, YGEdgeLeft).value];
+                YGValue gap = YGNodeStyleGetGap(yn, YGGutterAll);
+                [out appendFormat:@"  spacing: %.0f  align_items: %d  justify: %d\n",
+                    gap.value, (int)YGNodeStyleGetAlignItems(yn), (int)YGNodeStyleGetJustifyContent(yn)];
                 [out appendFormat:@"  children: %lu\n", (unsigned long)sc.children.count];
 
                 /* Report each child's frame */

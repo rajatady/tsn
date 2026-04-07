@@ -240,7 +240,7 @@ UIHandle ui_window(const char *title, int w, int h, bool dark) {
 
     UIStackContainer *root = [UIStackContainer new];
     root.direction = 0;
-    root.flex = 1;
+    YGNodeStyleSetFlexGrow(root.ygNode, 1);
     root.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     root.frame = win.contentView.bounds;
     win.contentView = root;

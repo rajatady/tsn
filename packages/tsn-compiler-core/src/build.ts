@@ -50,9 +50,12 @@ export function buildStrictTS(inputPath: string, argv: string[] = []): void {
   try {
     if (hasUi) {
       const runtimeDir = path.join('compiler', 'runtime')
+      const yogaLib = path.join('build', 'libyoga.a')
+      const yogaInclude = 'vendor'
       execSync(
         `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} -I ${appKitHostRoot} -I ${runtimeDir} -o ${binaryPath}`,
+        `${cPath} ${appKitSourcePath} ${yogaLib} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} ` +
+        `-lc++ -o ${binaryPath}`,
         { stdio: 'inherit' }
       )
     } else {

@@ -6,9 +6,11 @@ UIHandle ui_sidebar(int width) {
 
     UIStackContainer *s = [UIStackContainer new];
     s.direction = 0;
-    s.fixed_width = width;
-    s.spacing = 2;
-    s.padding_top = 8; s.padding_left = 8; s.padding_right = 8;
+    YGNodeStyleSetWidth(s.ygNode, width);
+    YGNodeStyleSetGap(s.ygNode, YGGutterAll, 2);
+    YGNodeStyleSetPadding(s.ygNode, YGEdgeTop, 8);
+    YGNodeStyleSetPadding(s.ygNode, YGEdgeLeft, 8);
+    YGNodeStyleSetPadding(s.ygNode, YGEdgeRight, 8);
     [vev addSubview:s];
     s.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 

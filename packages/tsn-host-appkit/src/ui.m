@@ -12,6 +12,7 @@
 #include <dlfcn.h>
 #include "ui.h"
 #include "runtime.h"
+#include <yoga/Yoga.h>
 
 /* ─── Internal Helpers ───────────────────────────────────────────── */
 
@@ -448,9 +449,12 @@ void ui_progress_set(UIHandle p, double value) {
 UIHandle ui_badge(const char *text, int sc) {
     /* Wrap text in a padded stack to match CSS padding: 2px 8px */
     UIStackContainer *wrap = [UIStackContainer new];
-    wrap.direction = 1; /* horizontal — single child, just for padding */
-    wrap.padding_top = 2; wrap.padding_bottom = 2;
-    wrap.padding_left = 8; wrap.padding_right = 8;
+    wrap.direction = 1;
+    YGNodeStyleSetFlexDirection(wrap.ygNode, YGFlexDirectionRow);
+    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeTop, 2);
+    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeBottom, 2);
+    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeLeft, 8);
+    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeRight, 8);
     wrap.wantsLayer = YES;
     wrap.layer.backgroundColor = system_color(sc).CGColor;
     wrap.layer.cornerRadius = 8;
@@ -463,6 +467,11 @@ UIHandle ui_badge(const char *text, int sc) {
     t.alignment = NSTextAlignmentCenter;
     [wrap addSubview:t];
     [wrap.children addObject:t];
+    /* Add leaf Yoga node for the text */
+    YGNodeRef leafNode = YGNodeNew();
+    YGNodeSetContext(leafNode, (__bridge void *)t);
+    YGNodeSetMeasureFunc(leafNode, yoga_measure_func);
+    YGNodeInsertChild(wrap.ygNode, leafNode, 0);
 
     retain_render(wrap);
     return (__bridge UIHandle)wrap;
@@ -476,7 +485,7 @@ UIHandle ui_card(void) {
     c.layer.backgroundColor = [NSColor colorWithWhite:0.12 alpha:1].CGColor;
     c.layer.cornerRadius = 12;
     c.layer.masksToBounds = YES;
-    c.padding_top = 12; c.padding_right = 12; c.padding_bottom = 12; c.padding_left = 12;
+    YGNodeStyleSetPadding(c.ygNode, YGEdgeAll, 12);
     retain_render(c);
     return (__bridge UIHandle)c;
 }
