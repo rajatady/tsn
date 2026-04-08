@@ -484,7 +484,7 @@ UIHandle ui_card(void) {
     c.layer.backgroundColor = [NSColor colorWithWhite:0.12 alpha:1].CGColor;
     c.layer.cornerRadius = 12;
     c.layer.masksToBounds = YES;
-    YGNodeStyleSetPadding(c.ygNode, YGEdgeAll, 12);
+    /* No default padding — let Tailwind classes set it via ui_set_padding */
     retain_render(c);
     return (__bridge UIHandle)c;
 }
