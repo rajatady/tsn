@@ -127,10 +127,7 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: 'try/catch is banned (future work)' })
     }
 
-    // Ban: class declarations (for now)
-    if (ts.isClassDeclaration(node)) {
-      errors.push({ pos: node.getStart(), message: 'Classes are banned (future work) — use interfaces + functions' })
-    }
+    // Classes: now supported via codegen
 
     // Ban: bare module imports (non-relative)
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
@@ -144,15 +141,5 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
   }
 
   visit(sourceFile)
-
-  // Filter out errors from import statements (we handle those specially)
-  return errors.filter(e => {
-    const lineText = sourceFile.text.substring(
-      sourceFile.getLineAndCharacterOfPosition(e.pos).character === 0
-        ? e.pos
-        : sourceFile.text.lastIndexOf('\n', e.pos) + 1,
-      sourceFile.text.indexOf('\n', e.pos)
-    )
-    return !lineText.trimStart().startsWith('import')
-  })
+  return errors
 }

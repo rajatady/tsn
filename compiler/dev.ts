@@ -13,6 +13,7 @@ import { execSync, spawn, type ChildProcess } from 'node:child_process'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
+import { ensureYogaStaticLibrary } from '../packages/tsn-compiler-core/src/yoga.js'
 import { appKitHostRoot, appKitSourcePath } from '../packages/tsn-host-appkit/src/index.js'
 
 const inputPath = process.argv[2]
@@ -65,7 +66,7 @@ function compile(): boolean {
 
     if (hasUi) {
       const runtimeDir = path.join('compiler', 'runtime')
-      const yogaLib = path.join('build', 'libyoga.a')
+      const yogaLib = ensureYogaStaticLibrary()
       const yogaInclude = 'vendor'
 
       execSync(

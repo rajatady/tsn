@@ -12,7 +12,7 @@ import { uiConformanceSuites } from '../conformance/ui/specs/registry.js'
 
 const root = '/Users/kumardivyarajat/WebstormProjects/bun-vite/vite'
 const artifactRoot = '/tmp/tsn-ui-conformance'
-const inspectApp = 'ui-gallery'
+const inspectApp = 'gallery'
 const inspectSocket = `/tmp/strictts-inspect-${inspectApp}.sock`
 const captureCaseScreenshots = process.env.UI_CONFORMANCE_CASE_SCREENSHOTS === '1'
 
@@ -187,10 +187,10 @@ async function main(): Promise<void> {
   fs.mkdirSync(artifactRoot, { recursive: true })
 
   console.log('Building UI conformance gallery...')
-  runCommand('./strictts', ['build', 'examples/native-gui/ui-gallery.tsx'])
+  runCommand('./strictts', ['build', 'conformance/gallery.tsx'])
 
   console.log('Launching UI conformance gallery...')
-  const child = spawn('./build/ui-gallery', [], {
+  const child = spawn('./build/gallery', [], {
     cwd: root,
     stdio: 'ignore',
   })

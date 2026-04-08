@@ -4,6 +4,7 @@ import { execSync } from 'node:child_process'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
+import { ensureYogaStaticLibrary } from './yoga.js'
 import { appKitHostRoot, appKitSourcePath } from '../../tsn-host-appkit/src/index.js'
 
 export function buildStrictTS(inputPath: string, argv: string[] = []): void {
@@ -50,7 +51,7 @@ export function buildStrictTS(inputPath: string, argv: string[] = []): void {
   try {
     if (hasUi) {
       const runtimeDir = path.join('compiler', 'runtime')
-      const yogaLib = path.join('build', 'libyoga.a')
+      const yogaLib = ensureYogaStaticLibrary()
       const yogaInclude = 'vendor'
       execSync(
         `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +

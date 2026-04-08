@@ -1,5 +1,9 @@
 {
   "name": "@tsn/compiler-core",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test": "npx tsx --test test/**/*.test.ts",
+    "test:coverage": "npx tsx --test --experimental-test-coverage test/**/*.test.ts"
+  }
 }
