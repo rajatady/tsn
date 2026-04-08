@@ -1,6 +1,19 @@
+import type { LengthValue } from './types.js'
+
+export function parseArbitraryValue(cls: string): LengthValue | null {
+  const match = cls.match(/\[(-?\d+(?:\.\d+)?)(%)?\]/)
+  if (!match) return null
+  const value = parseFloat(match[1])
+  if (Number.isNaN(value)) return null
+  return match[2] === '%'
+    ? { unit: 'percent', value }
+    : { unit: 'point', value }
+}
+
 export function parseArbitrary(cls: string): number {
-  const match = cls.match(/\[(\d+)\]/)
-  return match ? parseInt(match[1]) : -1
+  const parsed = parseArbitraryValue(cls)
+  if (!parsed || parsed.unit !== 'point') return -1
+  return parsed.value
 }
 
 export function tokenizeClassName(className: string): string[] {

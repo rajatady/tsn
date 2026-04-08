@@ -34,6 +34,22 @@ test('px-2 py-3 emits correct padding', () => {
 test('w-[200] h-[100] emits ui_set_size', () => {
   const r = parseTailwind('w-[200] h-[100]', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_size(h, 200, 100)')))
+  assert.equal(r.widthValue?.unit, 'point')
+  assert.equal(r.heightValue?.unit, 'point')
+})
+
+test('w-[30%] h-[60%] emits percent sizing', () => {
+  const r = parseTailwind('w-[30%] h-[60%]', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_size_pct(h, 30, 60)')))
+  assert.equal(r.widthValue?.unit, 'percent')
+  assert.equal(r.heightValue?.unit, 'percent')
+})
+
+test('w-full h-full emits 100 percent sizing', () => {
+  const r = parseTailwind('w-full h-full', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_size_pct(h, 100, 100)')))
+  assert.equal(r.widthValue?.unit, 'percent')
+  assert.equal(r.heightValue?.unit, 'percent')
 })
 
 test('h-16 emits height 64px', () => {
@@ -85,9 +101,9 @@ test('justify-start emits ui_set_justify_content 0', () => {
 
 /* ─── Self alignment ───────────────────────────────────────────────── */
 
-test('mx-auto emits ui_set_alignment 1', () => {
+test('mx-auto emits ui_set_margin_auto', () => {
   const r = parseTailwind('mx-auto', 'h')
-  assert.ok(r.calls.some(c => c.includes('ui_set_alignment(h, 1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_margin_auto(h)')))
 })
 
 test('self-center emits ui_set_alignment 1', () => {

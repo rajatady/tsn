@@ -1,13 +1,13 @@
 /* ─── Spacer (used in layout) ────────────────────────────────────── */
 @interface UISpacer : NSView @end
-@implementation UISpacer @end
-
-/* ─── Yoga Node Association Key ─────────────────────────────────── */
-static char kYGNodeKey;
+@implementation UISpacer
+- (BOOL)isFlipped { return YES; }
+@end
 
 /* ─── Aspect Ratio ──────────────────────────────────────────────── */
 
 static char kAspectRatioKey;
+static char kCardContainerKey;
 
 static CGFloat aspect_height(NSView *view, CGFloat width) {
     NSValue *val = objc_getAssociatedObject(view, &kAspectRatioKey);
@@ -17,19 +17,28 @@ static CGFloat aspect_height(NSView *view, CGFloat width) {
     return width * ratio.height / ratio.width;
 }
 
-/* ─── Stack Layout View (Yoga-backed) ───────────────────────────── */
+/* ─── Stack Host View ───────────────────────────────────────────── */
 
 @interface UIStackContainer : NSView
-@property int direction;  /* 0=V, 1=H, 2=Z — only used for ZStack detection in ui_add_child */
-@property (nonatomic, assign) YGNodeRef ygNode;
-@property (nonatomic, strong) NSMutableArray<NSView *> *children;
+@property int direction;  /* 0=V, 1=H, 2=Z */
 @end
 
 /* ─── Text measurement callback for Yoga ────────────────────────── */
 
+static CGFloat default_css_line_height_for_size(CGFloat fontSize) {
+    if (fontSize <= 12) return 16;
+    if (fontSize <= 14) return 20;
+    if (fontSize <= 16) return 24;
+    if (fontSize <= 20) return 28;
+    if (fontSize <= 24) return 32;
+    if (fontSize <= 30) return 36;
+    if (fontSize <= 36) return 40;
+    return fontSize * 1.2;
+}
+
 static CGFloat css_line_height(NSTextField *field) {
     CGFloat fs = field.font.pointSize;
-    CGFloat lh = fs * 1.5;
+    CGFloat lh = default_css_line_height_for_size(fs);
     NSAttributedString *attr = field.attributedStringValue;
     if (attr.length > 0) {
         NSParagraphStyle *ps = [attr attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL];
@@ -37,6 +46,20 @@ static CGFloat css_line_height(NSTextField *field) {
     }
     return lh;
 }
+
+static BOOL text_uses_custom_line_height(NSTextField *field) {
+    NSAttributedString *attr = field.attributedStringValue;
+    if (attr.length == 0) return NO;
+    NSParagraphStyle *ps = [attr attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL];
+    if (!ps || ps.maximumLineHeight <= 0) return NO;
+    CGFloat defaultLH = default_css_line_height_for_size(field.font.pointSize);
+    return fabs(ps.maximumLineHeight - defaultLH) > 0.5;
+}
+
+static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode widthMode,
+                                float height, YGMeasureMode heightMode);
+
+#include "runtime/shadow_tree.inc"
 
 static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode widthMode,
                                 float height, YGMeasureMode heightMode) {
@@ -47,17 +70,44 @@ static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode 
         NSTextField *field = (NSTextField *)view;
         CGFloat cssLH = css_line_height(field);
         CGFloat availW = (widthMode == YGMeasureModeUndefined) ? CGFLOAT_MAX : width;
+        NSSize intrinsic = field.intrinsicContentSize;
 
         if (field.maximumNumberOfLines == 1) {
-            NSSize intrinsic = field.intrinsicContentSize;
-            result.width = (widthMode == YGMeasureModeUndefined) ? intrinsic.width : width;
-            result.height = cssLH;
+            if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
+            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(intrinsic.width, width);
+            else result.width = width;
+            result.height = text_uses_custom_line_height(field) ? cssLH : intrinsic.height;
         } else {
             CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, availW, CGFLOAT_MAX)].height;
             int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
-            NSSize intrinsic = field.intrinsicContentSize;
-            result.width = (widthMode == YGMeasureModeUndefined) ? intrinsic.width : width;
+            if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
+            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(intrinsic.width, width);
+            else result.width = width;
             result.height = nlines * cssLH;
+        }
+    } else if ([view isKindOfClass:[NSScrollView class]]) {
+        TSNShadowNode *shadow = tsn_shadow_node_for_obj(view);
+        if (shadow && shadow.kind == TSNNodeKindScroll && shadow.contentYogaNode) {
+            float calcWidth = YGUndefined;
+            float calcHeight = YGUndefined;
+            if (shadow.scrollAxis == 1) {
+                if (heightMode != YGMeasureModeUndefined) calcHeight = height;
+                YGNodeCalculateLayout(shadow.contentYogaNode, YGUndefined, calcHeight, YGDirectionLTR);
+            } else {
+                if (widthMode != YGMeasureModeUndefined) calcWidth = width;
+                YGNodeCalculateLayout(shadow.contentYogaNode, calcWidth, YGUndefined, YGDirectionLTR);
+            }
+
+            CGFloat contentWidth = YGNodeLayoutGetWidth(shadow.contentYogaNode);
+            CGFloat contentHeight = YGNodeLayoutGetHeight(shadow.contentYogaNode);
+
+            if (widthMode == YGMeasureModeUndefined) result.width = contentWidth;
+            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(contentWidth, width);
+            else result.width = width;
+
+            if (heightMode == YGMeasureModeUndefined) result.height = contentHeight;
+            else if (heightMode == YGMeasureModeAtMost) result.height = MIN(contentHeight, height);
+            else result.height = height;
         }
     } else if ([view isKindOfClass:[NSImageView class]]) {
         CGFloat fw = view.frame.size.width, fh = view.frame.size.height;
@@ -77,158 +127,73 @@ static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode 
     return result;
 }
 
-/* ─── Apply Yoga layout results to NSView tree ──────────────────── */
-
-static void yoga_apply_layout(UIStackContainer *container) {
-    YGNodeRef node = container.ygNode;
-    NSUInteger childCount = container.children.count;
-
-    for (NSUInteger i = 0; i < childCount; i++) {
-        NSView *child = container.children[i];
-        YGNodeRef childNode = YGNodeGetChild(node, (uint32_t)i);
-        if (!childNode) continue;
-
-        CGFloat cx = YGNodeLayoutGetLeft(childNode);
-        CGFloat cy = YGNodeLayoutGetTop(childNode);
-        CGFloat cw = YGNodeLayoutGetWidth(childNode);
-        CGFloat ch = YGNodeLayoutGetHeight(childNode);
-
-        child.frame = NSMakeRect(cx, cy, cw, ch);
-
-        if ([child isKindOfClass:[UIStackContainer class]]) {
-            yoga_apply_layout((UIStackContainer *)child);
-        } else if ([child isKindOfClass:[NSVisualEffectView class]]) {
-            for (NSView *sub in child.subviews) {
-                sub.frame = child.bounds;
-                if ([sub isKindOfClass:[UIStackContainer class]]) {
-                    yoga_apply_layout((UIStackContainer *)sub);
-                }
-            }
-        } else if ([child isKindOfClass:[NSScrollView class]]) {
-            NSScrollView *sv = (NSScrollView *)child;
-            NSView *doc = sv.documentView;
-            for (NSView *sub in child.subviews) sub.frame = child.bounds;
-            if ([doc isKindOfClass:[UIStackContainer class]]) {
-                UIStackContainer *stack = (UIStackContainer *)doc;
-                BOOL horizontal = sv.hasHorizontalScroller && !sv.hasVerticalScroller;
-                YGNodeRef docNode = stack.ygNode;
-                if (docNode) {
-                    if (horizontal) {
-                        YGNodeCalculateLayout(docNode, YGUndefined, ch, YGDirectionLTR);
-                    } else {
-                        YGNodeCalculateLayout(docNode, cw, YGUndefined, YGDirectionLTR);
-                    }
-                    CGFloat docW = YGNodeLayoutGetWidth(docNode);
-                    CGFloat docH = YGNodeLayoutGetHeight(docNode);
-                    if (horizontal) {
-                        doc.frame = NSMakeRect(0, 0, docW > 0 ? docW : cw, ch);
-                    } else {
-                        doc.frame = NSMakeRect(0, 0, cw, docH > 0 ? docH : ch);
-                    }
-                    yoga_apply_layout(stack);
-                }
-            }
-        }
-    }
-}
-
 @implementation UIStackContainer
-- (instancetype)init {
-    self = [super init];
-    _children = [NSMutableArray new];
-    _direction = 0;
-    _ygNode = YGNodeNew();
-    YGNodeStyleSetFlexDirection(_ygNode, YGFlexDirectionColumn);
-    YGNodeStyleSetAlignItems(_ygNode, YGAlignStretch);
-    return self;
-}
 - (BOOL)isFlipped { return YES; }
-
-- (void)dealloc {
-    if (_ygNode) {
-        YGNodeFree(_ygNode);
-        _ygNode = NULL;
-    }
-}
 
 - (void)layout {
     [super layout];
-    NSRect b = self.bounds;
-    if (b.size.width <= 0 || b.size.height <= 0) return;
-
-    /* Only the root container (no Yoga parent) triggers a full layout calculation.
-       Child containers have their layout already computed by the parent's
-       YGNodeCalculateLayout — recalculating here would reset their position to (0,0). */
-    YGNodeRef parent = YGNodeGetOwner(_ygNode);
-    if (!parent) {
-        YGNodeCalculateLayout(_ygNode, b.size.width, b.size.height, YGDirectionLTR);
-    }
-    yoga_apply_layout(self);
+    TSNShadowNode *node = tsn_shadow_node_for_obj(self);
+    if (!node || node.parent) return;
+    NSRect bounds = self.bounds;
+    if (bounds.size.width <= 0 || bounds.size.height <= 0) return;
+    tsn_commit_root_layout(node, bounds.size);
 }
 @end
 
-/* ─── Yoga Node Association Helpers ─────────────────────────────── */
-/* Every NSView (container or leaf) gets an associated YGNodeRef.
-   This is the single source of truth for layout properties. */
-
-static YGNodeRef yoga_node_for_view(NSView *view) {
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        return ((UIStackContainer *)view).ygNode;
-    }
-    NSValue *val = objc_getAssociatedObject(view, &kYGNodeKey);
-    return val ? (YGNodeRef)[val pointerValue] : NULL;
+static YGNodeRef yoga_node_for_handle(UIHandle handle) {
+    TSNShadowNode *node = tsn_shadow_node_for_handle(handle);
+    return node ? node.yogaNode : NULL;
 }
 
-static void yoga_set_node_for_view(NSView *view, YGNodeRef node) {
-    objc_setAssociatedObject(view, &kYGNodeKey,
-        [NSValue valueWithPointer:node], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+static NSView *view_for_handle(UIHandle handle) {
+    return tsn_view_for_handle(handle);
 }
 
 /* ─── Layout Functions ──────────────────────────────────────────── */
 
 UIHandle ui_vstack(void) {
-    UIStackContainer *s = [UIStackContainer new];
-    s.direction = 0;
-    YGNodeStyleSetFlexDirection(s.ygNode, YGFlexDirectionColumn);
-    retain_render(s);
-    return (__bridge UIHandle)s;
+    UIStackContainer *view = [UIStackContainer new];
+    TSNShadowNode *node = tsn_create_container_node(view, TSNNodeKindVStack, 0);
+    retain_render(view);
+    return (__bridge UIHandle)view;
 }
 
 UIHandle ui_hstack(void) {
-    UIStackContainer *s = [UIStackContainer new];
-    s.direction = 1;
-    YGNodeStyleSetFlexDirection(s.ygNode, YGFlexDirectionRow);
-    retain_render(s);
-    return (__bridge UIHandle)s;
+    UIStackContainer *view = [UIStackContainer new];
+    TSNShadowNode *node = tsn_create_container_node(view, TSNNodeKindHStack, 1);
+    retain_render(view);
+    return (__bridge UIHandle)view;
 }
 
 UIHandle ui_zstack(void) {
-    UIStackContainer *s = [UIStackContainer new];
-    s.direction = 2;
-    s.wantsLayer = YES;
-    s.layer.masksToBounds = YES;
-    YGNodeStyleSetFlexDirection(s.ygNode, YGFlexDirectionColumn);
-    retain_render(s);
-    return (__bridge UIHandle)s;
+    UIStackContainer *view = [UIStackContainer new];
+    view.wantsLayer = YES;
+    view.layer.masksToBounds = YES;
+    TSNShadowNode *node = tsn_create_container_node(view, TSNNodeKindZStack, 2);
+    retain_render(view);
+    return (__bridge UIHandle)view;
 }
 
 void ui_set_aspect(UIHandle v, int w, int h) {
-    NSView *view = (__bridge NSView *)v;
+    NSView *view = view_for_handle(v);
+    if (!view) return;
     NSValue *val = [NSValue valueWithSize:NSMakeSize(w, h)];
     objc_setAssociatedObject(view, &kAspectRatioKey, val, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (node) YGNodeStyleSetAspectRatio(node, (float)w / (float)h);
 }
 
 void ui_set_clip(UIHandle v, int clip) {
-    NSView *view = (__bridge NSView *)v;
+    NSView *view = view_for_handle(v);
+    if (!view) return;
     view.wantsLayer = YES;
     view.layer.masksToBounds = (clip != 0);
 }
 
 void ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
                      double r2, double g2, double b2, double a2, int direction) {
-    NSView *view = (__bridge NSView *)v;
+    NSView *view = view_for_handle(v);
+    if (!view) return;
     view.wantsLayer = YES;
     CAGradientLayer *gl = [CAGradientLayer layer];
     gl.colors = @[
@@ -245,8 +210,7 @@ void ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
 }
 
 void ui_set_padding(UIHandle v, int t, int r, int b, int l) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (!node) return;
     YGNodeStyleSetPadding(node, YGEdgeTop, t);
     YGNodeStyleSetPadding(node, YGEdgeRight, r);
@@ -255,221 +219,122 @@ void ui_set_padding(UIHandle v, int t, int r, int b, int l) {
 }
 
 void ui_set_spacing(UIHandle v, int sp) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (node) YGNodeStyleSetGap(node, YGGutterAll, sp);
 }
 
 void ui_set_flex(UIHandle v, int f) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
-    if (node) YGNodeStyleSetFlex(node, (float)f);
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    if (f > 0) {
+        YGNodeStyleSetFlexGrow(node, (float)f);
+        YGNodeStyleSetFlexShrink(node, 1);
+        YGNodeStyleSetFlexBasis(node, 0);
+        return;
+    }
+    YGNodeStyleSetFlexGrow(node, 0);
+    YGNodeStyleSetFlexShrink(node, 0);
+    YGNodeStyleSetFlexBasisAuto(node);
 }
 
 void ui_set_size(UIHandle v, int w, int h) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
-    if (node) {
-        if (w >= 0) YGNodeStyleSetWidth(node, w);
-        if (h >= 0) YGNodeStyleSetHeight(node, h);
-    } else {
-        /* Leaf view not yet added — store in frame for yoga_leaf_node_for_view to read */
-        NSRect frame = view.frame;
-        if (w >= 0) frame.size.width = w;
-        if (h >= 0) frame.size.height = h;
-        view.frame = frame;
-    }
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    if (w >= 0) YGNodeStyleSetWidth(node, w);
+    if (h >= 0) YGNodeStyleSetHeight(node, h);
+}
+
+void ui_set_size_pct(UIHandle v, double w, double h) {
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    if (w >= 0) YGNodeStyleSetWidthPercent(node, w);
+    if (h >= 0) YGNodeStyleSetHeightPercent(node, h);
 }
 
 void ui_set_min_size(UIHandle v, int w, int h) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (!node) return;
     if (w >= 0) YGNodeStyleSetMinWidth(node, w);
     if (h >= 0) YGNodeStyleSetMinHeight(node, h);
 }
 
+void ui_set_min_size_pct(UIHandle v, double w, double h) {
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    if (w >= 0) YGNodeStyleSetMinWidthPercent(node, w);
+    if (h >= 0) YGNodeStyleSetMinHeightPercent(node, h);
+}
+
 void ui_set_max_size(UIHandle v, int w, int h) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (!node) return;
     if (w >= 0) YGNodeStyleSetMaxWidth(node, w);
     if (h >= 0) YGNodeStyleSetMaxHeight(node, h);
 }
 
-void ui_set_alignment(UIHandle v, int a) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+void ui_set_max_size_pct(UIHandle v, double w, double h) {
+    YGNodeRef node = yoga_node_for_handle(v);
     if (!node) return;
-    YGAlign yogaAlign = YGAlignAuto;
-    if (a == 1) yogaAlign = YGAlignCenter;
-    else if (a == 2) yogaAlign = YGAlignFlexEnd;
-    YGNodeStyleSetAlignSelf(node, yogaAlign);
+    if (w >= 0) YGNodeStyleSetMaxWidthPercent(node, w);
+    if (h >= 0) YGNodeStyleSetMaxHeightPercent(node, h);
+}
+
+void ui_set_alignment(UIHandle v, int a) {
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    YGAlign align = YGAlignAuto;
+    if (a == 1) align = YGAlignCenter;
+    else if (a == 2) align = YGAlignFlexEnd;
+    YGNodeStyleSetAlignSelf(node, align);
 }
 
 void ui_set_margin_auto(UIHandle v) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (!node) return;
-    /* CSS block elements fill parent by default; Yoga doesn't.
-       Set width:100% so the element stretches, then max-width caps it,
-       and auto margins center the remainder. */
     YGNodeStyleSetWidthPercent(node, 100);
     YGNodeStyleSetMarginAuto(node, YGEdgeLeft);
     YGNodeStyleSetMarginAuto(node, YGEdgeRight);
 }
 
 void ui_set_align_items(UIHandle v, int a) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (!node) return;
-    YGAlign yogaAlign = YGAlignStretch;
-    if (a == 0) yogaAlign = YGAlignFlexStart;
-    else if (a == 1) yogaAlign = YGAlignCenter;
-    else if (a == 2) yogaAlign = YGAlignFlexEnd;
-    YGNodeStyleSetAlignItems(node, yogaAlign);
+    YGAlign align = YGAlignStretch;
+    if (a == 0) align = YGAlignFlexStart;
+    else if (a == 1) align = YGAlignCenter;
+    else if (a == 2) align = YGAlignFlexEnd;
+    YGNodeStyleSetAlignItems(node, align);
 }
 
 void ui_set_justify_content(UIHandle v, int j) {
-    NSView *view = (__bridge NSView *)v;
-    YGNodeRef node = yoga_node_for_view(view);
+    YGNodeRef node = yoga_node_for_handle(v);
     if (!node) return;
-    YGJustify yogaJustify = YGJustifyFlexStart;
-    if (j == 1) yogaJustify = YGJustifyCenter;
-    else if (j == 2) yogaJustify = YGJustifyFlexEnd;
-    else if (j == 3) yogaJustify = YGJustifySpaceBetween;
-    YGNodeStyleSetJustifyContent(node, yogaJustify);
-}
-
-/* Helper: create a Yoga leaf node for a non-container NSView */
-static YGNodeRef yoga_leaf_node_for_view(NSView *view) {
-    YGNodeRef leafNode = YGNodeNew();
-    YGNodeSetContext(leafNode, (__bridge void *)view);
-    YGNodeSetMeasureFunc(leafNode, yoga_measure_func);
-
-    CGFloat fw = view.frame.size.width;
-    CGFloat fh = view.frame.size.height;
-    if (fw > 0) YGNodeStyleSetWidth(leafNode, fw);
-    if (fh > 0) YGNodeStyleSetHeight(leafNode, fh);
-
-    NSValue *aspectVal = objc_getAssociatedObject(view, &kAspectRatioKey);
-    if (aspectVal) {
-        NSSize ratio = [aspectVal sizeValue];
-        if (ratio.width > 0) {
-            YGNodeStyleSetAspectRatio(leafNode, ratio.width / ratio.height);
-        }
-    }
-
-    /* Store association so ui_set_* can find this node later */
-    yoga_set_node_for_view(view, leafNode);
-
-    return leafNode;
+    YGJustify justify = YGJustifyFlexStart;
+    if (j == 1) justify = YGJustifyCenter;
+    else if (j == 2) justify = YGJustifyFlexEnd;
+    else if (j == 3) justify = YGJustifySpaceBetween;
+    YGNodeStyleSetJustifyContent(node, justify);
 }
 
 void ui_add_child(UIHandle parent, UIHandle child) {
-    NSView *p = (__bridge NSView *)parent;
-    NSView *c = (__bridge NSView *)child;
-
-    if ([p isKindOfClass:[NSWindow class]]) {
-        p = ((NSWindow *)p).contentView;
-    }
-
-    if ([p isKindOfClass:[UIStackContainer class]]) {
-        UIStackContainer *container = (UIStackContainer *)p;
-        [container.children addObject:c];
-        [p addSubview:c];
-
-        YGNodeRef parentNode = container.ygNode;
-        uint32_t idx = (uint32_t)YGNodeGetChildCount(parentNode);
-
-        if ([c isKindOfClass:[UIStackContainer class]]) {
-            UIStackContainer *childContainer = (UIStackContainer *)c;
-            YGNodeInsertChild(parentNode, childContainer.ygNode, idx);
-
-            if (container.direction == 2) {
-                YGNodeStyleSetPositionType(childContainer.ygNode, YGPositionTypeAbsolute);
-                YGNodeStyleSetPosition(childContainer.ygNode, YGEdgeLeft, 0);
-                YGNodeStyleSetPosition(childContainer.ygNode, YGEdgeTop, 0);
-                YGNodeStyleSetWidthPercent(childContainer.ygNode, 100);
-                YGNodeStyleSetHeightPercent(childContainer.ygNode, 100);
-            }
-        } else if ([c isKindOfClass:[UISpacer class]]) {
-            YGNodeRef spacerNode = YGNodeNew();
-            YGNodeStyleSetFlexGrow(spacerNode, 1);
-            YGNodeSetContext(spacerNode, (__bridge void *)c);
-            yoga_set_node_for_view(c, spacerNode);
-            YGNodeInsertChild(parentNode, spacerNode, idx);
-        } else if ([c isKindOfClass:[NSScrollView class]]) {
-            YGNodeRef scrollNode = YGNodeNew();
-            YGNodeSetContext(scrollNode, (__bridge void *)c);
-            yoga_set_node_for_view(c, scrollNode);
-            /* Pick up any size set via ui_set_size before insertion */
-            CGFloat fw = c.frame.size.width, fh = c.frame.size.height;
-            if (fw > 0) YGNodeStyleSetWidth(scrollNode, fw);
-            if (fh > 0) YGNodeStyleSetHeight(scrollNode, fh);
-            YGNodeInsertChild(parentNode, scrollNode, idx);
-
-            if (container.direction == 2) {
-                YGNodeStyleSetPositionType(scrollNode, YGPositionTypeAbsolute);
-                YGNodeStyleSetPosition(scrollNode, YGEdgeLeft, 0);
-                YGNodeStyleSetPosition(scrollNode, YGEdgeTop, 0);
-                YGNodeStyleSetWidthPercent(scrollNode, 100);
-                YGNodeStyleSetHeightPercent(scrollNode, 100);
-            }
-        } else if ([c isKindOfClass:[NSVisualEffectView class]]) {
-            UIStackContainer *inner = nil;
-            for (NSView *sub in c.subviews) {
-                if ([sub isKindOfClass:[UIStackContainer class]]) { inner = (UIStackContainer *)sub; break; }
-            }
-            if (inner) {
-                YGNodeInsertChild(parentNode, inner.ygNode, idx);
-                if (container.direction == 2) {
-                    YGNodeStyleSetPositionType(inner.ygNode, YGPositionTypeAbsolute);
-                    YGNodeStyleSetPosition(inner.ygNode, YGEdgeLeft, 0);
-                    YGNodeStyleSetPosition(inner.ygNode, YGEdgeTop, 0);
-                    YGNodeStyleSetWidthPercent(inner.ygNode, 100);
-                    YGNodeStyleSetHeightPercent(inner.ygNode, 100);
-                }
-            } else {
-                YGNodeRef blurNode = YGNodeNew();
-                YGNodeSetContext(blurNode, (__bridge void *)c);
-                yoga_set_node_for_view(c, blurNode);
-                YGNodeInsertChild(parentNode, blurNode, idx);
-            }
-        } else {
-            YGNodeRef leafNode = yoga_leaf_node_for_view(c);
-
-            if (container.direction == 2) {
-                YGNodeStyleSetPositionType(leafNode, YGPositionTypeAbsolute);
-                YGNodeStyleSetPosition(leafNode, YGEdgeLeft, 0);
-                YGNodeStyleSetPosition(leafNode, YGEdgeTop, 0);
-                YGNodeStyleSetWidthPercent(leafNode, 100);
-                YGNodeStyleSetHeightPercent(leafNode, 100);
-            }
-
-            YGNodeInsertChild(parentNode, leafNode, idx);
-        }
-    } else if ([p isKindOfClass:[NSScrollView class]]) {
-        NSScrollView *sv = (NSScrollView *)p;
-        sv.documentView = c;
-        if ([c isKindOfClass:[UIStackContainer class]]) {
-            BOOL horizontal = sv.hasHorizontalScroller && !sv.hasVerticalScroller;
-            c.autoresizingMask = horizontal ? NSViewHeightSizable : NSViewWidthSizable;
-        }
-    } else {
-        [p addSubview:c];
-    }
+    TSNShadowNode *parentNode = tsn_shadow_node_for_handle(parent);
+    TSNShadowNode *childNode = tsn_shadow_node_for_handle(child);
+    if (!parentNode || !childNode) return;
+    tsn_attach_child_nodes(parentNode, childNode);
 }
 
 UIHandle ui_spacer(void) {
-    UISpacer *s = [UISpacer new];
-    retain_render(s);
-    return (__bridge UIHandle)s;
+    UISpacer *view = [UISpacer new];
+    TSNShadowNode *node = tsn_create_view_node(view, TSNNodeKindLeaf, 0, NO);
+    YGNodeStyleSetFlexGrow(node.yogaNode, 1);
+    retain_render(view);
+    return (__bridge UIHandle)view;
 }
 
 UIHandle ui_divider(void) {
     NSBox *box = [NSBox new];
     box.boxType = NSBoxSeparator;
+    tsn_create_view_node(box, TSNNodeKindLeaf, 0, YES);
     retain_render(box);
     return (__bridge UIHandle)box;
 }
@@ -477,15 +342,16 @@ UIHandle ui_divider(void) {
 /* ─── Blur View ──────────────────────────────────────────────────── */
 
 UIHandle ui_blur_view(int material) {
-    NSVisualEffectView *vev = [NSVisualEffectView new];
+    NSVisualEffectView *view = [NSVisualEffectView new];
     switch (material) {
-        case 0: vev.material = NSVisualEffectMaterialSidebar; break;
-        case 1: vev.material = NSVisualEffectMaterialHeaderView; break;
-        case 2: vev.material = NSVisualEffectMaterialContentBackground; break;
-        case 3: vev.material = NSVisualEffectMaterialSheet; break;
-        default: vev.material = NSVisualEffectMaterialContentBackground; break;
+        case 0: view.material = NSVisualEffectMaterialSidebar; break;
+        case 1: view.material = NSVisualEffectMaterialHeaderView; break;
+        case 2: view.material = NSVisualEffectMaterialContentBackground; break;
+        case 3: view.material = NSVisualEffectMaterialSheet; break;
+        default: view.material = NSVisualEffectMaterialContentBackground; break;
     }
-    vev.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-    retain_render(vev);
-    return (__bridge UIHandle)vev;
+    view.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+    tsn_create_view_node(view, TSNNodeKindVStack, 0, NO);
+    retain_render(view);
+    return (__bridge UIHandle)view;
 }

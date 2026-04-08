@@ -1,4 +1,34 @@
+export type LengthUnit = 'point' | 'percent'
+
+export interface LengthValue {
+  unit: LengthUnit
+  value: number
+}
+
+export type TailwindOp =
+  | { kind: 'flex', value: number }
+  | { kind: 'spacing', value: number }
+  | { kind: 'padding', top: number, right: number, bottom: number, left: number }
+  | { kind: 'size', width: LengthValue | null, height: LengthValue | null }
+  | { kind: 'min-size', width: LengthValue | null, height: LengthValue | null }
+  | { kind: 'max-size', width: LengthValue | null, height: LengthValue | null }
+  | { kind: 'aspect', width: number, height: number }
+  | { kind: 'text-color-rgb', r: number, g: number, b: number, a: number }
+  | { kind: 'text-color-system', color: number }
+  | { kind: 'background-rgb', r: number, g: number, b: number, a: number }
+  | { kind: 'corner-radius', radius: number }
+  | { kind: 'align-items', value: number }
+  | { kind: 'justify-content', value: number }
+  | { kind: 'align-self', value: number }
+  | { kind: 'margin-auto' }
+  | { kind: 'shadow', offsetX: number, offsetY: number, radius: number, opacity: number }
+  | { kind: 'image-scaling', value: number }
+  | { kind: 'text-truncate' }
+  | { kind: 'clip', value: number }
+  | { kind: 'scroll-axis', value: number }
+
 export interface TailwindResult {
+  ops: TailwindOp[]
   calls: string[]
   textSize: number
   textBold: boolean
@@ -9,4 +39,6 @@ export interface TailwindResult {
   textAlign: number      /* -1=unset, 0=left, 1=center, 2=right */
   width: number
   height: number
+  widthValue: LengthValue | null
+  heightValue: LengthValue | null
 }

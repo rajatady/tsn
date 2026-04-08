@@ -35,8 +35,11 @@ void        ui_set_padding(UIHandle v, int top, int right, int bottom, int left)
 void        ui_set_spacing(UIHandle v, int spacing);
 void        ui_set_flex(UIHandle v, int flex);
 void        ui_set_size(UIHandle v, int w, int h);  /* -1 = auto */
+void        ui_set_size_pct(UIHandle v, double w, double h);  /* percentages, -1 = unset */
 void        ui_set_min_size(UIHandle v, int w, int h);
+void        ui_set_min_size_pct(UIHandle v, double w, double h);
 void        ui_set_max_size(UIHandle v, int w, int h);
+void        ui_set_max_size_pct(UIHandle v, double w, double h);
 void        ui_set_alignment(UIHandle v, int align); /* child self-alignment on cross-axis: 0=leading, 1=center, 2=trailing */
 void        ui_set_margin_auto(UIHandle v);           /* mx-auto: auto left+right margins for centering */
 void        ui_set_align_items(UIHandle v, int align);    /* container cross-axis: 0=start, 1=center, 2=end, 3=stretch */

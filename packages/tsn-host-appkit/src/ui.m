@@ -47,6 +47,7 @@ static CGImageRef capture_window_image(CGWindowID windowID) {
     return fn(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageNominalResolution);
 }
 
+#include "runtime/layout_style.inc"
 #include "runtime/layout.inc"
 
 /* ─── Bar Chart View ─────────────────────────────────────────────── */
@@ -268,8 +269,7 @@ UIHandle ui_text(const char *content, int size, bool bold) {
     t.maximumNumberOfLines = 0;
     [t setUsesSingleLineMode:NO];
     [[t cell] setWraps:YES];
-    /* Default line-height 1.5 to match Tailwind preflight (html { line-height: 1.5 }) */
-    CGFloat lh = size * 1.5;
+    CGFloat lh = default_css_line_height_for_size(size);
     NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:t.attributedStringValue];
     NSMutableParagraphStyle *pstyle = [NSMutableParagraphStyle new];
     pstyle.minimumLineHeight = lh;
@@ -277,6 +277,7 @@ UIHandle ui_text(const char *content, int size, bool bold) {
     [attrStr addAttribute:NSParagraphStyleAttributeName value:pstyle range:NSMakeRange(0, attrStr.length)];
     t.attributedStringValue = attrStr;
     [t sizeToFit];
+    tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
     retain_render(t);
     return (__bridge UIHandle)t;
 }
@@ -290,7 +291,15 @@ UIHandle ui_text_mono(const char *content, int size, bool bold) {
     t.maximumNumberOfLines = 0;
     [t setUsesSingleLineMode:NO];
     [[t cell] setWraps:YES];
+    CGFloat lh = default_css_line_height_for_size(size);
+    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:t.attributedStringValue];
+    NSMutableParagraphStyle *pstyle = [NSMutableParagraphStyle new];
+    pstyle.minimumLineHeight = lh;
+    pstyle.maximumLineHeight = lh;
+    [attrStr addAttribute:NSParagraphStyleAttributeName value:pstyle range:NSMakeRange(0, attrStr.length)];
+    t.attributedStringValue = attrStr;
     [t sizeToFit];
+    tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
     retain_render(t);
     return (__bridge UIHandle)t;
 }
@@ -414,6 +423,7 @@ UIHandle ui_segmented(int count, const char **labels) {
     NSSegmentedControl *sc = [NSSegmentedControl segmentedControlWithLabels:arr
         trackingMode:NSSegmentSwitchTrackingSelectOne target:nil action:nil];
     sc.selectedSegment = 0;
+    tsn_create_view_node(sc, TSNNodeKindLeaf, 0, YES);
     retain_render(sc);
     return (__bridge UIHandle)sc;
 }
@@ -424,6 +434,7 @@ void ui_segmented_on_change(UIHandle seg, UISegmentFn fn) { /* TODO */ }
 UIHandle ui_toggle(const char *label, bool initial) {
     NSSwitch *sw = [NSSwitch new];
     sw.state = initial ? NSControlStateValueOn : NSControlStateValueOff;
+    tsn_create_view_node(sw, TSNNodeKindLeaf, 0, YES);
     retain_render(sw);
     return (__bridge UIHandle)sw;
 }
@@ -433,6 +444,7 @@ void ui_toggle_on_change(UIHandle tog, UIToggleFn fn) { /* TODO */ }
 UIHandle ui_progress(double value) {
     UIProgressBar *bar = [UIProgressBar new];
     bar.progress = value;
+    tsn_create_view_node(bar, TSNNodeKindLeaf, 0, YES);
     retain_render(bar);
     return (__bridge UIHandle)bar;
 }
@@ -449,13 +461,12 @@ void ui_progress_set(UIHandle p, double value) {
 UIHandle ui_badge(const char *text, int sc) {
     /* Wrap text in a padded stack to match CSS padding: 2px 8px */
     UIStackContainer *wrap = [UIStackContainer new];
-    wrap.direction = 1;
-    YGNodeStyleSetFlexDirection(wrap.ygNode, YGFlexDirectionRow);
-    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeTop, 2);
-    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeBottom, 2);
-    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeLeft, 8);
-    YGNodeStyleSetPadding(wrap.ygNode, YGEdgeRight, 8);
-    YGNodeStyleSetAlignSelf(wrap.ygNode, YGAlignFlexStart);
+    TSNShadowNode *wrapNode = tsn_create_container_node(wrap, TSNNodeKindHStack, 1);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeTop, 2);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeBottom, 2);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeLeft, 8);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeRight, 8);
+    YGNodeStyleSetAlignSelf(wrapNode.yogaNode, YGAlignFlexStart);
     wrap.wantsLayer = YES;
     wrap.layer.backgroundColor = system_color(sc).CGColor;
     wrap.layer.cornerRadius = 8;
@@ -466,13 +477,11 @@ UIHandle ui_badge(const char *text, int sc) {
     t.textColor = [NSColor whiteColor];
     t.drawsBackground = NO;
     t.alignment = NSTextAlignmentCenter;
-    [wrap addSubview:t];
-    [wrap.children addObject:t];
-    /* Add leaf Yoga node for the text */
-    YGNodeRef leafNode = yoga_leaf_node_for_view(t);
-    YGNodeInsertChild(wrap.ygNode, leafNode, 0);
+    TSNShadowNode *textNode = tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
+    tsn_attach_child_nodes(wrapNode, textNode);
 
     retain_render(wrap);
+    retain_render(t);
     return (__bridge UIHandle)wrap;
 }
 
@@ -484,7 +493,9 @@ UIHandle ui_card(void) {
     c.layer.backgroundColor = [NSColor colorWithWhite:0.12 alpha:1].CGColor;
     c.layer.cornerRadius = 12;
     c.layer.masksToBounds = YES;
+    objc_setAssociatedObject(c, &kCardContainerKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     /* No default padding — let Tailwind classes set it via ui_set_padding */
+    tsn_create_container_node(c, TSNNodeKindVStack, 0);
     retain_render(c);
     return (__bridge UIHandle)c;
 }
@@ -501,6 +512,7 @@ UIHandle ui_stat(const char *value, const char *label, int sc) {
     sv.value_text = [NSString stringWithUTF8String:value];
     sv.label_text = [NSString stringWithUTF8String:label];
     sv.accent = system_color(sc);
+    tsn_create_view_node(sv, TSNNodeKindLeaf, 0, YES);
     retain_render(sv);
     return (__bridge UIHandle)sv;
 }
@@ -530,6 +542,7 @@ UIHandle ui_data_table(void) {
     sv.documentView = tv;
     tv.tag = (NSInteger)(__bridge void *)mgr;  /* stash manager ref */
 
+    tsn_create_view_node(sv, TSNNodeKindLeaf, 0, YES);
     retain_render(sv);
     retain_render(tv);
     return (__bridge UIHandle)sv;
@@ -571,6 +584,7 @@ UIHandle ui_bar_chart(int height) {
     UIBarChartView *c = [UIBarChartView new];
     c.fixed_height = height;
     c.bar_count = 0;
+    tsn_create_view_node(c, TSNNodeKindLeaf, 0, YES);
     retain_render(c);
     return (__bridge UIHandle)c;
 }
