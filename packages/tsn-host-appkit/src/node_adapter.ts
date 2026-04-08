@@ -163,10 +163,22 @@ function pushLengthCall(
   if (width == null && height == null) return
   const widthIsPercent = typeof width === 'object' && width.unit === 'percent'
   const heightIsPercent = typeof height === 'object' && height.unit === 'percent'
+  if (width && height && widthIsPercent !== heightIsPercent) {
+    if (width) {
+      calls.push(
+        `${widthIsPercent ? percentFn : pointFn}(${handle}, ${resolveLengthValue(width) ?? -1}, -1);`,
+      )
+    }
+    if (height) {
+      calls.push(
+        `${heightIsPercent ? percentFn : pointFn}(${handle}, -1, ${resolveLengthValue(height) ?? -1});`,
+      )
+    }
+    return
+  }
+
   const fn = widthIsPercent || heightIsPercent ? percentFn : pointFn
-  calls.push(`${
-    fn
-  }(${handle}, ${resolveLengthValue(width) ?? -1}, ${resolveLengthValue(height) ?? -1});`)
+  calls.push(`${fn}(${handle}, ${resolveLengthValue(width) ?? -1}, ${resolveLengthValue(height) ?? -1});`)
 }
 
 function resolvePointLength(value: TSNLengthResolvable | undefined): number | null {

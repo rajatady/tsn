@@ -142,6 +142,16 @@ test('bg-white/5 emits white at 5% alpha', () => {
   assert.ok(r.calls.some(c => c.includes('ui_set_background_rgb(h, 1, 1, 1, 0.05)')))
 })
 
+test('oracle sidebar classes with px and bracket alpha parse cleanly', () => {
+  const r = parseTailwind('w-[240px] min-w-[240px] py-[6px] bg-white/[0.04] gap-1.5 space-y-[1px] text-[15px]', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_size(h, 240, -1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_min_size(h, 240, -1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_padding(h, 6, 0, 6, 0)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_background_rgb(h, 1, 1, 1, 0.04)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_spacing(h, 1)')))
+  assert.equal(r.textSize, 15)
+})
+
 test('bg-zinc-800/50 emits zinc-800 at 50% alpha', () => {
   const r = parseTailwind('bg-zinc-800/50', 'h')
   assert.ok(r.calls.some(c => c.includes('0.5)')))

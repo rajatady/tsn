@@ -28,6 +28,15 @@ static CGFloat aspect_height(NSView *view, CGFloat width) {
 static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode widthMode,
                                 float height, YGMeasureMode heightMode);
 
+static NSSize tsn_measure_text_bounds(NSTextField *field, CGFloat maxWidth) {
+    NSAttributedString *attr = field.attributedStringValue;
+    if (attr.length == 0) return NSMakeSize(0, tsn_text_resolved_line_height(field));
+    CGSize constraint = CGSizeMake(maxWidth > 0 ? maxWidth : CGFLOAT_MAX, CGFLOAT_MAX);
+    CGRect bounds = [attr boundingRectWithSize:constraint options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading];
+    NSSize cell = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, constraint.width, constraint.height)];
+    return NSMakeSize(ceil(MAX(bounds.size.width, cell.width)), ceil(MAX(bounds.size.height, cell.height)));
+}
+
 #include "runtime/shadow_tree.inc"
 
 static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode widthMode,
@@ -35,14 +44,33 @@ static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode 
     NSView *view = (__bridge NSView *)YGNodeGetContext((YGNodeRef)node);
     YGSize result = { .width = 0, .height = 0 };
 
-    if ([view isKindOfClass:[NSTextField class]]) {
+    if ([view isKindOfClass:[TSNTextLabelView class]]) {
+        TSNTextRuntimeWrapMode wrapMode = tsn_text_wrap_mode(view);
+        BOOL multiline = tsn_text_is_multiline(view);
+        CGFloat cssLH = tsn_text_resolved_line_height(view);
+        CGFloat availW = (widthMode == YGMeasureModeUndefined) ? CGFLOAT_MAX : width;
+        NSSize intrinsic = tsn_text_bounding_size(view, CGFLOAT_MAX);
+
+        if (!multiline || wrapMode != TSNTextRuntimeWrapModeWrap) {
+            if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
+            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(intrinsic.width, width);
+            else result.width = width;
+            result.height = cssLH;
+        } else {
+            NSSize wrapped = tsn_text_bounding_size(view, availW);
+            if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
+            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(MAX(wrapped.width, intrinsic.width), width);
+            else result.width = width;
+            result.height = MAX(cssLH, wrapped.height);
+        }
+    } else if ([view isKindOfClass:[NSTextField class]]) {
         NSTextField *field = (NSTextField *)view;
         TSNTextRuntimeKind kind = tsn_text_kind(field);
         TSNTextRuntimeWrapMode wrapMode = tsn_text_wrap_mode(field);
         BOOL multiline = tsn_text_is_multiline(field);
         CGFloat cssLH = tsn_text_resolved_line_height(field);
         CGFloat availW = (widthMode == YGMeasureModeUndefined) ? CGFLOAT_MAX : width;
-        NSSize intrinsic = field.intrinsicContentSize;
+        NSSize intrinsic = tsn_measure_text_bounds(field, CGFLOAT_MAX);
 
         if (kind != TSNTextRuntimeKindStatic) {
             if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
@@ -57,12 +85,11 @@ static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode 
             else result.width = width;
             result.height = cssLH;
         } else {
-            CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, availW, CGFLOAT_MAX)].height;
-            int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));
+            NSSize wrapped = tsn_measure_text_bounds(field, availW);
             if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
-            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(intrinsic.width, width);
+            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(MAX(wrapped.width, intrinsic.width), width);
             else result.width = width;
-            result.height = nlines * cssLH;
+            result.height = MAX(cssLH, wrapped.height);
         }
     } else if ([view isKindOfClass:[NSScrollView class]]) {
         TSNShadowNode *shadow = tsn_shadow_node_for_obj(view);

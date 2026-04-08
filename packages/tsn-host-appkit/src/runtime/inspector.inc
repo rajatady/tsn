@@ -33,6 +33,7 @@ static NSArray<NSView *> *inspector_child_views(NSView *view) {
 }
 
 static NSString *inspector_node_text(NSView *view) {
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return tsn_text_string(view);
     if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).stringValue ?: @"";
     if ([view isKindOfClass:[NSButton class]]) return ((NSButton *)view).title ?: @"";
     if ([view isKindOfClass:[NSSearchField class]]) return ((NSSearchField *)view).stringValue ?: @"";
@@ -240,6 +241,7 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
         return text.length > 0 ? [NSString stringWithFormat:@"%@\n", text] : @"(no text)\n";
     }
     if ([prop isEqualToString:@"value"]) {
+        if ([view isKindOfClass:[TSNTextLabelView class]]) return [NSString stringWithFormat:@"%@\n", tsn_text_string(view)];
         if ([view isKindOfClass:[NSTextField class]]) return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
         if ([view isKindOfClass:[NSSearchField class]]) return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
         if ([view isKindOfClass:[NSProgressIndicator class]]) {

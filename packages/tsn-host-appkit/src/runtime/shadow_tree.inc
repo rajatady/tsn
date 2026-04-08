@@ -57,6 +57,7 @@ static NSString *tsn_kind_name(TSNShadowNode *node) {
         default: break;
     }
     NSView *view = node.view;
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return @"Text";
     if ([view isKindOfClass:[NSTextField class]]) return @"Text";
     if ([view isKindOfClass:[NSSearchField class]]) return @"Search";
     if ([view isKindOfClass:[NSButton class]]) return @"Button";
@@ -231,10 +232,11 @@ static void tsn_attach_child_nodes(TSNShadowNode *parent, TSNShadowNode *child) 
         uint32_t idx = (uint32_t)YGNodeGetChildCount(layoutRoot);
         YGNodeInsertChild(layoutRoot, child.yogaNode, idx);
         tsn_apply_zstack_constraints_if_needed(parent, child.yogaNode);
-        if (tsn_is_card_container(parent.view) && [child.view isKindOfClass:[NSTextField class]]) {
-            NSTextField *field = (NSTextField *)child.view;
+        if (tsn_is_card_container(parent.view) && ([child.view isKindOfClass:[TSNTextLabelView class]] || [child.view isKindOfClass:[NSTextField class]])) {
+            NSView *field = child.view;
             YGNodeStyleSetAlignSelf(child.yogaNode, YGAlignFlexStart);
-            CGFloat fontSize = field.font ? field.font.pointSize : 13;
+            NSFont *font = tsn_text_font(field);
+            CGFloat fontSize = font ? font.pointSize : 13;
             CGFloat defaultMultiplier = fontSize > 0 ? tsn_default_css_line_height_for_size(fontSize) / fontSize : 1.2;
             if (parent.children.count == 1 &&
                 tsn_text_kind(field) == TSNTextRuntimeKindStatic &&

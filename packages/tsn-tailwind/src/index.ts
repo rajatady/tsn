@@ -255,6 +255,18 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       pushOps(result, { kind: 'spacing', value: px(parseFloat(gapMatch[1])) })
       continue
     }
+    if (cls.startsWith('gap-[') || cls.startsWith('space-y-[') || cls.startsWith('space-x-[')) {
+      const parsed = parseArbitraryValue(cls)
+      if (parsed && parsed.unit === 'point') {
+        pushOps(result, { kind: 'spacing', value: parsed.value })
+        continue
+      }
+    }
+    const spaceMatch = cls.match(/^space-(?:x|y)-(\d+(?:\.\d+)?)$/)
+    if (spaceMatch) {
+      pushOps(result, { kind: 'spacing', value: px(parseFloat(spaceMatch[1])) })
+      continue
+    }
 
     const pMatch = cls.match(/^(p|px|py|pt|pr|pb|pl)-(\d+(?:\.\d+)?)$/)
     if (pMatch) {
@@ -270,6 +282,23 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       }
       continue
     }
+    const pArbitrary = cls.match(/^(p|px|py|pt|pr|pb|pl)-\[/)
+    if (pArbitrary) {
+      const parsed = parseArbitraryValue(cls)
+      if (parsed && parsed.unit === 'point') {
+        const value = parsed.value
+        switch (pArbitrary[1]) {
+          case 'p': pt = pr = pb = pl = value; break
+          case 'px': pl = pr = value; break
+          case 'py': pt = pb = value; break
+          case 'pt': pt = value; break
+          case 'pr': pr = value; break
+          case 'pb': pb = value; break
+          case 'pl': pl = value; break
+        }
+        continue
+      }
+    }
 
     const mMatch = cls.match(/^(m|mx|my|mt|mr|mb|ml)-(\d+(?:\.\d+)?)$/)
     if (mMatch) {
@@ -284,6 +313,23 @@ export function parseTailwind(className: string, handle: string): TailwindResult
         case 'ml': pl = value; break
       }
       continue
+    }
+    const mArbitrary = cls.match(/^(m|mx|my|mt|mr|mb|ml)-\[/)
+    if (mArbitrary) {
+      const parsed = parseArbitraryValue(cls)
+      if (parsed && parsed.unit === 'point') {
+        const value = parsed.value
+        switch (mArbitrary[1]) {
+          case 'm': pt = pr = pb = pl = value; break
+          case 'mx': pl = pr = value; break
+          case 'my': pt = pb = value; break
+          case 'mt': pt = value; break
+          case 'mr': pr = value; break
+          case 'mb': pb = value; break
+          case 'ml': pl = value; break
+        }
+        continue
+      }
     }
 
     if (cls === 'h-full') { heightValue = { unit: 'percent', value: 100 }; continue }
@@ -350,7 +396,7 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       continue
     }
 
-    const textArbitrary = cls.match(/^text-\[(\d+)\]$/)
+    const textArbitrary = cls.match(/^text-\[(\d+)(?:px)?\]$/)
     if (textArbitrary) {
       result.textSize = parseInt(textArbitrary[1])
       continue
