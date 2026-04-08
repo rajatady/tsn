@@ -307,6 +307,18 @@ void ui_set_alignment(UIHandle v, int a) {
     YGNodeStyleSetAlignSelf(node, yogaAlign);
 }
 
+void ui_set_margin_auto(UIHandle v) {
+    NSView *view = (__bridge NSView *)v;
+    YGNodeRef node = yoga_node_for_view(view);
+    if (!node) return;
+    /* CSS block elements fill parent by default; Yoga doesn't.
+       Set width:100% so the element stretches, then max-width caps it,
+       and auto margins center the remainder. */
+    YGNodeStyleSetWidthPercent(node, 100);
+    YGNodeStyleSetMarginAuto(node, YGEdgeLeft);
+    YGNodeStyleSetMarginAuto(node, YGEdgeRight);
+}
+
 void ui_set_align_items(UIHandle v, int a) {
     NSView *view = (__bridge NSView *)v;
     YGNodeRef node = yoga_node_for_view(view);

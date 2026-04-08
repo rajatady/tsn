@@ -293,7 +293,11 @@ export function parseTailwind(className: string, handle: string): TailwindResult
     if (cls === 'justify-between') { result.calls.push(`ui_set_justify_content(${handle}, 3);`); continue }
 
     // Auto-centering / self alignment
-    if (cls === 'mx-auto' || cls === 'self-center') {
+    if (cls === 'mx-auto') {
+      result.calls.push(`ui_set_margin_auto(${handle});`)
+      continue
+    }
+    if (cls === 'self-center') {
       result.calls.push(`ui_set_alignment(${handle}, 1);`)
       continue
     }
