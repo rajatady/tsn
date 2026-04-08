@@ -1,0 +1,11 @@
+const ROOT = 'examples/native-gui/app-store/assets/'
+
+export const heroImage = ROOT + 'rural-hero.png'
+export const spotlightOneImage = ROOT + 'develop-hero.png'
+export const spotlightTwoImage = ROOT + 'develop-spotlight.png'
+export const featureOneImage = ROOT + 'play-hero.png'
+export const featureTwoImage = ROOT + 'play-card-one.png'
+export const featureThreeImage = ROOT + 'play-card-two.png'
+export const featureFourImage = ROOT + 'play-card-three.png'
+export const featureFiveImage = ROOT + 'category-strategy.png'
+export const featureSixImage = ROOT + 'category-family.png'

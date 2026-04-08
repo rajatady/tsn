@@ -1,53 +1,103 @@
-export interface Issue {
-  key: string
+import {
+  heroImage,
+  spotlightOneImage,
+  spotlightTwoImage,
+  featureOneImage,
+  featureTwoImage,
+  featureThreeImage,
+  featureFourImage,
+  featureFiveImage,
+} from './assets'
+
+export interface Feature {
+  icon: string
   title: string
-  assignee: string
-  status: string
-  tagLabel: string
+  description: string
 }
 
-function makeTags(a: string, b: string, c: string): string[] {
-  const tags: string[] = []
-  if (a.length > 0) tags.push(a)
-  if (b.length > 0) tags.push(b)
-  if (c.length > 0) tags.push(c)
-  return tags
+export interface Spotlight {
+  eyebrow: string
+  title: string
+  subtitle: string
+  image: string
 }
 
-function makeIssue(
-  key: string,
-  title: string,
-  assignee: string,
-  status: string,
-  tagA: string,
-  tagB: string,
-  tagC: string
-): Issue {
-  const tags: string[] = makeTags(tagA, tagB, tagC)
-  const tagLabel: string = tags.join(", ")
-  const issue: Issue = {
-    key: key,
-    title: title,
-    assignee: assignee,
-    status: status,
-    tagLabel: tagLabel
+export interface FeatureCard {
+  title: string
+  subtitle: string
+  image: string
+}
+
+export function heroData(): Spotlight {
+  const hero: Spotlight = {
+    eyebrow: 'macOS Sequoia',
+    title: 'All new. All you.',
+    subtitle: 'macOS Sequoia brings new ways to work, play, and create on your Mac.',
+    image: heroImage,
   }
-  return issue
+  return hero
 }
 
-export function seedIssues(): Issue[] {
-  const list: Issue[] = []
-  list.push(makeIssue("OPS-104", "API latency spike in us-east-1", "Nina", "Investigating", "p1", "latency", "api"))
-  list.push(makeIssue("OPS-108", "Checkout retries after payment timeout", "Aarav", "Mitigated", "payments", "retry", "revenue"))
-  list.push(makeIssue("SEC-212", "Rotate leaked preview token", "Maya", "Review", "security", "token", "infra"))
-  list.push(makeIssue("APP-331", "Crash when exporting weekly report", "Jon", "Backlog", "desktop", "export", "reporting"))
-  list.push(makeIssue("DATA-91", "Warehouse freshness lag on finance dashboard", "Ishita", "Investigating", "etl", "finance", "freshness"))
-  list.push(makeIssue("OPS-111", "Websocket disconnects during deploy", "Nina", "Done", "realtime", "deploy", "incident"))
-  list.push(makeIssue("APP-337", "Search panel ignores trailing spaces", "Ravi", "In Progress", "search", "ux", "input"))
-  list.push(makeIssue("SEC-219", "Tighten S3 public access rules", "Maya", "In Progress", "security", "storage", ""))
-  list.push(makeIssue("DATA-97", "Join mismatch on campaign attribution", "Ishita", "Review", "sql", "marketing", "attribution"))
-  list.push(makeIssue("OPS-117", "Worker queue saturation after cron burst", "Aarav", "Mitigated", "queue", "cron", "throughput"))
-  list.push(makeIssue("APP-344", "Native table row height clips badge text", "Jon", "Backlog", "native-ui", "table", ""))
-  list.push(makeIssue("OPS-121", "Log sampler drops 500 responses", "Ravi", "Investigating", "logging", "sampling", "errors"))
-  return list
+export function coreFeatures(): Feature[] {
+  const features: Feature[] = [
+    {
+      icon: 'macwindow.on.rectangle',
+      title: 'iPhone Mirroring',
+      description: 'Use your iPhone right from your Mac.',
+    },
+    {
+      icon: 'safari.fill',
+      title: 'Safari Updates',
+      description: 'Highlights surface key information.',
+    },
+    {
+      icon: 'lock.shield.fill',
+      title: 'Privacy & Security',
+      description: 'Lock and hide apps behind Face ID.',
+    },
+  ]
+  return features
+}
+
+export function spotlightOne(): Spotlight {
+  const data: Spotlight = {
+    eyebrow: 'Continuity',
+    title: 'All your devices, one seamless experience.',
+    subtitle: 'Start on iPhone. Continue on Mac. Finish on iPad.',
+    image: spotlightOneImage,
+  }
+  return data
+}
+
+export function spotlightTwo(): Spotlight {
+  const data: Spotlight = {
+    eyebrow: 'Apple Intelligence',
+    title: 'AI that understands you.',
+    subtitle: 'Writing tools, image generation, and smart suggestions.',
+    image: spotlightTwoImage,
+  }
+  return data
+}
+
+export function featureCards(): FeatureCard[] {
+  const cards: FeatureCard[] = [
+    { title: 'Window Tiling', subtitle: 'Snap and organize windows with a drag.', image: featureOneImage },
+    { title: 'Video Conferencing', subtitle: 'Presenter overlay and smart backgrounds.', image: featureTwoImage },
+    { title: 'Gaming', subtitle: 'Game Mode for peak performance on Mac.', image: featureThreeImage },
+    { title: 'Passwords App', subtitle: 'A dedicated app for all your credentials.', image: featureFourImage },
+    { title: 'Messages', subtitle: 'Schedule, edit, and react with any emoji.', image: featureFiveImage },
+  ]
+  return cards
+}
+
+export function compatibilityModels(): string[] {
+  const models: string[] = [
+    'MacBook Air (2020 and later)',
+    'MacBook Pro (2018 and later)',
+    'Mac mini (2018 and later)',
+    'Mac Studio (2022 and later)',
+    'Mac Pro (2019 and later)',
+    'iMac (2019 and later)',
+  ]
+  return models
 }
