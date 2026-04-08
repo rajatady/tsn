@@ -181,6 +181,16 @@ async function main(): Promise<void> {
   fs.rmSync(artifactDir, { recursive: true, force: true })
   fs.mkdirSync(artifactDir, { recursive: true })
 
+  // Filter cases if specific IDs are provided via CLI args
+  const filterIds = process.argv.slice(2).filter(a => !a.startsWith('-'))
+  const casesToRun = filterIds.length > 0
+    ? geometryCases.filter(gc => filterIds.includes(gc.id))
+    : geometryCases
+
+  if (filterIds.length > 0) {
+    console.log(`Running ${casesToRun.length} case(s): ${filterIds.join(', ')}`)
+  }
+
   // Build gallery
   console.log('Building conformance gallery...')
   execFileSync('./strictts', ['build', 'conformance/gallery.tsx'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
@@ -197,7 +207,7 @@ async function main(): Promise<void> {
     let passedCases = 0
     const results: { caseId: string, label: string, pass: boolean, comparisons: ElementComparison[] }[] = []
 
-    for (const gc of geometryCases) {
+    for (const gc of casesToRun) {
       totalCases++
       const tolerance = gc.tolerance ?? DEFAULT_TOLERANCE
 
