@@ -32,6 +32,8 @@ UIHandle ui_sidebar_section(UIHandle sidebar, const char *header) {
     h.textColor = [NSColor colorWithWhite:0.45 alpha:1];
     [s.children addObject:h];
     [s addSubview:h];
+    YGNodeRef leafNode = yoga_leaf_node_for_view(h);
+    YGNodeInsertChild(s.ygNode, leafNode, (uint32_t)YGNodeGetChildCount(s.ygNode));
 
     return sidebar;
 }
@@ -56,6 +58,8 @@ UIHandle ui_sidebar_item(UIHandle section, const char *label, const char *sf_sym
     b.alignment = NSTextAlignmentLeft;
     [s.children addObject:b];
     [s addSubview:b];
+    YGNodeRef leafNode = yoga_leaf_node_for_view(b);
+    YGNodeInsertChild(s.ygNode, leafNode, (uint32_t)YGNodeGetChildCount(s.ygNode));
 
     return btn;
 }

@@ -152,7 +152,14 @@ static void yoga_apply_layout(UIStackContainer *container) {
     [super layout];
     NSRect b = self.bounds;
     if (b.size.width <= 0 || b.size.height <= 0) return;
-    YGNodeCalculateLayout(_ygNode, b.size.width, b.size.height, YGDirectionLTR);
+
+    /* Only the root container (no Yoga parent) triggers a full layout calculation.
+       Child containers have their layout already computed by the parent's
+       YGNodeCalculateLayout — recalculating here would reset their position to (0,0). */
+    YGNodeRef parent = YGNodeGetOwner(_ygNode);
+    if (!parent) {
+        YGNodeCalculateLayout(_ygNode, b.size.width, b.size.height, YGDirectionLTR);
+    }
     yoga_apply_layout(self);
 }
 @end
