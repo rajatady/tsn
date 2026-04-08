@@ -455,6 +455,7 @@ UIHandle ui_badge(const char *text, int sc) {
     YGNodeStyleSetPadding(wrap.ygNode, YGEdgeBottom, 2);
     YGNodeStyleSetPadding(wrap.ygNode, YGEdgeLeft, 8);
     YGNodeStyleSetPadding(wrap.ygNode, YGEdgeRight, 8);
+    YGNodeStyleSetAlignSelf(wrap.ygNode, YGAlignFlexStart);
     wrap.wantsLayer = YES;
     wrap.layer.backgroundColor = system_color(sc).CGColor;
     wrap.layer.cornerRadius = 8;
