@@ -263,7 +263,7 @@ void ui_set_spacing(UIHandle v, int sp) {
 void ui_set_flex(UIHandle v, int f) {
     NSView *view = (__bridge NSView *)v;
     YGNodeRef node = yoga_node_for_view(view);
-    if (node) YGNodeStyleSetFlexGrow(node, (float)f);
+    if (node) YGNodeStyleSetFlex(node, (float)f);
 }
 
 void ui_set_size(UIHandle v, int w, int h) {
