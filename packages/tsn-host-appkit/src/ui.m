@@ -468,9 +468,7 @@ UIHandle ui_badge(const char *text, int sc) {
     [wrap addSubview:t];
     [wrap.children addObject:t];
     /* Add leaf Yoga node for the text */
-    YGNodeRef leafNode = YGNodeNew();
-    YGNodeSetContext(leafNode, (__bridge void *)t);
-    YGNodeSetMeasureFunc(leafNode, yoga_measure_func);
+    YGNodeRef leafNode = yoga_leaf_node_for_view(t);
     YGNodeInsertChild(wrap.ygNode, leafNode, 0);
 
     retain_render(wrap);

@@ -2,6 +2,9 @@
 @interface UISpacer : NSView @end
 @implementation UISpacer @end
 
+/* ─── Yoga Node Association Key ─────────────────────────────────── */
+static char kYGNodeKey;
+
 /* ─── Aspect Ratio ──────────────────────────────────────────────── */
 
 static char kAspectRatioKey;
@@ -164,6 +167,23 @@ static void yoga_apply_layout(UIStackContainer *container) {
 }
 @end
 
+/* ─── Yoga Node Association Helpers ─────────────────────────────── */
+/* Every NSView (container or leaf) gets an associated YGNodeRef.
+   This is the single source of truth for layout properties. */
+
+static YGNodeRef yoga_node_for_view(NSView *view) {
+    if ([view isKindOfClass:[UIStackContainer class]]) {
+        return ((UIStackContainer *)view).ygNode;
+    }
+    NSValue *val = objc_getAssociatedObject(view, &kYGNodeKey);
+    return val ? (YGNodeRef)[val pointerValue] : NULL;
+}
+
+static void yoga_set_node_for_view(NSView *view, YGNodeRef node) {
+    objc_setAssociatedObject(view, &kYGNodeKey,
+        [NSValue valueWithPointer:node], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
 /* ─── Layout Functions ──────────────────────────────────────────── */
 
 UIHandle ui_vstack(void) {
@@ -196,9 +216,8 @@ void ui_set_aspect(UIHandle v, int w, int h) {
     NSView *view = (__bridge NSView *)v;
     NSValue *val = [NSValue valueWithSize:NSMakeSize(w, h)];
     objc_setAssociatedObject(view, &kAspectRatioKey, val, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGNodeStyleSetAspectRatio(((UIStackContainer *)view).ygNode, (float)w / (float)h);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (node) YGNodeStyleSetAspectRatio(node, (float)w / (float)h);
 }
 
 void ui_set_clip(UIHandle v, int clip) {
@@ -227,92 +246,87 @@ void ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
 
 void ui_set_padding(UIHandle v, int t, int r, int b, int l) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGNodeRef node = ((UIStackContainer *)view).ygNode;
-        YGNodeStyleSetPadding(node, YGEdgeTop, t);
-        YGNodeStyleSetPadding(node, YGEdgeRight, r);
-        YGNodeStyleSetPadding(node, YGEdgeBottom, b);
-        YGNodeStyleSetPadding(node, YGEdgeLeft, l);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (!node) return;
+    YGNodeStyleSetPadding(node, YGEdgeTop, t);
+    YGNodeStyleSetPadding(node, YGEdgeRight, r);
+    YGNodeStyleSetPadding(node, YGEdgeBottom, b);
+    YGNodeStyleSetPadding(node, YGEdgeLeft, l);
 }
 
 void ui_set_spacing(UIHandle v, int sp) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGNodeStyleSetGap(((UIStackContainer *)view).ygNode, YGGutterAll, sp);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (node) YGNodeStyleSetGap(node, YGGutterAll, sp);
 }
 
 void ui_set_flex(UIHandle v, int f) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGNodeStyleSetFlexGrow(((UIStackContainer *)view).ygNode, (float)f);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (node) YGNodeStyleSetFlexGrow(node, (float)f);
 }
 
 void ui_set_size(UIHandle v, int w, int h) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGNodeRef node = ((UIStackContainer *)view).ygNode;
+    YGNodeRef node = yoga_node_for_view(view);
+    if (node) {
         if (w >= 0) YGNodeStyleSetWidth(node, w);
         if (h >= 0) YGNodeStyleSetHeight(node, h);
-        return;
+    } else {
+        /* Leaf view not yet added — store in frame for yoga_leaf_node_for_view to read */
+        NSRect frame = view.frame;
+        if (w >= 0) frame.size.width = w;
+        if (h >= 0) frame.size.height = h;
+        view.frame = frame;
     }
-    /* Leaf views: set frame directly (measure func will read it) */
-    NSRect frame = view.frame;
-    if (w >= 0) frame.size.width = w;
-    if (h >= 0) frame.size.height = h;
-    view.frame = frame;
 }
 
 void ui_set_min_size(UIHandle v, int w, int h) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGNodeRef node = ((UIStackContainer *)view).ygNode;
-        if (w >= 0) YGNodeStyleSetMinWidth(node, w);
-        if (h >= 0) YGNodeStyleSetMinHeight(node, h);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (!node) return;
+    if (w >= 0) YGNodeStyleSetMinWidth(node, w);
+    if (h >= 0) YGNodeStyleSetMinHeight(node, h);
 }
 
 void ui_set_max_size(UIHandle v, int w, int h) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGNodeRef node = ((UIStackContainer *)view).ygNode;
-        if (w >= 0) YGNodeStyleSetMaxWidth(node, w);
-        if (h >= 0) YGNodeStyleSetMaxHeight(node, h);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (!node) return;
+    if (w >= 0) YGNodeStyleSetMaxWidth(node, w);
+    if (h >= 0) YGNodeStyleSetMaxHeight(node, h);
 }
 
 void ui_set_alignment(UIHandle v, int a) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGAlign yogaAlign = YGAlignAuto;
-        if (a == 1) yogaAlign = YGAlignCenter;
-        else if (a == 2) yogaAlign = YGAlignFlexEnd;
-        YGNodeStyleSetAlignSelf(((UIStackContainer *)view).ygNode, yogaAlign);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (!node) return;
+    YGAlign yogaAlign = YGAlignAuto;
+    if (a == 1) yogaAlign = YGAlignCenter;
+    else if (a == 2) yogaAlign = YGAlignFlexEnd;
+    YGNodeStyleSetAlignSelf(node, yogaAlign);
 }
 
 void ui_set_align_items(UIHandle v, int a) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGAlign yogaAlign = YGAlignStretch;
-        if (a == 0) yogaAlign = YGAlignFlexStart;
-        else if (a == 1) yogaAlign = YGAlignCenter;
-        else if (a == 2) yogaAlign = YGAlignFlexEnd;
-        YGNodeStyleSetAlignItems(((UIStackContainer *)view).ygNode, yogaAlign);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (!node) return;
+    YGAlign yogaAlign = YGAlignStretch;
+    if (a == 0) yogaAlign = YGAlignFlexStart;
+    else if (a == 1) yogaAlign = YGAlignCenter;
+    else if (a == 2) yogaAlign = YGAlignFlexEnd;
+    YGNodeStyleSetAlignItems(node, yogaAlign);
 }
 
 void ui_set_justify_content(UIHandle v, int j) {
     NSView *view = (__bridge NSView *)v;
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        YGJustify yogaJustify = YGJustifyFlexStart;
-        if (j == 1) yogaJustify = YGJustifyCenter;
-        else if (j == 2) yogaJustify = YGJustifyFlexEnd;
-        else if (j == 3) yogaJustify = YGJustifySpaceBetween;
-        YGNodeStyleSetJustifyContent(((UIStackContainer *)view).ygNode, yogaJustify);
-    }
+    YGNodeRef node = yoga_node_for_view(view);
+    if (!node) return;
+    YGJustify yogaJustify = YGJustifyFlexStart;
+    if (j == 1) yogaJustify = YGJustifyCenter;
+    else if (j == 2) yogaJustify = YGJustifyFlexEnd;
+    else if (j == 3) yogaJustify = YGJustifySpaceBetween;
+    YGNodeStyleSetJustifyContent(node, yogaJustify);
 }
 
 /* Helper: create a Yoga leaf node for a non-container NSView */
@@ -333,6 +347,9 @@ static YGNodeRef yoga_leaf_node_for_view(NSView *view) {
             YGNodeStyleSetAspectRatio(leafNode, ratio.width / ratio.height);
         }
     }
+
+    /* Store association so ui_set_* can find this node later */
+    yoga_set_node_for_view(view, leafNode);
 
     return leafNode;
 }
@@ -368,10 +385,12 @@ void ui_add_child(UIHandle parent, UIHandle child) {
             YGNodeRef spacerNode = YGNodeNew();
             YGNodeStyleSetFlexGrow(spacerNode, 1);
             YGNodeSetContext(spacerNode, (__bridge void *)c);
+            yoga_set_node_for_view(c, spacerNode);
             YGNodeInsertChild(parentNode, spacerNode, idx);
         } else if ([c isKindOfClass:[NSScrollView class]]) {
             YGNodeRef scrollNode = YGNodeNew();
             YGNodeSetContext(scrollNode, (__bridge void *)c);
+            yoga_set_node_for_view(c, scrollNode);
             /* Scroll views default to flex-grow so they fill available space */
             YGNodeStyleSetFlexGrow(scrollNode, 1);
             YGNodeInsertChild(parentNode, scrollNode, idx);
@@ -400,6 +419,7 @@ void ui_add_child(UIHandle parent, UIHandle child) {
             } else {
                 YGNodeRef blurNode = YGNodeNew();
                 YGNodeSetContext(blurNode, (__bridge void *)c);
+                yoga_set_node_for_view(c, blurNode);
                 YGNodeInsertChild(parentNode, blurNode, idx);
             }
         } else {
