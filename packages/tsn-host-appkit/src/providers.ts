@@ -13,6 +13,7 @@ import type {
   TSNProviderStack,
   WindowProvider,
 } from '@tsn/core'
+import { measureTextRequest } from './text_adapter.js'
 
 export const appKitLayoutProvider: LayoutProvider = {
   name: 'appkit-layout',
@@ -21,9 +22,8 @@ export const appKitLayoutProvider: LayoutProvider = {
 
 export const appKitMeasureProvider: MeasureProvider = {
   name: 'appkit-measure',
-  measureText(text: string, _fontRole: string, maxWidth: number): { width: number; height: number } {
-    const clampedWidth = maxWidth > 0 ? Math.min(maxWidth, text.length * 8) : text.length * 8
-    return { width: clampedWidth, height: 18 }
+  measureText(request): { width: number; height: number } {
+    return measureTextRequest(request)
   },
 }
 
@@ -42,7 +42,8 @@ export const appKitImageProvider: ImageProvider = {
 
 export const appKitTextProvider: TextProvider = {
   name: 'appkit-text',
-  fontRole(role: string): string {
+  supportsAttributedText: true,
+  fontRole(role): string {
     return role
   },
 }
@@ -60,6 +61,7 @@ export const appKitWindowProvider: WindowProvider = {
 export const appKitInputProvider: InputProvider = {
   name: 'appkit-input',
   supportsSearchField: true,
+  supportsMultiline: false,
 }
 
 export const appKitAnimationProvider: AnimationProvider = {

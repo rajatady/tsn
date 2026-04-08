@@ -70,6 +70,8 @@ UIHandle ui_search_field(const char *placeholder) {
     NSSearchField *f = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 0, 28)];
     f.placeholderString = [NSString stringWithUTF8String:placeholder];
     f.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+    tsn_text_set_kind(f, TSNTextRuntimeKindSearch);
+    tsn_text_set_wrap_mode(f, TSNTextRuntimeWrapModeTruncate, NO);
     TSNShadowNode *node = tsn_create_view_node(f, TSNNodeKindLeaf, 0, YES);
     YGNodeStyleSetHeight(node.yogaNode, 28);
     retain_render(f);
@@ -82,6 +84,8 @@ UIHandle ui_text_field(const char *placeholder) {
     f.drawsBackground = NO;
     f.bordered = YES;
     f.bezelStyle = NSTextFieldRoundedBezel;
+    tsn_text_set_kind(f, TSNTextRuntimeKindInput);
+    tsn_text_set_wrap_mode(f, TSNTextRuntimeWrapModeTruncate, NO);
     TSNShadowNode *node = tsn_create_view_node(f, TSNNodeKindLeaf, 0, YES);
     YGNodeStyleSetHeight(node.yogaNode, 24);
     retain_render(f);

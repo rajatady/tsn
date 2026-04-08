@@ -1,8 +1,20 @@
-export type LengthUnit = 'point' | 'percent'
+import type {
+  TSNBehavior,
+  TSNLayoutStyle,
+  TSNLengthUnit,
+  TSNLengthValue,
+  TSNTextStyle,
+  TSNVisualStyle,
+} from '@tsn/core'
 
-export interface LengthValue {
-  unit: LengthUnit
-  value: number
+export type LengthUnit = TSNLengthUnit
+export type LengthValue = TSNLengthValue
+
+export interface TailwindStylePatch {
+  layoutStyle: Partial<TSNLayoutStyle>
+  visualStyle: Partial<TSNVisualStyle>
+  textStyle: Partial<TSNTextStyle>
+  behavior: Partial<TSNBehavior>
 }
 
 export type TailwindOp =
@@ -30,6 +42,7 @@ export type TailwindOp =
 export interface TailwindResult {
   ops: TailwindOp[]
   calls: string[]
+  stylePatch: TailwindStylePatch
   textSize: number
   textBold: boolean
   textWeight: number     /* -1=unset, 0=thin..4=regular..6=semibold..7=bold..9=black */

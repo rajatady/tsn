@@ -1,4 +1,5 @@
 import * as ts from 'typescript'
+import type { TSNPropValue } from '@tsn/core'
 import type { CodeGenContext } from './types.js'
 
 export class JsxProps {
@@ -47,6 +48,17 @@ export class JsxProps {
     if (ts.isStringLiteral(val)) return JSON.stringify(val.text)
     if (ts.isJsxExpression(val) && val.expression) return this.exprToCStr(val.expression)
     return null
+  }
+
+  extractStaticProps(props: Map<string, ts.Node | null>): Record<string, TSNPropValue> {
+    const result: Record<string, TSNPropValue> = {}
+    for (const [key, val] of props.entries()) {
+      const staticValue = this.staticPropValue(val)
+      if (staticValue !== undefined) {
+        result[key] = staticValue
+      }
+    }
+    return result
   }
 
   textArg(children: readonly ts.JsxChild[]): string {
@@ -109,6 +121,19 @@ export class JsxProps {
     if (type === 'number') return `ts_str_cstr(num_to_str(${emitted}))`
     if (type === 'boolean') return `(${emitted} ? "true" : "false")`
     return '""'
+  }
+
+  private staticPropValue(value: ts.Node | null): TSNPropValue | undefined {
+    if (value === null) return true
+    if (ts.isStringLiteral(value)) return value.text
+    if (ts.isJsxExpression(value) && value.expression) {
+      const expr = value.expression
+      if (ts.isStringLiteral(expr)) return expr.text
+      if (ts.isNumericLiteral(expr)) return parseFloat(expr.text)
+      if (expr.kind === ts.SyntaxKind.TrueKeyword) return true
+      if (expr.kind === ts.SyntaxKind.FalseKeyword) return false
+    }
+    return undefined
   }
 
   private textContent(children: readonly ts.JsxChild[]): string {

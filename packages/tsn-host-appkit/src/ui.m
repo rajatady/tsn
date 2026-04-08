@@ -39,6 +39,108 @@ static inline void retain_render(id obj);
 static inline void retain_persistent(id obj);
 static void finish_render_cycle(void);
 
+typedef NS_ENUM(NSInteger, TSNTextRuntimeKind) {
+    TSNTextRuntimeKindStatic = 0,
+    TSNTextRuntimeKindInput = 1,
+    TSNTextRuntimeKindSearch = 2,
+};
+
+typedef NS_ENUM(NSInteger, TSNTextRuntimeWrapMode) {
+    TSNTextRuntimeWrapModeWrap = 0,
+    TSNTextRuntimeWrapModeTruncate = 1,
+    TSNTextRuntimeWrapModeClip = 2,
+};
+
+static char kTextRuntimeKindKey;
+static char kTextRuntimeWrapModeKey;
+static char kTextRuntimeMultilineKey;
+static char kTextRuntimeLineHeightMultiplierKey;
+
+static CGFloat tsn_default_css_line_height_for_size(CGFloat fontSize) {
+    if (fontSize <= 12) return 16;
+    if (fontSize <= 14) return 20;
+    if (fontSize <= 16) return 24;
+    if (fontSize <= 20) return 28;
+    if (fontSize <= 24) return 32;
+    if (fontSize <= 30) return 36;
+    if (fontSize <= 36) return 40;
+    return fontSize * 1.2;
+}
+
+static void tsn_text_set_kind(NSView *view, TSNTextRuntimeKind kind) {
+    objc_setAssociatedObject(view, &kTextRuntimeKindKey, @(kind), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static TSNTextRuntimeKind tsn_text_kind(NSView *view) {
+    NSNumber *value = objc_getAssociatedObject(view, &kTextRuntimeKindKey);
+    return value ? (TSNTextRuntimeKind)value.integerValue : TSNTextRuntimeKindStatic;
+}
+
+static void tsn_text_set_wrap_mode(NSTextField *field, TSNTextRuntimeWrapMode wrapMode, BOOL multiline) {
+    objc_setAssociatedObject(field, &kTextRuntimeWrapModeKey, @(wrapMode), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(field, &kTextRuntimeMultilineKey, @(multiline), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static TSNTextRuntimeWrapMode tsn_text_wrap_mode(NSTextField *field) {
+    NSNumber *value = objc_getAssociatedObject(field, &kTextRuntimeWrapModeKey);
+    return value ? (TSNTextRuntimeWrapMode)value.integerValue : TSNTextRuntimeWrapModeWrap;
+}
+
+static BOOL tsn_text_is_multiline(NSTextField *field) {
+    NSNumber *value = objc_getAssociatedObject(field, &kTextRuntimeMultilineKey);
+    return value ? value.boolValue : YES;
+}
+
+static void tsn_text_set_line_height_multiplier(NSTextField *field, CGFloat multiplier) {
+    objc_setAssociatedObject(field, &kTextRuntimeLineHeightMultiplierKey, @(multiplier), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static CGFloat tsn_text_line_height_multiplier(NSTextField *field) {
+    NSNumber *value = objc_getAssociatedObject(field, &kTextRuntimeLineHeightMultiplierKey);
+    if (value) return value.doubleValue;
+    CGFloat fontSize = field.font ? field.font.pointSize : 13;
+    if (fontSize <= 0) return 1.2;
+    return tsn_default_css_line_height_for_size(fontSize) / fontSize;
+}
+
+static CGFloat tsn_text_resolved_line_height(NSTextField *field) {
+    CGFloat fontSize = field.font ? field.font.pointSize : 13;
+    return fontSize * tsn_text_line_height_multiplier(field);
+}
+
+static void tsn_apply_text_layout_traits(NSTextField *field) {
+    TSNTextRuntimeWrapMode wrapMode = tsn_text_wrap_mode(field);
+    BOOL multiline = tsn_text_is_multiline(field);
+
+    field.maximumNumberOfLines = multiline ? 0 : 1;
+    [field setUsesSingleLineMode:!multiline];
+
+    NSLineBreakMode lineBreakMode = NSLineBreakByWordWrapping;
+    BOOL wraps = multiline;
+    if (wrapMode == TSNTextRuntimeWrapModeTruncate) {
+        lineBreakMode = NSLineBreakByTruncatingTail;
+        wraps = NO;
+    } else if (wrapMode == TSNTextRuntimeWrapModeClip) {
+        lineBreakMode = NSLineBreakByClipping;
+        wraps = NO;
+    }
+
+    field.lineBreakMode = lineBreakMode;
+    [[field cell] setWraps:wraps];
+
+    NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
+    if (attr.length > 0) {
+        NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
+        CGFloat lineHeight = tsn_text_resolved_line_height(field);
+        style.minimumLineHeight = lineHeight;
+        style.maximumLineHeight = lineHeight;
+        style.lineBreakMode = lineBreakMode;
+        style.alignment = field.alignment;
+        [attr addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0, attr.length)];
+        field.attributedStringValue = attr;
+    }
+}
+
 typedef CGImageRef (*CGWindowListCreateImageFn)(CGRect, uint32_t, uint32_t, uint32_t);
 
 static CGImageRef capture_window_image(CGWindowID windowID) {
@@ -265,17 +367,10 @@ UIHandle ui_text(const char *content, int size, bool bold) {
     t.font = [NSFont systemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
     t.drawsBackground = NO;
-    t.lineBreakMode = NSLineBreakByWordWrapping;
-    t.maximumNumberOfLines = 0;
-    [t setUsesSingleLineMode:NO];
-    [[t cell] setWraps:YES];
-    CGFloat lh = default_css_line_height_for_size(size);
-    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:t.attributedStringValue];
-    NSMutableParagraphStyle *pstyle = [NSMutableParagraphStyle new];
-    pstyle.minimumLineHeight = lh;
-    pstyle.maximumLineHeight = lh;
-    [attrStr addAttribute:NSParagraphStyleAttributeName value:pstyle range:NSMakeRange(0, attrStr.length)];
-    t.attributedStringValue = attrStr;
+    tsn_text_set_kind(t, TSNTextRuntimeKindStatic);
+    tsn_text_set_wrap_mode(t, TSNTextRuntimeWrapModeWrap, YES);
+    tsn_text_set_line_height_multiplier(t, tsn_default_css_line_height_for_size(size) / size);
+    tsn_apply_text_layout_traits(t);
     [t sizeToFit];
     tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
     retain_render(t);
@@ -287,17 +382,10 @@ UIHandle ui_text_mono(const char *content, int size, bool bold) {
     t.font = [NSFont monospacedDigitSystemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
     t.drawsBackground = NO;
-    t.lineBreakMode = NSLineBreakByWordWrapping;
-    t.maximumNumberOfLines = 0;
-    [t setUsesSingleLineMode:NO];
-    [[t cell] setWraps:YES];
-    CGFloat lh = default_css_line_height_for_size(size);
-    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:t.attributedStringValue];
-    NSMutableParagraphStyle *pstyle = [NSMutableParagraphStyle new];
-    pstyle.minimumLineHeight = lh;
-    pstyle.maximumLineHeight = lh;
-    [attrStr addAttribute:NSParagraphStyleAttributeName value:pstyle range:NSMakeRange(0, attrStr.length)];
-    t.attributedStringValue = attrStr;
+    tsn_text_set_kind(t, TSNTextRuntimeKindStatic);
+    tsn_text_set_wrap_mode(t, TSNTextRuntimeWrapModeWrap, YES);
+    tsn_text_set_line_height_multiplier(t, tsn_default_css_line_height_for_size(size) / size);
+    tsn_apply_text_layout_traits(t);
     [t sizeToFit];
     tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
     retain_render(t);
@@ -342,6 +430,7 @@ void ui_text_set_weight(UIHandle t, int weight) {
     NSTextField *field = (NSTextField *)view;
     CGFloat size = field.font.pointSize;
     field.font = [NSFont systemFontOfSize:size weight:font_weight_value(weight)];
+    tsn_apply_text_layout_traits(field);
     [field sizeToFit];
 }
 
@@ -349,17 +438,8 @@ void ui_text_set_line_height(UIHandle t, double mult) {
     NSView *view = (__bridge NSView *)t;
     if (![view isKindOfClass:[NSTextField class]]) return;
     NSTextField *field = (NSTextField *)view;
-    /* CSS line-height is font-size * multiplier. NSParagraphStyle lineHeightMultiple
-       multiplies the natural line height (ascender+descender), which is already ~1.2x
-       the font size. To match CSS, use explicit min/max line height = font-size * mult. */
-    CGFloat fontSize = field.font.pointSize;
-    CGFloat targetLineHeight = fontSize * mult;
-    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
-    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
-    style.minimumLineHeight = targetLineHeight;
-    style.maximumLineHeight = targetLineHeight;
-    [attrStr addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0, attrStr.length)];
-    field.attributedStringValue = attrStr;
+    tsn_text_set_line_height_multiplier(field, mult);
+    tsn_apply_text_layout_traits(field);
     [field sizeToFit];
 }
 
@@ -370,6 +450,7 @@ void ui_text_set_tracking(UIHandle t, double kern) {
     NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
     [attrStr addAttribute:NSKernAttributeName value:@(kern) range:NSMakeRange(0, attrStr.length)];
     field.attributedStringValue = attrStr;
+    tsn_apply_text_layout_traits(field);
     [field sizeToFit];
 }
 
@@ -377,7 +458,6 @@ void ui_text_set_transform(UIHandle t, int xform) {
     NSView *view = (__bridge NSView *)t;
     if (![view isKindOfClass:[NSTextField class]]) return;
     NSTextField *field = (NSTextField *)view;
-    /* Preserve paragraph style (line-height) when transforming text */
     NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
     NSString *transformed = [attrStr string];
     if (xform == 1) transformed = [transformed uppercaseString];
@@ -385,6 +465,7 @@ void ui_text_set_transform(UIHandle t, int xform) {
     else return;
     NSDictionary *attrs = attrStr.length > 0 ? [attrStr attributesAtIndex:0 effectiveRange:NULL] : @{};
     field.attributedStringValue = [[NSAttributedString alloc] initWithString:transformed attributes:attrs];
+    tsn_apply_text_layout_traits(field);
     [field sizeToFit];
 }
 
@@ -395,16 +476,15 @@ void ui_text_set_align(UIHandle t, int align) {
     if (align == 0) field.alignment = NSTextAlignmentLeft;
     else if (align == 1) field.alignment = NSTextAlignmentCenter;
     else if (align == 2) field.alignment = NSTextAlignmentRight;
+    tsn_apply_text_layout_traits(field);
 }
 
 void ui_text_set_truncate(UIHandle t) {
     NSView *view = (__bridge NSView *)t;
     if (![view isKindOfClass:[NSTextField class]]) return;
     NSTextField *field = (NSTextField *)view;
-    field.maximumNumberOfLines = 1;
-    field.lineBreakMode = NSLineBreakByTruncatingTail;
-    [field setUsesSingleLineMode:YES];
-    [[field cell] setWraps:NO];
+    tsn_text_set_wrap_mode(field, TSNTextRuntimeWrapModeTruncate, NO);
+    tsn_apply_text_layout_traits(field);
     [field sizeToFit];
 }
 

@@ -25,37 +25,6 @@ static CGFloat aspect_height(NSView *view, CGFloat width) {
 
 /* ─── Text measurement callback for Yoga ────────────────────────── */
 
-static CGFloat default_css_line_height_for_size(CGFloat fontSize) {
-    if (fontSize <= 12) return 16;
-    if (fontSize <= 14) return 20;
-    if (fontSize <= 16) return 24;
-    if (fontSize <= 20) return 28;
-    if (fontSize <= 24) return 32;
-    if (fontSize <= 30) return 36;
-    if (fontSize <= 36) return 40;
-    return fontSize * 1.2;
-}
-
-static CGFloat css_line_height(NSTextField *field) {
-    CGFloat fs = field.font.pointSize;
-    CGFloat lh = default_css_line_height_for_size(fs);
-    NSAttributedString *attr = field.attributedStringValue;
-    if (attr.length > 0) {
-        NSParagraphStyle *ps = [attr attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL];
-        if (ps && ps.maximumLineHeight > 0) lh = ps.maximumLineHeight;
-    }
-    return lh;
-}
-
-static BOOL text_uses_custom_line_height(NSTextField *field) {
-    NSAttributedString *attr = field.attributedStringValue;
-    if (attr.length == 0) return NO;
-    NSParagraphStyle *ps = [attr attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL];
-    if (!ps || ps.maximumLineHeight <= 0) return NO;
-    CGFloat defaultLH = default_css_line_height_for_size(field.font.pointSize);
-    return fabs(ps.maximumLineHeight - defaultLH) > 0.5;
-}
-
 static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode widthMode,
                                 float height, YGMeasureMode heightMode);
 
@@ -68,15 +37,25 @@ static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode 
 
     if ([view isKindOfClass:[NSTextField class]]) {
         NSTextField *field = (NSTextField *)view;
-        CGFloat cssLH = css_line_height(field);
+        TSNTextRuntimeKind kind = tsn_text_kind(field);
+        TSNTextRuntimeWrapMode wrapMode = tsn_text_wrap_mode(field);
+        BOOL multiline = tsn_text_is_multiline(field);
+        CGFloat cssLH = tsn_text_resolved_line_height(field);
         CGFloat availW = (widthMode == YGMeasureModeUndefined) ? CGFLOAT_MAX : width;
         NSSize intrinsic = field.intrinsicContentSize;
 
-        if (field.maximumNumberOfLines == 1) {
+        if (kind != TSNTextRuntimeKindStatic) {
             if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
             else if (widthMode == YGMeasureModeAtMost) result.width = MIN(intrinsic.width, width);
             else result.width = width;
-            result.height = text_uses_custom_line_height(field) ? cssLH : intrinsic.height;
+            if (heightMode == YGMeasureModeUndefined) result.height = intrinsic.height;
+            else if (heightMode == YGMeasureModeAtMost) result.height = MIN(intrinsic.height, height);
+            else result.height = height;
+        } else if (!multiline || wrapMode != TSNTextRuntimeWrapModeWrap) {
+            if (widthMode == YGMeasureModeUndefined) result.width = intrinsic.width;
+            else if (widthMode == YGMeasureModeAtMost) result.width = MIN(intrinsic.width, width);
+            else result.width = width;
+            result.height = cssLH;
         } else {
             CGFloat cellH = [[field cell] cellSizeForBounds:NSMakeRect(0, 0, availW, CGFLOAT_MAX)].height;
             int nlines = MAX(1, (int)floor(cellH / cssLH + 0.1));

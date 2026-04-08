@@ -98,8 +98,116 @@ function renderTailwindOp(op: TailwindOp, handle: string): string[] {
   }
 }
 
+function rgbaString(r: number, g: number, b: number, a: number): string {
+  return `rgba(${r}, ${g}, ${b}, ${a})`
+}
+
+function textAlignName(value: number): 'start' | 'center' | 'end' {
+  if (value === 1) return 'center'
+  if (value === 2) return 'end'
+  return 'start'
+}
+
+function textTransformName(value: number): 'uppercase' | 'lowercase' | undefined {
+  if (value === 1) return 'uppercase'
+  if (value === 2) return 'lowercase'
+  return undefined
+}
+
+function layoutAlignName(value: number): 'start' | 'center' | 'end' | 'stretch' {
+  if (value === 1) return 'center'
+  if (value === 2) return 'end'
+  if (value === 3) return 'stretch'
+  return 'start'
+}
+
+function layoutJustifyName(value: number): 'start' | 'center' | 'end' | 'space-between' {
+  if (value === 1) return 'center'
+  if (value === 2) return 'end'
+  if (value === 3) return 'space-between'
+  return 'start'
+}
+
+function applyStylePatch(result: TailwindResult, op: TailwindOp): void {
+  switch (op.kind) {
+    case 'flex':
+      result.stylePatch.layoutStyle.grow = op.value
+      return
+    case 'spacing':
+      result.stylePatch.layoutStyle.gap = op.value
+      return
+    case 'padding':
+      result.stylePatch.layoutStyle.paddingTop = op.top
+      result.stylePatch.layoutStyle.paddingRight = op.right
+      result.stylePatch.layoutStyle.paddingBottom = op.bottom
+      result.stylePatch.layoutStyle.paddingLeft = op.left
+      return
+    case 'size':
+      if (op.width) result.stylePatch.layoutStyle.width = op.width
+      if (op.height) result.stylePatch.layoutStyle.height = op.height
+      return
+    case 'min-size':
+      if (op.width) result.stylePatch.layoutStyle.minWidth = op.width
+      if (op.height) result.stylePatch.layoutStyle.minHeight = op.height
+      return
+    case 'max-size':
+      if (op.width) result.stylePatch.layoutStyle.maxWidth = op.width
+      if (op.height) result.stylePatch.layoutStyle.maxHeight = op.height
+      return
+    case 'aspect':
+      result.stylePatch.layoutStyle.aspectRatio = op.width / op.height
+      return
+    case 'text-color-rgb':
+      result.stylePatch.textStyle.color = rgbaString(op.r, op.g, op.b, op.a)
+      return
+    case 'text-color-system':
+      result.stylePatch.textStyle.color = `system:${op.color}`
+      return
+    case 'background-rgb':
+      result.stylePatch.visualStyle.backgroundColor = rgbaString(op.r, op.g, op.b, op.a)
+      return
+    case 'corner-radius':
+      result.stylePatch.visualStyle.cornerRadius = op.radius
+      return
+    case 'align-items':
+      result.stylePatch.layoutStyle.alignItems = layoutAlignName(op.value)
+      return
+    case 'justify-content':
+      result.stylePatch.layoutStyle.justifyContent = layoutJustifyName(op.value)
+      return
+    case 'align-self':
+      result.stylePatch.layoutStyle.alignSelf = layoutAlignName(op.value)
+      return
+    case 'margin-auto':
+      result.stylePatch.layoutStyle.marginAuto = true
+      return
+    case 'shadow':
+      result.stylePatch.visualStyle.shadow = {
+        offsetX: op.offsetX,
+        offsetY: op.offsetY,
+        radius: op.radius,
+        opacity: op.opacity,
+      }
+      return
+    case 'image-scaling':
+      return
+    case 'text-truncate':
+      result.stylePatch.textStyle.truncate = true
+      return
+    case 'clip':
+      result.stylePatch.visualStyle.clip = op.value !== 0
+      return
+    case 'scroll-axis':
+      result.stylePatch.behavior.scrollAxis = op.value === 1 ? 'horizontal' : 'vertical'
+      return
+  }
+}
+
 function pushOps(result: TailwindResult, ...ops: TailwindOp[]): void {
   result.ops.push(...ops)
+  for (const op of ops) {
+    applyStylePatch(result, op)
+  }
 }
 
 function rgbOp(kind: 'background-rgb' | 'text-color-rgb', r: number, g: number, b: number, a: number): TailwindOp {
@@ -110,6 +218,12 @@ export function parseTailwind(className: string, handle: string): TailwindResult
   const result: TailwindResult = {
     ops: [],
     calls: [],
+    stylePatch: {
+      layoutStyle: {},
+      visualStyle: {},
+      textStyle: {},
+      behavior: {},
+    },
     textSize: 0,
     textBold: false,
     textWeight: -1,
@@ -422,6 +536,26 @@ export function parseTailwind(className: string, handle: string): TailwindResult
 
   if (widthValue || heightValue) {
     pushOps(result, { kind: 'size', width: widthValue, height: heightValue })
+  }
+
+  if (result.textSize > 0) {
+    result.stylePatch.textStyle.size = result.textSize
+  }
+  if (result.textWeight >= 0) {
+    result.stylePatch.textStyle.weight = result.textWeight
+  }
+  if (result.textLineHeight >= 0) {
+    result.stylePatch.textStyle.lineHeight = result.textLineHeight
+  }
+  if (!Number.isNaN(result.textTracking)) {
+    result.stylePatch.textStyle.tracking = result.textTracking
+  }
+  if (result.textAlign >= 0) {
+    result.stylePatch.textStyle.align = textAlignName(result.textAlign)
+  }
+  const transform = textTransformName(result.textTransform)
+  if (transform) {
+    result.stylePatch.textStyle.transform = transform
   }
 
   result.calls = result.ops.flatMap(op => renderTailwindOp(op, handle))

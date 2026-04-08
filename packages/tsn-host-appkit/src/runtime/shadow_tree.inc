@@ -234,8 +234,12 @@ static void tsn_attach_child_nodes(TSNShadowNode *parent, TSNShadowNode *child) 
         if (tsn_is_card_container(parent.view) && [child.view isKindOfClass:[NSTextField class]]) {
             NSTextField *field = (NSTextField *)child.view;
             YGNodeStyleSetAlignSelf(child.yogaNode, YGAlignFlexStart);
+            CGFloat fontSize = field.font ? field.font.pointSize : 13;
+            CGFloat defaultMultiplier = fontSize > 0 ? tsn_default_css_line_height_for_size(fontSize) / fontSize : 1.2;
             if (parent.children.count == 1 &&
-                !text_uses_custom_line_height(field)) {
+                tsn_text_kind(field) == TSNTextRuntimeKindStatic &&
+                tsn_text_wrap_mode(field) == TSNTextRuntimeWrapModeWrap &&
+                fabs(tsn_text_line_height_multiplier(field) - defaultMultiplier) <= 0.05) {
                 YGNodeStyleSetMargin(child.yogaNode, YGEdgeTop, 4);
             }
         }

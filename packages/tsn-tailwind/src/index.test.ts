@@ -43,6 +43,8 @@ test('w-[30%] h-[60%] emits percent sizing', () => {
   assert.ok(r.calls.some(c => c.includes('ui_set_size_pct(h, 30, 60)')))
   assert.equal(r.widthValue?.unit, 'percent')
   assert.equal(r.heightValue?.unit, 'percent')
+  assert.deepEqual(r.stylePatch.layoutStyle.width, { unit: 'percent', value: 30 })
+  assert.deepEqual(r.stylePatch.layoutStyle.height, { unit: 'percent', value: 60 })
 })
 
 test('w-full h-full emits 100 percent sizing', () => {
@@ -62,6 +64,7 @@ test('h-16 emits height 64px', () => {
 test('items-center emits ui_set_align_items', () => {
   const r = parseTailwind('items-center', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_align_items(h, 1)')))
+  assert.equal(r.stylePatch.layoutStyle.alignItems, 'center')
 })
 
 test('items-start emits ui_set_align_items 0', () => {
@@ -121,6 +124,7 @@ test('self-end emits ui_set_alignment 2', () => {
 test('bg-zinc-900 emits ui_set_background_rgb', () => {
   const r = parseTailwind('bg-zinc-900', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_background_rgb')))
+  assert.equal(typeof r.stylePatch.visualStyle.backgroundColor, 'string')
 })
 
 test('bg-black emits ui_set_background_rgb', () => {
@@ -168,6 +172,7 @@ test('text-white/10 emits white at 10% alpha', () => {
 test('text-sm sets textSize to 14', () => {
   const r = parseTailwind('text-sm', 'h')
   assert.equal(r.textSize, 14)
+  assert.equal(r.stylePatch.textStyle.size, 14)
 })
 
 test('text-4xl sets textSize to 36', () => {
@@ -184,6 +189,7 @@ test('font-bold sets textBold and textWeight 7', () => {
 test('font-semibold sets textWeight 6', () => {
   const r = parseTailwind('font-semibold', 'h')
   assert.equal(r.textWeight, 6)
+  assert.equal(r.stylePatch.textStyle.weight, 6)
 })
 
 test('font-medium sets textWeight 4', () => {
@@ -238,6 +244,7 @@ test('rounded-full emits ui_set_corner_radius 9999', () => {
 test('overflow-x-auto emits ui_scroll_set_axis 1', () => {
   const r = parseTailwind('overflow-x-auto', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_scroll_set_axis(h, 1)')))
+  assert.equal(r.stylePatch.behavior.scrollAxis, 'horizontal')
 })
 
 test('overflow-y-auto emits ui_scroll_set_axis 0', () => {
