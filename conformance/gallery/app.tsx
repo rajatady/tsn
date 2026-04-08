@@ -26,6 +26,16 @@ import { BadgeDeepCase } from '../cases/badge-deep'
 import { StatDeepCase } from '../cases/stat-deep'
 import { ProgressDeepCase } from '../cases/progress-deep'
 import { DividerDeepCase } from '../cases/divider-deep'
+import { FlexBasisCase } from '../cases/flex-basis'
+import { JustifyEndCase } from '../cases/justify-end'
+import { ItemsEndCase } from '../cases/items-end'
+import { EmptySpacerCase } from '../cases/empty-spacer'
+import { ZstackOverlayCase } from '../cases/zstack-overlay'
+import { HorizontalScrollCase } from '../cases/horizontal-scroll'
+import { MultiColGridCase } from '../cases/multi-col-grid'
+import { MetricStripCase } from '../cases/metric-strip'
+import { EditorialCardCase } from '../cases/editorial-card'
+import { CardNoPaddingCase } from '../cases/card-no-padding'
 
 function onCaseClick(tag: number): void {
   const cases: string[] = [
@@ -35,6 +45,9 @@ function onCaseClick(tag: number): void {
     'text-sizes', 'text-weights', 'text-lineheight', 'text-align-transform', 'text-in-card',
     'button-variants', 'card-deep', 'image-deep', 'input-deep',
     'badge-deep', 'stat-deep', 'progress-deep', 'divider-deep',
+    'flex-basis', 'justify-end', 'items-end', 'empty-spacer',
+    'zstack-overlay', 'horizontal-scroll', 'multi-col-grid',
+    'metric-strip', 'editorial-card', 'card-no-padding',
   ]
   const [_current, setCurrent] = useStore<string>('gallery:case', 'hstack-basic')
   if (tag >= 0 && tag < cases.length) {
@@ -68,6 +81,16 @@ function CaseContent() {
   if (current === 'stat-deep') return <StatDeepCase />
   if (current === 'progress-deep') return <ProgressDeepCase />
   if (current === 'divider-deep') return <DividerDeepCase />
+  if (current === 'flex-basis') return <FlexBasisCase />
+  if (current === 'justify-end') return <JustifyEndCase />
+  if (current === 'items-end') return <ItemsEndCase />
+  if (current === 'empty-spacer') return <EmptySpacerCase />
+  if (current === 'zstack-overlay') return <ZstackOverlayCase />
+  if (current === 'horizontal-scroll') return <HorizontalScrollCase />
+  if (current === 'multi-col-grid') return <MultiColGridCase />
+  if (current === 'metric-strip') return <MetricStripCase />
+  if (current === 'editorial-card') return <EditorialCardCase />
+  if (current === 'card-no-padding') return <CardNoPaddingCase />
   return <HstackBasicCase />
 }
 
@@ -144,6 +167,19 @@ function GallerySidebar() {
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Divider Deep</Text>
       <NavButton label="Separators" tag={24} caseId="divider-deep" />
+
+      <Divider />
+      <Text className="text-xs text-zinc-500 uppercase">App Store Patterns</Text>
+      <NavButton label="Flex Basis" tag={25} caseId="flex-basis" />
+      <NavButton label="Justify End" tag={26} caseId="justify-end" />
+      <NavButton label="Items End" tag={27} caseId="items-end" />
+      <NavButton label="Empty Spacer" tag={28} caseId="empty-spacer" />
+      <NavButton label="ZStack Overlay" tag={29} caseId="zstack-overlay" />
+      <NavButton label="H-Scroll" tag={30} caseId="horizontal-scroll" />
+      <NavButton label="Multi-Col Grid" tag={31} caseId="multi-col-grid" />
+      <NavButton label="Metric Strip" tag={32} caseId="metric-strip" />
+      <NavButton label="Editorial Card" tag={33} caseId="editorial-card" />
+      <NavButton label="Card No Padding" tag={34} caseId="card-no-padding" />
     </VStack>
   )
 }

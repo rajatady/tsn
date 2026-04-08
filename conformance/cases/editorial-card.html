@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-row gap-4 w-[740px] bg-zinc-900 p-4">
+    <div data-testid="card-a" class="w-[340px] flex flex-col gap-0 shrink-0">
+      <div data-testid="img-a" class="rounded-xl h-[212px] bg-zinc-700"></div>
+      <div class="h-[8px]"></div>
+      <span data-testid="eyebrow-a" class="text-xs text-zinc-400 uppercase tracking-wide">Featured</span>
+      <div class="h-[2px]"></div>
+      <span data-testid="title-a" class="text-base font-semibold text-white">Creative Suite Pro</span>
+      <div class="h-[2px]"></div>
+      <span data-testid="sub-a" class="text-sm text-zinc-400">Design tools reimagined</span>
+    </div>
+    <div data-testid="card-b" class="w-[340px] flex flex-col gap-0 shrink-0">
+      <div data-testid="img-b" class="rounded-xl h-[212px] bg-zinc-700"></div>
+      <div class="h-[8px]"></div>
+      <span data-testid="eyebrow-b" class="text-xs text-zinc-400 uppercase tracking-wide">New Release</span>
+      <div class="h-[2px]"></div>
+      <span data-testid="title-b" class="text-base font-semibold text-white">Weather Plus</span>
+      <div class="h-[2px]"></div>
+      <span data-testid="sub-b" class="text-sm text-zinc-400">Forecast at a glance</span>
+    </div>
+  </div>
+</body>
+</html>

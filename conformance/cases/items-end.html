@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-row items-end gap-6 p-4 h-[200px] w-[500px] bg-zinc-900">
+    <div data-testid="tall" class="w-[100px] h-[160px] rounded-xl bg-zinc-700 shrink-0"></div>
+    <div data-testid="short" class="w-[100px] h-[60px] rounded-xl bg-zinc-800 shrink-0"></div>
+    <div data-testid="medium" class="w-[100px] h-[100px] rounded-xl bg-zinc-700 shrink-0"></div>
+  </div>
+</body>
+</html>
