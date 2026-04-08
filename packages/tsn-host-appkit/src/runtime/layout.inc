@@ -403,6 +403,10 @@ void ui_add_child(UIHandle parent, UIHandle child) {
             YGNodeRef scrollNode = YGNodeNew();
             YGNodeSetContext(scrollNode, (__bridge void *)c);
             yoga_set_node_for_view(c, scrollNode);
+            /* Pick up any size set via ui_set_size before insertion */
+            CGFloat fw = c.frame.size.width, fh = c.frame.size.height;
+            if (fw > 0) YGNodeStyleSetWidth(scrollNode, fw);
+            if (fh > 0) YGNodeStyleSetHeight(scrollNode, fh);
             /* Scroll views default to flex-grow so they fill available space */
             YGNodeStyleSetFlexGrow(scrollNode, 1);
             YGNodeInsertChild(parentNode, scrollNode, idx);
