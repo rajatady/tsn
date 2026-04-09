@@ -251,7 +251,7 @@ export function NativeHud() {
   return (
     <Card className="rounded-xl shadow-lg">
       <VStack className="gap-2">
-        <Text className="text-xs text-zinc-400 uppercase tracking-wide">StrictTS Native</Text>
+        <Text className="text-xs text-zinc-400 uppercase tracking-wide">TSN Native</Text>
         <Text className="text-sm font-bold">Hooks, router, images</Text>
         <HStack className="items-center gap-2">
           <Button variant="chip">C runtime</Button>

@@ -1,5 +1,5 @@
 /*
- * StrictTS Native Dashboard — 100% TypeScript
+ * TSN Native Dashboard — 100% TypeScript
  *
  * Compiles to a native macOS binary. No Electron. No C. No JS runtime.
  *

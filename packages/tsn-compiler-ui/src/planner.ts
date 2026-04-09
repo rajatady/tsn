@@ -8,7 +8,7 @@ import type {
   TSNTextStyle,
   TSNVisualStyle,
 } from '@tsn/core'
-import { getPrimitiveSpec } from '@tsn/ui'
+import { getElementSpec, type TSNElementSpec } from '@tsn/ui'
 
 import type { TailwindResult } from '../../tsn-tailwind/src/types.js'
 
@@ -19,7 +19,7 @@ export interface ResolvedTextPresentation {
 
 export interface PrimitivePlan {
   tag: string
-  primitive: ReturnType<typeof getPrimitiveSpec>
+  primitive: TSNElementSpec | null
   node: TSNNode
   layoutStyle: Partial<TSNLayoutStyle>
   visualStyle: Partial<TSNVisualStyle>
@@ -39,7 +39,7 @@ export function buildPrimitivePlan(
   staticProps: Record<string, TSNPropValue>,
   tailwind: TailwindResult | null,
 ): PrimitivePlan {
-  const primitive = getPrimitiveSpec(tag)
+  const primitive = getElementSpec(tag)
   const layoutStyle = tailwind?.stylePatch.layoutStyle ?? {}
   const textStyle = tailwind?.stylePatch.textStyle ?? {}
   const behavior: Partial<TSNBehavior> = {

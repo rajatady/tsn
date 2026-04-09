@@ -1,5 +1,5 @@
 /**
- * StrictTS Module Resolver — follow imports, return files in dependency order
+ * TSN Module Resolver — follow imports, return files in dependency order
  *
  * Resolves standard TypeScript relative imports:
  *   import { Employee } from './types'
@@ -54,7 +54,7 @@ export function resolveModules(entryPath: string): ts.SourceFile[] {
       const rel = path.relative(process.cwd(), absolute)
       const from = importedFrom ? path.relative(process.cwd(), importedFrom) : '?'
       console.error(`  Circular import detected: ${from} → ${rel}`)
-      console.error(`  StrictTS does not support circular imports.`)
+      console.error(`  TSN does not support circular imports.`)
       process.exit(1)
     }
 

@@ -194,7 +194,7 @@ export function App() {
   const [current, _set] = useStore<string>('gallery:case', 'hstack-basic')
 
   return (
-    <Window title="Geometry Conformance" width={1200} height={700} dark subtitle="StrictTS Visual Oracle">
+    <Window title="Geometry Conformance" width={1200} height={700} dark subtitle="TSN Visual Oracle">
       <HStack className="flex-1 gap-3 bg-black p-2">
         <Scroll className="w-[220] overflow-y-auto">
           <GallerySidebar />

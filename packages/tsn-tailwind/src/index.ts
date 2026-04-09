@@ -1,5 +1,5 @@
 /**
- * StrictTS Tailwind Parser — Compile-time className -> structured style ops.
+ * TSN Tailwind Parser — Compile-time className -> structured style ops.
  *
  * Tailwind is one frontend syntax for a host style model. We still return
  * `calls` for the current compiler pipeline, but those calls are rendered from

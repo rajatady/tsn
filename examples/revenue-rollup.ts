@@ -1,5 +1,5 @@
 /*
- * StrictTS Revenue Rollup
+ * TSN Revenue Rollup
  *
  * Reads CSV sales summaries from stdin and prints a financial rollup.
  * Exercises:

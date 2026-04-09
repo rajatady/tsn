@@ -1,6 +1,6 @@
 # Runtime Internals
 
-The StrictTS runtime (`compiler/runtime/runtime.h`) is a single C header providing string handling, arrays, reference counting, and output primitives. Included in every compiled binary.
+The TSN runtime (`compiler/runtime/runtime.h`) is a single C header providing string handling, arrays, reference counting, and output primitives. Included in every compiled binary.
 
 ## Str — 24-byte Value Type
 

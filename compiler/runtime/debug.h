@@ -1,15 +1,15 @@
 /*
- * StrictTS Debug Mode — Bounds Checking & Error Overlay
+ * TSN Debug Mode — Bounds Checking & Error Overlay
  *
- * Enabled with -DSTRICTTS_DEBUG (dev mode default).
+ * Enabled with -DTSN_DEBUG (dev mode default).
  * In release builds, all macros compile to zero-overhead direct access.
  *
  * When a UI app is running, errors show as a red overlay in the window
  * (like Next.js error overlay). Terminal output always happens too.
  */
 
-#ifndef STRICTTS_DEBUG_H
-#define STRICTTS_DEBUG_H
+#ifndef TSN_DEBUG_H
+#define TSN_DEBUG_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +29,7 @@ static inline void ts_set_error_overlay(TSErrorOverlayFn fn) {
     g_error_overlay_fn = fn;
 }
 
-#ifdef STRICTTS_DEBUG
+#ifdef TSN_DEBUG
 
 static void ts_bounds_error(const char *arr_name, int index, int length,
                             const char *file, int line) {
@@ -82,6 +82,6 @@ static void ts_bounds_error(const char *arr_name, int index, int length,
 #define ARRAY_GET(arr, i, name, file, line) (arr).data[(int)(i)]
 #define ARRAY_SET(arr, i, val, name, file, line) ((arr).data[(int)(i)] = (val))
 
-#endif /* STRICTTS_DEBUG */
+#endif /* TSN_DEBUG */
 
-#endif /* STRICTTS_DEBUG_H */
+#endif /* TSN_DEBUG_H */

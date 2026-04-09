@@ -13,7 +13,7 @@ import { uiConformanceSuites } from '../conformance/ui/specs/registry.js'
 const root = '/Users/kumardivyarajat/WebstormProjects/bun-vite/vite'
 const artifactRoot = '/tmp/tsn-ui-conformance'
 const inspectApp = 'gallery'
-const inspectSocket = `/tmp/strictts-inspect-${inspectApp}.sock`
+const inspectSocket = `/tmp/tsn-inspect-${inspectApp}.sock`
 const captureCaseScreenshots = process.env.UI_CONFORMANCE_CASE_SCREENSHOTS === '1'
 
 function runCommand(file: string, args: string[]): string {
@@ -66,7 +66,7 @@ async function waitForInspector(): Promise<void> {
 }
 
 function copyLatestScreenshot(targetPath: string): void {
-  const source = '/tmp/strictts-screenshot.png'
+  const source = '/tmp/tsn-screenshot.png'
   if (!fs.existsSync(source)) {
     throw new Error(`Missing screenshot artifact: ${source}`)
   }
@@ -187,7 +187,7 @@ async function main(): Promise<void> {
   fs.mkdirSync(artifactRoot, { recursive: true })
 
   console.log('Building UI conformance gallery...')
-  runCommand('./strictts', ['build', 'conformance/gallery.tsx'])
+  runCommand('./tsn', ['build', 'conformance/gallery.tsx'])
 
   console.log('Launching UI conformance gallery...')
   const child = spawn('./build/gallery', [], {

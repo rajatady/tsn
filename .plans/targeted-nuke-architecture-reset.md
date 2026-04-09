@@ -1,4 +1,4 @@
-# StrictTS UI Targeted Nuke Plan
+# TSN UI Targeted Nuke Plan
 
 Last updated: 2026-04-08
 Safe point commit: `de38b9c` (`Stabilize layout runtime and app store conformance`)
@@ -6,7 +6,7 @@ Branch: `feature/layout-engine-integration`
 
 This document is meant to be a complete handoff for any future human or AI agent. It explains:
 
-- what StrictTS UI is today
+- what TSN UI is today
 - what we changed recently
 - what worked
 - what failed
@@ -19,7 +19,7 @@ This is not a vague “ideas” note. It is the intended working plan for the ne
 
 ## 1. Executive Summary
 
-StrictTS UI currently has a partially successful Yoga integration, but the architecture is still too coupled across the compiler, Tailwind mapping, and host runtime.
+TSN UI currently has a partially successful Yoga integration, but the architecture is still too coupled across the compiler, Tailwind mapping, and host runtime.
 
 We now have:
 
@@ -127,10 +127,10 @@ This section is intentionally explicit because this was a source of confusion in
 
 ### 4.1 Compile-Time
 
-At compile-time, StrictTS:
+At compile-time, TSN:
 
 - reads TypeScript/TSX source
-- validates the StrictTS subset
+- validates the TSN subset
 - parses JSX
 - parses `className`
 - emits C code
@@ -208,9 +208,9 @@ Important parts:
 - text is a first-class primitive with dedicated measurement behavior
 - the reconciler sits in runtime and diffs old vs new trees
 
-### 5.2 What StrictTS Does Today
+### 5.2 What TSN Does Today
 
-StrictTS does:
+TSN does:
 
 `TSX -> compile to C/native binary -> runtime creates host views and Yoga nodes -> Yoga computes layout -> AppKit renders`
 

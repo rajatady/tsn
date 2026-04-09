@@ -1,6 +1,6 @@
-# StrictTS — Agent Instructions
+# TSN — Agent Instructions
 
-StrictTS is a TypeScript-to-native compiler. It takes a strict subset of TypeScript (no `any`, no `eval`, no classes, no async) and compiles it through C to ARM64 binaries. For UI apps, it compiles React-like TSX with Tailwind classes to native macOS AppKit views.
+TSN is a TypeScript-to-native compiler. It takes a strict subset of TypeScript (no `any`, no `eval`, no classes, no async) and compiles it through C to ARM64 binaries. For UI apps, it compiles React-like TSX with Tailwind classes to native macOS AppKit views.
 
 ## Documentation
 
@@ -71,8 +71,8 @@ examples/native-gui/
 ## Key Rules
 
 1. **Every change must pass `bash harness/correctness.sh`** — 9 tests (3 targets x 3 runtimes).
-2. **Compile the maintained UI apps after host/compiler changes**: `./strictts build examples/native-gui/dashboard.tsx`, `./strictts build examples/native-gui/incident-tracker.tsx`, `./strictts build examples/native-gui/app-store.tsx`, and `./strictts build conformance/gallery.tsx`
-3. **Test debug mode too**: `./strictts build <file> --debug` — bounds checking is only active in debug builds.
+2. **Compile the maintained UI apps after host/compiler changes**: `./tsn build examples/native-gui/dashboard.tsx`, `./tsn build examples/native-gui/incident-tracker.tsx`, `./tsn build examples/native-gui/app-store.tsx`, and `./tsn build conformance/gallery.tsx`
+3. **Test debug mode too**: `./tsn build <file> --debug` — bounds checking is only active in debug builds.
 4. **No `any`, no `unknown`, no type assertions** in target TypeScript. The validator rejects them.
 5. **Variables used by functions need explicit type annotations** — the compiler defaults to `double`.
 6. **Semicolons before top-level JSX** — without them, `<` is parsed as less-than.
@@ -113,16 +113,16 @@ examples/native-gui/
 bash harness/correctness.sh
 
 # Compile all targets
-./strictts build targets/json-pipeline.ts
-./strictts build targets/http-router.ts
-./strictts build targets/markdown-parser.ts
+./tsn build targets/json-pipeline.ts
+./tsn build targets/http-router.ts
+./tsn build targets/markdown-parser.ts
 
 # Compile maintained UI apps (release + debug)
-./strictts build examples/native-gui/dashboard.tsx
-./strictts build examples/native-gui/dashboard.tsx --debug
-./strictts build examples/native-gui/incident-tracker.tsx
-./strictts build examples/native-gui/app-store.tsx
-./strictts build conformance/gallery.tsx
+./tsn build examples/native-gui/dashboard.tsx
+./tsn build examples/native-gui/dashboard.tsx --debug
+./tsn build examples/native-gui/incident-tracker.tsx
+./tsn build examples/native-gui/app-store.tsx
+./tsn build conformance/gallery.tsx
 
 # Visual conformance harness
 bash harness/ui-conformance.sh

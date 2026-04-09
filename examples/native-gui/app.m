@@ -276,7 +276,7 @@ static void apply_filters(void) {
                   NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable |
                   NSWindowStyleMaskFullSizeContentView
         backing:NSBackingStoreBuffered defer:NO];
-    self.window.title = @"StrictTS Dashboard — 100K Records (Native Binary, No Runtime)";
+    self.window.title = @"TSN Dashboard — 100K Records (Native Binary, No Runtime)";
     self.window.titlebarAppearsTransparent = YES;
     self.window.backgroundColor = [NSColor colorWithWhite:0.08 alpha:1.0];
     self.window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];

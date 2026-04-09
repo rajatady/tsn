@@ -3,7 +3,7 @@
 // Supports: headers, bold, italic, links, inline code, code blocks, paragraphs.
 // Exercises: state machine, string manipulation, output generation.
 //
-// StrictTS only — no any, no dynamic access, no eval, no regex.
+// TSN only — no any, no dynamic access, no eval, no regex.
 
 interface Token {
   type: string;   // "h1"-"h6", "paragraph", "code_block", "blank"

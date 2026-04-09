@@ -44,20 +44,20 @@ run_target() {
 
   # Node.js
   if [ -n "$input" ]; then
-    NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "targets/$name.ts" < "$input" > "/tmp/strictts-$name-node.txt" 2>&1
+    NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "targets/$name.ts" < "$input" > "/tmp/tsn-$name-node.txt" 2>&1
   else
-    NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "targets/$name.ts" > "/tmp/strictts-$name-node.txt" 2>&1
+    NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "targets/$name.ts" > "/tmp/tsn-$name-node.txt" 2>&1
   fi
-  check "Node.js" "/tmp/strictts-$name-node.txt" "harness/expected/$name.expected.txt"
+  check "Node.js" "/tmp/tsn-$name-node.txt" "harness/expected/$name.expected.txt"
 
   # Bun
   if command -v bun &> /dev/null; then
     if [ -n "$input" ]; then
-      bun --preload "$JS_STDLIB_SHIM" "targets/$name.ts" < "$input" > "/tmp/strictts-$name-bun.txt" 2>&1
+      bun --preload "$JS_STDLIB_SHIM" "targets/$name.ts" < "$input" > "/tmp/tsn-$name-bun.txt" 2>&1
     else
-      bun --preload "$JS_STDLIB_SHIM" "targets/$name.ts" > "/tmp/strictts-$name-bun.txt" 2>&1
+      bun --preload "$JS_STDLIB_SHIM" "targets/$name.ts" > "/tmp/tsn-$name-bun.txt" 2>&1
     fi
-    check "Bun    " "/tmp/strictts-$name-bun.txt" "harness/expected/$name.expected.txt"
+    check "Bun    " "/tmp/tsn-$name-bun.txt" "harness/expected/$name.expected.txt"
   else
     echo -e "  ${YELLOW}SKIP${NC} Bun (not installed)"
     SKIP=$((SKIP + 1))
@@ -66,11 +66,11 @@ run_target() {
   # Native binary
   if [ -f "build/$name" ]; then
     if [ -n "$input" ]; then
-      "./build/$name" < "$input" > "/tmp/strictts-$name-native.txt" 2>&1
+      "./build/$name" < "$input" > "/tmp/tsn-$name-native.txt" 2>&1
     else
-      "./build/$name" > "/tmp/strictts-$name-native.txt" 2>&1
+      "./build/$name" > "/tmp/tsn-$name-native.txt" 2>&1
     fi
-    check "Native " "/tmp/strictts-$name-native.txt" "harness/expected/$name.expected.txt"
+    check "Native " "/tmp/tsn-$name-native.txt" "harness/expected/$name.expected.txt"
   else
     echo -e "  ${YELLOW}SKIP${NC} Native (not compiled yet → build/$name)"
     SKIP=$((SKIP + 1))
@@ -78,7 +78,7 @@ run_target() {
 }
 
 echo "╔═══════════════════════════════════════════════╗"
-echo "║  StrictTS → Native: Correctness Tests         ║"
+echo "║  TSN → Native: Correctness Tests         ║"
 echo "╚═══════════════════════════════════════════════╝"
 
 run_target "json-pipeline" "harness/test-data/large-dataset.json"

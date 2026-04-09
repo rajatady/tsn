@@ -1,4 +1,4 @@
-# Section 1: Welcome to StrictTS
+# Section 1: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -49,7 +49,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 2: Welcome to StrictTS
+# Section 2: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -100,7 +100,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 3: Welcome to StrictTS
+# Section 3: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -151,7 +151,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 4: Welcome to StrictTS
+# Section 4: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -202,7 +202,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 5: Welcome to StrictTS
+# Section 5: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -253,7 +253,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 6: Welcome to StrictTS
+# Section 6: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -304,7 +304,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 7: Welcome to StrictTS
+# Section 7: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -355,7 +355,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 8: Welcome to StrictTS
+# Section 8: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -406,7 +406,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 9: Welcome to StrictTS
+# Section 9: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -457,7 +457,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 10: Welcome to StrictTS
+# Section 10: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -508,7 +508,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 11: Welcome to StrictTS
+# Section 11: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -559,7 +559,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 12: Welcome to StrictTS
+# Section 12: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -610,7 +610,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 13: Welcome to StrictTS
+# Section 13: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -661,7 +661,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 14: Welcome to StrictTS
+# Section 14: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -712,7 +712,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 15: Welcome to StrictTS
+# Section 15: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -763,7 +763,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 16: Welcome to StrictTS
+# Section 16: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -814,7 +814,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 17: Welcome to StrictTS
+# Section 17: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -865,7 +865,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 18: Welcome to StrictTS
+# Section 18: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -916,7 +916,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 19: Welcome to StrictTS
+# Section 19: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -967,7 +967,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 20: Welcome to StrictTS
+# Section 20: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1018,7 +1018,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 21: Welcome to StrictTS
+# Section 21: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1069,7 +1069,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 22: Welcome to StrictTS
+# Section 22: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1120,7 +1120,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 23: Welcome to StrictTS
+# Section 23: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1171,7 +1171,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 24: Welcome to StrictTS
+# Section 24: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1222,7 +1222,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 25: Welcome to StrictTS
+# Section 25: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1273,7 +1273,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 26: Welcome to StrictTS
+# Section 26: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1324,7 +1324,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 27: Welcome to StrictTS
+# Section 27: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1375,7 +1375,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 28: Welcome to StrictTS
+# Section 28: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1426,7 +1426,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 29: Welcome to StrictTS
+# Section 29: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1477,7 +1477,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 30: Welcome to StrictTS
+# Section 30: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1528,7 +1528,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 31: Welcome to StrictTS
+# Section 31: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1579,7 +1579,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 32: Welcome to StrictTS
+# Section 32: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1630,7 +1630,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 33: Welcome to StrictTS
+# Section 33: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1681,7 +1681,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 34: Welcome to StrictTS
+# Section 34: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1732,7 +1732,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 35: Welcome to StrictTS
+# Section 35: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1783,7 +1783,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 36: Welcome to StrictTS
+# Section 36: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1834,7 +1834,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 37: Welcome to StrictTS
+# Section 37: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1885,7 +1885,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 38: Welcome to StrictTS
+# Section 38: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1936,7 +1936,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 39: Welcome to StrictTS
+# Section 39: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -1987,7 +1987,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 40: Welcome to StrictTS
+# Section 40: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2038,7 +2038,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 41: Welcome to StrictTS
+# Section 41: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2089,7 +2089,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 42: Welcome to StrictTS
+# Section 42: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2140,7 +2140,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 43: Welcome to StrictTS
+# Section 43: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2191,7 +2191,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 44: Welcome to StrictTS
+# Section 44: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2242,7 +2242,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 45: Welcome to StrictTS
+# Section 45: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2293,7 +2293,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 46: Welcome to StrictTS
+# Section 46: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2344,7 +2344,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 47: Welcome to StrictTS
+# Section 47: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2395,7 +2395,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 48: Welcome to StrictTS
+# Section 48: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2446,7 +2446,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 49: Welcome to StrictTS
+# Section 49: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2497,7 +2497,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 50: Welcome to StrictTS
+# Section 50: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2548,7 +2548,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 51: Welcome to StrictTS
+# Section 51: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2599,7 +2599,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 52: Welcome to StrictTS
+# Section 52: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2650,7 +2650,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 53: Welcome to StrictTS
+# Section 53: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2701,7 +2701,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 54: Welcome to StrictTS
+# Section 54: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2752,7 +2752,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 55: Welcome to StrictTS
+# Section 55: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2803,7 +2803,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 56: Welcome to StrictTS
+# Section 56: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2854,7 +2854,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 57: Welcome to StrictTS
+# Section 57: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2905,7 +2905,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 58: Welcome to StrictTS
+# Section 58: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -2956,7 +2956,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 59: Welcome to StrictTS
+# Section 59: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3007,7 +3007,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 60: Welcome to StrictTS
+# Section 60: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3058,7 +3058,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 61: Welcome to StrictTS
+# Section 61: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3109,7 +3109,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 62: Welcome to StrictTS
+# Section 62: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3160,7 +3160,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 63: Welcome to StrictTS
+# Section 63: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3211,7 +3211,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 64: Welcome to StrictTS
+# Section 64: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3262,7 +3262,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 65: Welcome to StrictTS
+# Section 65: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3313,7 +3313,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 66: Welcome to StrictTS
+# Section 66: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3364,7 +3364,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 67: Welcome to StrictTS
+# Section 67: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3415,7 +3415,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 68: Welcome to StrictTS
+# Section 68: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3466,7 +3466,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 69: Welcome to StrictTS
+# Section 69: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3517,7 +3517,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 70: Welcome to StrictTS
+# Section 70: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3568,7 +3568,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 71: Welcome to StrictTS
+# Section 71: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3619,7 +3619,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 72: Welcome to StrictTS
+# Section 72: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3670,7 +3670,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 73: Welcome to StrictTS
+# Section 73: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3721,7 +3721,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 74: Welcome to StrictTS
+# Section 74: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3772,7 +3772,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 75: Welcome to StrictTS
+# Section 75: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3823,7 +3823,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 76: Welcome to StrictTS
+# Section 76: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3874,7 +3874,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 77: Welcome to StrictTS
+# Section 77: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3925,7 +3925,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 78: Welcome to StrictTS
+# Section 78: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -3976,7 +3976,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 79: Welcome to StrictTS
+# Section 79: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4027,7 +4027,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 80: Welcome to StrictTS
+# Section 80: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4078,7 +4078,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 81: Welcome to StrictTS
+# Section 81: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4129,7 +4129,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 82: Welcome to StrictTS
+# Section 82: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4180,7 +4180,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 83: Welcome to StrictTS
+# Section 83: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4231,7 +4231,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 84: Welcome to StrictTS
+# Section 84: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4282,7 +4282,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 85: Welcome to StrictTS
+# Section 85: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4333,7 +4333,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 86: Welcome to StrictTS
+# Section 86: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4384,7 +4384,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 87: Welcome to StrictTS
+# Section 87: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4435,7 +4435,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 88: Welcome to StrictTS
+# Section 88: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4486,7 +4486,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 89: Welcome to StrictTS
+# Section 89: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4537,7 +4537,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 90: Welcome to StrictTS
+# Section 90: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4588,7 +4588,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 91: Welcome to StrictTS
+# Section 91: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4639,7 +4639,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 92: Welcome to StrictTS
+# Section 92: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4690,7 +4690,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 93: Welcome to StrictTS
+# Section 93: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4741,7 +4741,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 94: Welcome to StrictTS
+# Section 94: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4792,7 +4792,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 95: Welcome to StrictTS
+# Section 95: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4843,7 +4843,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 96: Welcome to StrictTS
+# Section 96: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4894,7 +4894,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 97: Welcome to StrictTS
+# Section 97: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4945,7 +4945,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 98: Welcome to StrictTS
+# Section 98: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -4996,7 +4996,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 99: Welcome to StrictTS
+# Section 99: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5047,7 +5047,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 100: Welcome to StrictTS
+# Section 100: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5098,7 +5098,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 101: Welcome to StrictTS
+# Section 101: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5149,7 +5149,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 102: Welcome to StrictTS
+# Section 102: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5200,7 +5200,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 103: Welcome to StrictTS
+# Section 103: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5251,7 +5251,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 104: Welcome to StrictTS
+# Section 104: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5302,7 +5302,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 105: Welcome to StrictTS
+# Section 105: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5353,7 +5353,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 106: Welcome to StrictTS
+# Section 106: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5404,7 +5404,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 107: Welcome to StrictTS
+# Section 107: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5455,7 +5455,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 108: Welcome to StrictTS
+# Section 108: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5506,7 +5506,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 109: Welcome to StrictTS
+# Section 109: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5557,7 +5557,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 110: Welcome to StrictTS
+# Section 110: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5608,7 +5608,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 111: Welcome to StrictTS
+# Section 111: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5659,7 +5659,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 112: Welcome to StrictTS
+# Section 112: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5710,7 +5710,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 113: Welcome to StrictTS
+# Section 113: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5761,7 +5761,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 114: Welcome to StrictTS
+# Section 114: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5812,7 +5812,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 115: Welcome to StrictTS
+# Section 115: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5863,7 +5863,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 116: Welcome to StrictTS
+# Section 116: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5914,7 +5914,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 117: Welcome to StrictTS
+# Section 117: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -5965,7 +5965,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 118: Welcome to StrictTS
+# Section 118: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6016,7 +6016,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 119: Welcome to StrictTS
+# Section 119: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6067,7 +6067,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 120: Welcome to StrictTS
+# Section 120: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6118,7 +6118,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 121: Welcome to StrictTS
+# Section 121: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6169,7 +6169,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 122: Welcome to StrictTS
+# Section 122: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6220,7 +6220,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 123: Welcome to StrictTS
+# Section 123: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6271,7 +6271,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 124: Welcome to StrictTS
+# Section 124: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6322,7 +6322,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 125: Welcome to StrictTS
+# Section 125: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6373,7 +6373,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 126: Welcome to StrictTS
+# Section 126: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6424,7 +6424,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 127: Welcome to StrictTS
+# Section 127: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6475,7 +6475,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 128: Welcome to StrictTS
+# Section 128: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6526,7 +6526,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 129: Welcome to StrictTS
+# Section 129: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6577,7 +6577,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 130: Welcome to StrictTS
+# Section 130: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6628,7 +6628,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 131: Welcome to StrictTS
+# Section 131: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6679,7 +6679,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 132: Welcome to StrictTS
+# Section 132: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6730,7 +6730,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 133: Welcome to StrictTS
+# Section 133: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6781,7 +6781,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 134: Welcome to StrictTS
+# Section 134: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6832,7 +6832,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 135: Welcome to StrictTS
+# Section 135: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6883,7 +6883,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 136: Welcome to StrictTS
+# Section 136: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6934,7 +6934,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 137: Welcome to StrictTS
+# Section 137: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -6985,7 +6985,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 138: Welcome to StrictTS
+# Section 138: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7036,7 +7036,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 139: Welcome to StrictTS
+# Section 139: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7087,7 +7087,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 140: Welcome to StrictTS
+# Section 140: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7138,7 +7138,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 141: Welcome to StrictTS
+# Section 141: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7189,7 +7189,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 142: Welcome to StrictTS
+# Section 142: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7240,7 +7240,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 143: Welcome to StrictTS
+# Section 143: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7291,7 +7291,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 144: Welcome to StrictTS
+# Section 144: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7342,7 +7342,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 145: Welcome to StrictTS
+# Section 145: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7393,7 +7393,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 146: Welcome to StrictTS
+# Section 146: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7444,7 +7444,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 147: Welcome to StrictTS
+# Section 147: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7495,7 +7495,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 148: Welcome to StrictTS
+# Section 148: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7546,7 +7546,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 149: Welcome to StrictTS
+# Section 149: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7597,7 +7597,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 150: Welcome to StrictTS
+# Section 150: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7648,7 +7648,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 151: Welcome to StrictTS
+# Section 151: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7699,7 +7699,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 152: Welcome to StrictTS
+# Section 152: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7750,7 +7750,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 153: Welcome to StrictTS
+# Section 153: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7801,7 +7801,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 154: Welcome to StrictTS
+# Section 154: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7852,7 +7852,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 155: Welcome to StrictTS
+# Section 155: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7903,7 +7903,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 156: Welcome to StrictTS
+# Section 156: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -7954,7 +7954,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 157: Welcome to StrictTS
+# Section 157: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8005,7 +8005,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 158: Welcome to StrictTS
+# Section 158: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8056,7 +8056,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 159: Welcome to StrictTS
+# Section 159: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8107,7 +8107,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 160: Welcome to StrictTS
+# Section 160: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8158,7 +8158,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 161: Welcome to StrictTS
+# Section 161: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8209,7 +8209,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 162: Welcome to StrictTS
+# Section 162: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8260,7 +8260,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 163: Welcome to StrictTS
+# Section 163: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8311,7 +8311,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 164: Welcome to StrictTS
+# Section 164: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8362,7 +8362,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 165: Welcome to StrictTS
+# Section 165: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8413,7 +8413,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 166: Welcome to StrictTS
+# Section 166: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8464,7 +8464,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 167: Welcome to StrictTS
+# Section 167: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8515,7 +8515,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 168: Welcome to StrictTS
+# Section 168: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8566,7 +8566,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 169: Welcome to StrictTS
+# Section 169: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8617,7 +8617,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 170: Welcome to StrictTS
+# Section 170: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8668,7 +8668,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 171: Welcome to StrictTS
+# Section 171: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8719,7 +8719,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 172: Welcome to StrictTS
+# Section 172: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8770,7 +8770,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 173: Welcome to StrictTS
+# Section 173: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8821,7 +8821,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 174: Welcome to StrictTS
+# Section 174: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8872,7 +8872,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 175: Welcome to StrictTS
+# Section 175: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8923,7 +8923,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 176: Welcome to StrictTS
+# Section 176: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -8974,7 +8974,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 177: Welcome to StrictTS
+# Section 177: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9025,7 +9025,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 178: Welcome to StrictTS
+# Section 178: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9076,7 +9076,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 179: Welcome to StrictTS
+# Section 179: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9127,7 +9127,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 180: Welcome to StrictTS
+# Section 180: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9178,7 +9178,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 181: Welcome to StrictTS
+# Section 181: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9229,7 +9229,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 182: Welcome to StrictTS
+# Section 182: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9280,7 +9280,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 183: Welcome to StrictTS
+# Section 183: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9331,7 +9331,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 184: Welcome to StrictTS
+# Section 184: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9382,7 +9382,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 185: Welcome to StrictTS
+# Section 185: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9433,7 +9433,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 186: Welcome to StrictTS
+# Section 186: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9484,7 +9484,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 187: Welcome to StrictTS
+# Section 187: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9535,7 +9535,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 188: Welcome to StrictTS
+# Section 188: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9586,7 +9586,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 189: Welcome to StrictTS
+# Section 189: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9637,7 +9637,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 190: Welcome to StrictTS
+# Section 190: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9688,7 +9688,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 191: Welcome to StrictTS
+# Section 191: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9739,7 +9739,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 192: Welcome to StrictTS
+# Section 192: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9790,7 +9790,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 193: Welcome to StrictTS
+# Section 193: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9841,7 +9841,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 194: Welcome to StrictTS
+# Section 194: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9892,7 +9892,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 195: Welcome to StrictTS
+# Section 195: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9943,7 +9943,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 196: Welcome to StrictTS
+# Section 196: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -9994,7 +9994,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 197: Welcome to StrictTS
+# Section 197: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -10045,7 +10045,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 198: Welcome to StrictTS
+# Section 198: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -10096,7 +10096,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 199: Welcome to StrictTS
+# Section 199: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 
@@ -10147,7 +10147,7 @@ most people think. We just need to *cut the right corners*.
 
 ---
 
-# Section 200: Welcome to StrictTS
+# Section 200: Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 

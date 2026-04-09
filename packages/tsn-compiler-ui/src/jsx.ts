@@ -1,5 +1,5 @@
 /**
- * StrictTS JSX Emitter — TSX → C ui_*() calls
+ * TSN JSX Emitter — TSX → C ui_*() calls
  *
  * Handles JSX elements, props, children, Tailwind className parsing,
  * and component mapping. Extracted from codegen.ts.

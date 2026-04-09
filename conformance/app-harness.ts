@@ -1,7 +1,7 @@
 /**
  * Full-Page Geometry Oracle Harness
  *
- * Compares full app screens between native (StrictTS/AppKit) and
+ * Compares full app screens between native (TSN/AppKit) and
  * browser (Playwright/Tailwind CSS). The browser HTML is the oracle.
  *
  * Unlike the component harness (harness.ts), this tests composed layouts:
@@ -23,7 +23,7 @@ const root = process.cwd()
 // ─── Inspector Client ──────────────────────────────────────────────
 
 function inspectSocket(appName: string): string {
-  return `/tmp/strictts-inspect-${appName}.sock`
+  return `/tmp/tsn-inspect-${appName}.sock`
 }
 
 async function inspect(socket: string, command: string): Promise<string> {
@@ -196,7 +196,7 @@ async function main(): Promise<void> {
 
     // Build
     console.log(`Building ${appName}...`)
-    execFileSync('./strictts', ['build', buildTarget], {
+    execFileSync('./tsn', ['build', buildTarget], {
       cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
     })
 

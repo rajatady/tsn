@@ -100,7 +100,7 @@ export function FooterSection() {
       <VStack className="h-[40]" />
       <Divider />
       <VStack className="h-[32]" />
-      <Text className="text-[11] text-white/20 uppercase tracking-wider">StrictTS Native</Text>
+      <Text className="text-[11] text-white/20 uppercase tracking-wider">TSN Native</Text>
       <VStack className="h-[8]" />
       <Text className="text-[13] text-white/25">Compiled to ARM64. No Electron. No web views.</Text>
       <VStack className="h-[40]" />

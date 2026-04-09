@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define INSPECT_SOCK "/tmp/strictts-inspect.sock"
+#define INSPECT_SOCK "/tmp/tsn-inspect.sock"
 
 static NSWindow *g_inspect_window = nil;
 
@@ -79,7 +79,7 @@ static CGImageRef capture_window_image(CGWindowID windowID) {
 /* Take a screenshot of the window */
 static NSString *take_screenshot(void) {
     if (!g_inspect_window) return @"No window";
-    NSString *path = @"/tmp/strictts-screenshot.png";
+    NSString *path = @"/tmp/tsn-screenshot.png";
 
     /* Capture the composed window so inspector screenshots match the live app. */
     dispatch_sync(dispatch_get_main_queue(), ^{
@@ -199,7 +199,7 @@ static NSString *handle_command(NSString *cmd) {
     }
 
     if ([cmd isEqualToString:@"help"]) {
-        return @"Commands:\n  tree        — dump view hierarchy\n  screenshot  — save /tmp/strictts-screenshot.png\n  click <lbl> — click button containing label\n  type <text> — type into search field\n  help        — this message\n";
+        return @"Commands:\n  tree        — dump view hierarchy\n  screenshot  — save /tmp/tsn-screenshot.png\n  click <lbl> — click button containing label\n  type <text> — type into search field\n  help        — this message\n";
     }
 
     return [NSString stringWithFormat:@"Unknown command: %@\nType 'help' for usage.\n", cmd];

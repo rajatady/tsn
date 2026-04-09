@@ -1,5 +1,5 @@
 /*
- * StrictTS Access Log Summary
+ * TSN Access Log Summary
  *
  * Reads pipe-delimited access logs from stdin and prints an operational
  * summary. Exercises:

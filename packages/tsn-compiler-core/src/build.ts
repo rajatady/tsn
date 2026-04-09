@@ -6,7 +6,7 @@ import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
 import { appKitHostRoot, appKitSourcePath } from '../../tsn-host-appkit/src/index.js'
 
-export function buildStrictTS(inputPath: string, argv: string[] = []): void {
+export function buildTSN(inputPath: string, argv: string[] = []): void {
   const absolutePath = path.resolve(inputPath)
   const ext = path.extname(inputPath)
   const baseName = path.basename(inputPath, ext)
@@ -42,7 +42,7 @@ export function buildStrictTS(inputPath: string, argv: string[] = []): void {
   console.log(`  → ${cPath} (${cCode.length} bytes)`)
 
   const isDebug = argv.includes('--debug') || argv.includes('-g')
-  const optFlag = isDebug ? '-O0 -g -DSTRICTTS_DEBUG' : '-O2'
+  const optFlag = isDebug ? '-O0 -g -DTSN_DEBUG' : '-O2'
   console.log(`[4/4] Compiling with clang${isDebug ? ' (debug)' : ''}...`)
   const binaryPath = path.join('build', baseName)
   const hasUi = cCode.includes('#include "ui.h"')

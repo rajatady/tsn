@@ -30,7 +30,18 @@ test('buildPrimitivePlan tags search as a text-bearing editable primitive', () =
   const plan = buildPrimitivePlan('Search', '_j1', '', { placeholder: 'Search' }, null)
 
   assert.equal(plan.node.ref.kind, 'input')
+  assert.equal(plan.primitive?.layer, 'primitive')
   assert.equal(plan.node.behavior.text?.kind, 'search')
   assert.equal(plan.node.behavior.text?.editable, true)
   assert.equal(plan.node.behavior.text?.multiline, false)
+})
+
+test('buildPrimitivePlan distinguishes host primitives from higher-level components', () => {
+  const cardPlan = buildPrimitivePlan('Card', '_j2', 'rounded-xl p-4', {}, parseTailwind('rounded-xl p-4', '_j2'))
+  const stackPlan = buildPrimitivePlan('VStack', '_j3', 'gap-4', {}, parseTailwind('gap-4', '_j3'))
+
+  assert.equal(cardPlan.primitive?.layer, 'component')
+  assert.equal(cardPlan.primitive?.kind, 'card')
+  assert.equal(stackPlan.primitive?.layer, 'primitive')
+  assert.equal(stackPlan.primitive?.kind, 'stack')
 })

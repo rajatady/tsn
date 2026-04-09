@@ -10,7 +10,7 @@ static NSString *inspector_socket_path(void) {
     NSString *safe = [[[parts componentsJoinedByString:@"-"]
         stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"-"]] lowercaseString];
     if (safe.length == 0) safe = @"app";
-    return [NSString stringWithFormat:@"/tmp/strictts-inspect-%@.sock", safe];
+    return [NSString stringWithFormat:@"/tmp/tsn-inspect-%@.sock", safe];
 }
 
 static TSNShadowNode *inspector_root_node(void) {
@@ -72,7 +72,7 @@ static void dump_tree_node(TSNShadowNode *node, int depth, NSMutableString *out)
 
 static NSString *take_screenshot(void) {
     if (!g_inspect_window) return @"No window";
-    NSString *path = @"/tmp/strictts-screenshot.png";
+    NSString *path = @"/tmp/tsn-screenshot.png";
 
     dispatch_sync(dispatch_get_main_queue(), ^{
         [g_inspect_window.contentView layoutSubtreeIfNeeded];
@@ -624,7 +624,7 @@ static NSString *handle_command(NSString *cmd) {
     if ([cmd isEqualToString:@"help"]) {
         return @"Commands:\n"
                "  tree                  - dump view hierarchy\n"
-               "  screenshot            - save /tmp/strictts-screenshot.png\n"
+               "  screenshot            - save /tmp/tsn-screenshot.png\n"
                "  click <label>         - click button containing label\n"
                "  clickid <id>          - click element by inspector id\n"
                "  type <text>           - type into first text input\n"

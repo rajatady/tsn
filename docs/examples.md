@@ -9,7 +9,7 @@ Located in `targets/`. Each compiles to a native binary that produces identical 
 Processes 100K JSON records: parse, filter, sort, aggregate by city.
 
 ```bash
-strictts run targets/json-pipeline.ts < harness/test-data/large-dataset.json
+tsn run targets/json-pipeline.ts < harness/test-data/large-dataset.json
 ```
 
 Demonstrates: JSON.parse with typed interfaces, array.filter, array.sort, struct fields, string comparison.
@@ -19,7 +19,7 @@ Demonstrates: JSON.parse with typed interfaces, array.filter, array.sort, struct
 Route matching engine with query string parsing, 100K iterations.
 
 ```bash
-strictts run targets/http-router.ts
+tsn run targets/http-router.ts
 ```
 
 Demonstrates: string.slice, string.indexOf, while loops, struct construction, pattern matching.
@@ -29,7 +29,7 @@ Demonstrates: string.slice, string.indexOf, while loops, struct construction, pa
 Markdown-to-HTML converter processing 235KB input.
 
 ```bash
-strictts run targets/markdown-parser.ts < harness/test-data/sample.md
+tsn run targets/markdown-parser.ts < harness/test-data/sample.md
 ```
 
 Demonstrates: StrBuf optimization (string builder detection in loops), char-by-char parsing, string concatenation.
@@ -39,7 +39,7 @@ Demonstrates: StrBuf optimization (string builder detection in loops), char-by-c
 1M row CSV processing.
 
 ```bash
-strictts run targets/csv-tool.ts
+tsn run targets/csv-tool.ts
 ```
 
 ## CLI Example: Log Triage
@@ -56,7 +56,7 @@ It uses the newer stdlib paths directly in a non-UI workload:
 Compile it with:
 
 ```bash
-strictts build examples/log-triage.ts
+tsn build examples/log-triage.ts
 ```
 
 ## CLI Example: Config Audit
@@ -112,7 +112,7 @@ bash harness/examples-correctness.sh
 bash harness/gui-builds.sh
 
 # Geometry gallery app
-./strictts build conformance/gallery.tsx
+./tsn build conformance/gallery.tsx
 ```
 
 ## Native GUI: HR Dashboard
@@ -217,14 +217,14 @@ initFilters();   // semicolon required before <App />
 
 ```bash
 # Build optimized
-strictts build examples/native-gui/dashboard.tsx
+tsn build examples/native-gui/dashboard.tsx
 ./build/dashboard
 
 # Build debug (bounds checking + source maps)
-strictts build examples/native-gui/dashboard.tsx --debug
+tsn build examples/native-gui/dashboard.tsx --debug
 
 # Watch mode
-strictts dev examples/native-gui/dashboard.tsx
+tsn dev examples/native-gui/dashboard.tsx
 ```
 
 ### Binary Size
@@ -251,8 +251,8 @@ Located in [examples/native-gui/incident-tracker.tsx](../examples/native-gui/inc
 Compile it with:
 
 ```bash
-strictts build examples/native-gui/incident-tracker.tsx
-strictts build examples/native-gui/incident-tracker.tsx --debug
+tsn build examples/native-gui/incident-tracker.tsx
+tsn build examples/native-gui/incident-tracker.tsx --debug
 ```
 
 ## Native GUI: App Store
@@ -272,8 +272,8 @@ It exercises:
 Compile it with:
 
 ```bash
-strictts build examples/native-gui/app-store.tsx
-strictts build examples/native-gui/app-store.tsx --debug
+tsn build examples/native-gui/app-store.tsx
+tsn build examples/native-gui/app-store.tsx --debug
 ```
 
 ## Native GUI: Geometry Gallery
@@ -292,8 +292,8 @@ It exercises:
 The gallery is paired with the conformance harness:
 
 ```bash
-strictts build conformance/gallery.tsx
-strictts build conformance/gallery.tsx --debug
+tsn build conformance/gallery.tsx
+tsn build conformance/gallery.tsx --debug
 bash harness/ui-conformance.sh
 ```
 

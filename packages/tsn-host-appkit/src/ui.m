@@ -1,5 +1,5 @@
 /*
- * StrictTS Native UI Runtime — AppKit implementation
+ * TSN Native UI Runtime — AppKit implementation
  *
  * Every ui_* function creates real AppKit views.
  * TypeScript developers never see this file — they call typed functions,

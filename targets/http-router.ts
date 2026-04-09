@@ -3,7 +3,7 @@
 // extract params, build response objects.
 // Exercises: string parsing, pattern matching, typed objects.
 //
-// StrictTS only — no any, no dynamic access, no eval.
+// TSN only — no any, no dynamic access, no eval.
 
 interface Route {
   method: string;
