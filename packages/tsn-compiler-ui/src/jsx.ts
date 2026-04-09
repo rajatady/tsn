@@ -163,6 +163,9 @@ export class JsxEmitter {
     const tag = element.tagName.getText()
     const props = this.propsUtil.getProps(element)
     const handle = `_j${this.jsxCounter++}`
+    if (props.has('className') && !this.propsUtil.isStaticallyResolvableString(props, 'className')) {
+      throw new Error(`className on <${tag}> must be statically resolvable at compile time`)
+    }
     const className = this.propsUtil.propStr(props, 'className')
     const staticProps = this.propsUtil.extractStaticProps(props)
     const tw = className ? parseTailwind(className, handle) : null

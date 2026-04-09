@@ -74,6 +74,10 @@ export interface TSNLayoutStyle {
   shrink?: number
   gap?: number
   marginAuto?: boolean
+  marginTop?: number
+  marginRight?: number
+  marginBottom?: number
+  marginLeft?: number
   paddingTop?: number
   paddingRight?: number
   paddingBottom?: number

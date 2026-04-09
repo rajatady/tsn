@@ -224,6 +224,15 @@ void ui_set_padding(UIHandle v, int t, int r, int b, int l) {
     YGNodeStyleSetPadding(node, YGEdgeLeft, l);
 }
 
+void ui_set_margin(UIHandle v, int t, int r, int b, int l) {
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    YGNodeStyleSetMargin(node, YGEdgeTop, t);
+    YGNodeStyleSetMargin(node, YGEdgeRight, r);
+    YGNodeStyleSetMargin(node, YGEdgeBottom, b);
+    YGNodeStyleSetMargin(node, YGEdgeLeft, l);
+}
+
 void ui_set_spacing(UIHandle v, int sp) {
     YGNodeRef node = yoga_node_for_handle(v);
     if (node) YGNodeStyleSetGap(node, YGGutterAll, sp);

@@ -21,6 +21,7 @@ export type TailwindOp =
   | { kind: 'flex', value: number }
   | { kind: 'spacing', value: number }
   | { kind: 'padding', top: number, right: number, bottom: number, left: number }
+  | { kind: 'margin', top: number, right: number, bottom: number, left: number }
   | { kind: 'size', width: LengthValue | null, height: LengthValue | null }
   | { kind: 'min-size', width: LengthValue | null, height: LengthValue | null }
   | { kind: 'max-size', width: LengthValue | null, height: LengthValue | null }

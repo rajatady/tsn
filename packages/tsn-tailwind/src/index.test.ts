@@ -29,6 +29,14 @@ test('px-2 py-3 emits correct padding', () => {
   assert.ok(r.calls.some(c => c.includes('ui_set_padding(h, 12, 8, 12, 8)')))
 })
 
+test('mb-10 mt-0.5 emit real margins, not padding', () => {
+  const r = parseTailwind('mb-10 mt-[2px]', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_margin(h, 2, 0, 40, 0)')))
+  assert.equal(r.stylePatch.layoutStyle.marginTop, 2)
+  assert.equal(r.stylePatch.layoutStyle.marginBottom, 40)
+  assert.equal(r.stylePatch.layoutStyle.paddingTop, undefined)
+})
+
 /* ─── Size ─────────────────────────────────────────────────────────── */
 
 test('w-[200] h-[100] emits ui_set_size', () => {

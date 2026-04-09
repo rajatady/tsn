@@ -731,11 +731,14 @@ UIHandle ui_badge(const char *text, int sc) {
     wrap.layer.cornerRadius = 8;
     wrap.layer.masksToBounds = YES;
 
-    NSTextField *t = [NSTextField labelWithString:[NSString stringWithUTF8String:text]];
-    t.font = [NSFont systemFontOfSize:10 weight:NSFontWeightBold];
+    TSNTextLabelView *t = [[TSNTextLabelView alloc] initWithString:[NSString stringWithUTF8String:text]];
+    t.font = tsn_browser_text_font(10, NSFontWeightBold, NO);
     t.textColor = [NSColor whiteColor];
-    t.drawsBackground = NO;
     t.alignment = NSTextAlignmentCenter;
+    tsn_text_set_kind(t, TSNTextRuntimeKindStatic);
+    tsn_text_set_wrap_mode(t, TSNTextRuntimeWrapModeTruncate, NO);
+    tsn_text_set_line_height_multiplier(t, tsn_default_css_line_height_for_size(10) / 10.0);
+    tsn_text_set_monospace(t, NO);
     TSNShadowNode *textNode = tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
     tsn_attach_child_nodes(wrapNode, textNode);
 

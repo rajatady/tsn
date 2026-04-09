@@ -89,12 +89,26 @@ function resolveStyleCalls(node: TSNNode): string[] {
 
   if (node.layoutStyle.grow != null) calls.push(`ui_set_flex(${node.ref.id}, ${node.layoutStyle.grow});`)
   if (node.layoutStyle.gap != null) calls.push(`ui_set_spacing(${node.ref.id}, ${node.layoutStyle.gap});`)
+  if (node.layoutStyle.aspectRatio != null && node.layoutStyle.aspectRatio > 0) {
+    const aspectWidth = Math.max(1, Math.round(node.layoutStyle.aspectRatio * 1000))
+    calls.push(`ui_set_aspect(${node.ref.id}, ${aspectWidth}, 1000);`)
+  }
   if (node.layoutStyle.marginAuto) calls.push(`ui_set_margin_auto(${node.ref.id});`)
   if (node.layoutStyle.alignItems != null) calls.push(`ui_set_align_items(${node.ref.id}, ${layoutAlignValue(node.layoutStyle.alignItems)});`)
   if (node.layoutStyle.justifyContent != null) {
     calls.push(`ui_set_justify_content(${node.ref.id}, ${layoutJustifyValue(node.layoutStyle.justifyContent)});`)
   }
   if (node.layoutStyle.alignSelf != null) calls.push(`ui_set_alignment(${node.ref.id}, ${layoutAlignValue(node.layoutStyle.alignSelf)});`)
+  if (
+    node.layoutStyle.marginTop != null ||
+    node.layoutStyle.marginRight != null ||
+    node.layoutStyle.marginBottom != null ||
+    node.layoutStyle.marginLeft != null
+  ) {
+    calls.push(
+      `ui_set_margin(${node.ref.id}, ${node.layoutStyle.marginTop ?? 0}, ${node.layoutStyle.marginRight ?? 0}, ${node.layoutStyle.marginBottom ?? 0}, ${node.layoutStyle.marginLeft ?? 0});`,
+    )
+  }
   if (
     node.layoutStyle.paddingTop != null ||
     node.layoutStyle.paddingRight != null ||

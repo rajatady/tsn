@@ -32,6 +32,7 @@ void        ui_set_aspect(UIHandle v, int w, int h);
 void        ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
                             double r2, double g2, double b2, double a2, int direction);
 void        ui_set_padding(UIHandle v, int top, int right, int bottom, int left);
+void        ui_set_margin(UIHandle v, int top, int right, int bottom, int left);
 void        ui_set_spacing(UIHandle v, int spacing);
 void        ui_set_flex(UIHandle v, int flex);
 void        ui_set_size(UIHandle v, int w, int h);  /* -1 = auto */

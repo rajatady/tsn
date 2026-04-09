@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>App Store – Arcade (Oracle)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', sans-serif; -webkit-font-smoothing: antialiased; background: #000; color: #f5f5f7; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    .view-btn {
+      background: rgba(50,130,246,0.14);
+      color: #3b9aff;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 16px;
+      padding: 4px 18px;
+      border: none;
+      white-space: nowrap;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 18px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.85);
+      white-space: nowrap;
+    }
+    .chip-icon {
+      width: 14px;
+      display: inline-flex;
+      justify-content: center;
+      text-align: center;
+    }
+    .ranked-card {
+      background: rgba(255,255,255,0.04);
+      border-radius: 14px;
+      padding: 16px 20px;
+      min-width: 190px;
+      text-align: center;
+    }
+    .carousel {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .carousel > * { flex-shrink: 0; }
+  </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+  <aside data-testid="sidebar" class="w-[240px] min-w-[240px] h-full bg-[#1a1a1c] flex flex-col">
+    <div class="h-[52px] flex items-end px-5 pb-2">
+      <div class="flex items-center gap-1.5">
+        <span class="text-[15px] font-semibold text-white/90 tracking-tight">App Store</span>
+        <span class="text-[13px] text-white/40 ml-0.5">for Mac</span>
+      </div>
+    </div>
+
+    <div class="px-4 mt-3 mb-3">
+      <div class="flex items-center gap-2 bg-white/[0.04] rounded-lg px-2.5 py-[6px] text-white/25 text-[13px]">Search</div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto px-3">
+      <div class="space-y-[1px]">
+        <a data-testid="nav-discover" class="flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75">
+          <span class="text-white/40">&#10022;</span> Discover
+        </a>
+        <a data-testid="nav-arcade" class="flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] font-medium text-white bg-white/[0.08]">
+          <span class="text-[#3b9aff]">&#9878;</span> Arcade
+        </a>
+        <a data-testid="nav-create" class="flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9998;</span> Create</a>
+        <a data-testid="nav-work" class="flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#10148;</span> Work</a>
+        <a data-testid="nav-play" class="flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9654;</span> Play</a>
+        <a data-testid="nav-develop" class="flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&lt;/&gt;</span> Develop</a>
+        <a data-testid="nav-categories" class="flex items-center gap-3 px-3 py-[7px] rounded-lg text-[14px] text-white/75"><span class="text-white/40">&#9783;</span> Categories</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main data-testid="content" class="flex-1 overflow-y-auto bg-[#161617]">
+    <div class="px-8 pt-5 pb-12">
+      <h1 data-testid="page-title" class="text-[32px] font-bold leading-normal tracking-tight mb-5">Arcade</h1>
+
+      <div data-testid="hero" class="relative rounded-2xl overflow-hidden mb-5">
+        <img data-testid="hero-img" src="../../examples/native-gui/app-store/assets/hero-arcade.png" class="w-full aspect-[23/10] object-cover" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+        <div class="absolute bottom-0 left-0 right-0 p-7">
+          <p class="text-[11px] font-bold text-white/50 uppercase tracking-[0.15em] mb-1">New Game</p>
+          <h2 class="text-[36px] font-bold leading-tight tracking-tight mb-1">Rural Life Village</h2>
+          <p class="text-[15px] text-white/55 mb-4">Farm, craft, and explore a peaceful countryside</p>
+          <div data-testid="hero-info" class="flex items-center gap-3">
+            <img data-testid="hero-app-icon" src="../../examples/native-gui/app-store/assets/icon-rural-life.png" class="w-11 h-11 rounded-xl" />
+            <div>
+              <p class="text-[11px] font-bold text-white/40 uppercase tracking-wider">New Game</p>
+              <p class="text-[14px] font-semibold">Rural Life Village</p>
+              <p class="text-[12px] text-white/35">A magical farming RPG.</p>
+            </div>
+            <button data-testid="hero-view" class="view-btn ml-2">View</button>
+          </div>
+        </div>
+      </div>
+
+      <div data-testid="chip-row" class="carousel mb-6" style="gap:8px">
+        <span data-testid="chip-0" class="chip"><span class="chip-icon">&#128165;</span><span>Action</span></span>
+        <span class="chip"><span class="chip-icon">&#127956;</span><span>Adventure</span></span>
+        <span class="chip"><span class="chip-icon">&#127922;</span><span>Casual</span></span>
+        <span class="chip"><span class="chip-icon">&#128106;</span><span>Family</span></span>
+        <span class="chip"><span class="chip-icon">&#129513;</span><span>Puzzle</span></span>
+        <span class="chip"><span class="chip-icon">&#127950;</span><span>Racing</span></span>
+        <span class="chip"><span class="chip-icon">&#127918;</span><span>Simulation</span></span>
+        <span class="chip"><span class="chip-icon">&#9917;</span><span>Sports</span></span>
+        <span class="chip"><span class="chip-icon">&#9876;</span><span>Strategy</span></span>
+        <span data-testid="chip-9" class="chip"><span class="chip-icon">&#128172;</span><span>Word</span></span>
+      </div>
+
+      <h2 data-testid="section-top-title" class="text-[22px] font-bold leading-normal tracking-tight mb-4">Top Arcade Games</h2>
+      <div data-testid="top-row" class="carousel mb-10" style="gap:12px">
+        <div data-testid="top-0" class="ranked-card">
+          <p class="text-[36px] font-bold text-white/12 mb-1">1</p>
+          <img data-testid="top-0-icon" src="../../examples/native-gui/app-store/assets/icon-sneaky.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+          <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+          <p class="text-[13px] font-semibold mt-0.5">Sneaky Sasquatch</p>
+        </div>
+        <div data-testid="top-1" class="ranked-card">
+          <p class="text-[36px] font-bold text-white/12 mb-1">2</p>
+          <img data-testid="top-1-icon" src="../../examples/native-gui/app-store/assets/icon-naruto.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+          <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+          <p class="text-[13px] font-semibold mt-0.5">Naruto x Boruto</p>
+        </div>
+        <div data-testid="top-2" class="ranked-card">
+          <p class="text-[36px] font-bold text-white/12 mb-1">3</p>
+          <img data-testid="top-2-icon" src="../../examples/native-gui/app-store/assets/icon-bloons.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+          <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+          <p class="text-[13px] font-semibold mt-0.5">Bloons TD 6+</p>
+        </div>
+        <div class="ranked-card">
+          <p class="text-[36px] font-bold text-white/12 mb-1">4</p>
+          <img src="../../examples/native-gui/app-store/assets/icon-dredge.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+          <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+          <p class="text-[13px] font-semibold mt-0.5">DREDGE+</p>
+        </div>
+        <div class="ranked-card">
+          <p class="text-[36px] font-bold text-white/12 mb-1">5</p>
+          <img src="../../examples/native-gui/app-store/assets/icon-cooking.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+          <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+          <p class="text-[13px] font-semibold mt-0.5">Cooking Mama</p>
+        </div>
+        <div class="ranked-card">
+          <p class="text-[36px] font-bold text-white/12 mb-1">6</p>
+          <img src="../../examples/native-gui/app-store/assets/icon-cult.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+          <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+          <p class="text-[13px] font-semibold mt-0.5">Cult of the Lamb+</p>
+        </div>
+        <div class="ranked-card">
+          <p class="text-[36px] font-bold text-white/12 mb-1">7</p>
+          <img src="../../examples/native-gui/app-store/assets/icon-hello-kitty.png" class="w-16 h-16 rounded-2xl mx-auto mb-2" />
+          <p class="text-[10px] text-white/25 uppercase tracking-wider">Apple Arcade</p>
+          <p class="text-[13px] font-semibold mt-0.5">Hello Kitty Island</p>
+        </div>
+      </div>
+
+      <h2 data-testid="section-what-title" class="text-[22px] font-bold leading-normal tracking-tight mb-4">What to Play</h2>
+      <div data-testid="what-row" class="carousel mb-10" style="gap:16px">
+        <div data-testid="what-0" style="width:355px">
+          <div class="rounded-xl overflow-hidden mb-2"><img data-testid="what-0-img" src="../../examples/native-gui/app-store/assets/play-card-3.png" class="w-full aspect-[16/10] object-cover" /></div>
+          <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Best New Games</p>
+          <p class="text-[15px] font-semibold mt-0.5">Draft your destiny in Blue Prince</p>
+          <p class="text-[13px] text-white/40 mt-0.5">A world of adventure awaits.</p>
+        </div>
+        <div data-testid="what-1" style="width:355px">
+          <div class="rounded-xl overflow-hidden mb-2"><img data-testid="what-1-img" src="../../examples/native-gui/app-store/assets/play-hero.png" class="w-full aspect-[16/10] object-cover" /></div>
+          <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Apple Arcade</p>
+          <p class="text-[15px] font-semibold mt-0.5">Can you build a lasting empire?</p>
+          <p class="text-[13px] text-white/40 mt-0.5">Civilization awaits your command.</p>
+        </div>
+        <div data-testid="what-2" style="width:355px">
+          <div class="rounded-xl overflow-hidden mb-2"><img data-testid="what-2-img" src="../../examples/native-gui/app-store/assets/rural-screen-1.png" class="w-full aspect-[16/10] object-cover" /></div>
+          <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Games We Love</p>
+          <p class="text-[15px] font-semibold mt-0.5">Explore ancient shrines</p>
+          <p class="text-[13px] text-white/40 mt-0.5">Rural Life Village is full of secrets.</p>
+        </div>
+        <div style="width:355px">
+          <div class="rounded-xl overflow-hidden mb-2"><img src="../../examples/native-gui/app-store/assets/play-card-1.png" class="w-full aspect-[16/10] object-cover" /></div>
+          <p class="text-[11px] font-semibold text-white/25 uppercase tracking-[0.12em]">Editor's Pick</p>
+          <p class="text-[15px] font-semibold mt-0.5">Warp reality in Control</p>
+          <p class="text-[13px] text-white/40 mt-0.5">A mind-bending action game.</p>
+        </div>
+      </div>
+
+      <h2 data-testid="section-perks-title" class="text-[22px] font-bold leading-normal tracking-tight mb-4">Perks of Apple Arcade</h2>
+      <div data-testid="perks-row" class="carousel mb-6" style="gap:12px">
+        <div data-testid="perk-0" style="width:265px">
+          <div class="rounded-xl overflow-hidden"><img data-testid="perk-0-img" src="../../examples/native-gui/app-store/assets/perk-overview.png" class="w-full aspect-[16/9] object-cover" /></div>
+          <p class="text-[13px] font-medium text-white/70 mt-2">Overview</p>
+        </div>
+        <div data-testid="perk-1" style="width:265px">
+          <div class="rounded-xl overflow-hidden"><img data-testid="perk-1-img" src="../../examples/native-gui/app-store/assets/perk-new-games.png" class="w-full aspect-[16/9] object-cover" /></div>
+          <p class="text-[13px] font-medium text-white/70 mt-2">New Games Weekly</p>
+        </div>
+        <div data-testid="perk-2" style="width:265px">
+          <div class="rounded-xl overflow-hidden"><img data-testid="perk-2-img" src="../../examples/native-gui/app-store/assets/perk-no-ads.png" class="w-full aspect-[16/9] object-cover" /></div>
+          <p class="text-[13px] font-medium text-white/70 mt-2">No Ads</p>
+        </div>
+        <div data-testid="perk-3" style="width:265px">
+          <div class="rounded-xl overflow-hidden"><img data-testid="perk-3-img" src="../../examples/native-gui/app-store/assets/perk-family.png" class="w-full aspect-[16/9] object-cover" /></div>
+          <p class="text-[13px] font-medium text-white/70 mt-2">Family Sharing</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

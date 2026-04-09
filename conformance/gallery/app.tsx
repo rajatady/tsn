@@ -10,6 +10,7 @@ import { SpacerCase } from '../cases/spacer'
 import { FixedSizesCase } from '../cases/fixed-sizes'
 import { NestedStacksCase } from '../cases/nested-stacks'
 import { MaxWidthCase } from '../cases/max-width'
+import { MarginsCase } from '../cases/margins'
 import { AppRowCase } from '../cases/app-row'
 import { StatRowCase } from '../cases/stat-row'
 import { SidebarShellCase } from '../cases/sidebar-shell'
@@ -40,8 +41,8 @@ import { CardNoPaddingCase } from '../cases/card-no-padding'
 function onCaseClick(tag: number): void {
   const cases: string[] = [
     'hstack-basic', 'align-center', 'justify-between', 'padding-gap',
-    'flex-grow', 'spacer', 'fixed-sizes', 'nested-stacks',
-    'max-width', 'app-row', 'stat-row', 'sidebar-shell',
+    'flex-grow', 'spacer', 'fixed-sizes', 'nested-stacks', 'max-width', 'margins',
+    'app-row', 'stat-row', 'sidebar-shell',
     'text-sizes', 'text-weights', 'text-lineheight', 'text-align-transform', 'text-in-card',
     'button-variants', 'card-deep', 'image-deep', 'input-deep',
     'badge-deep', 'stat-deep', 'progress-deep', 'divider-deep',
@@ -65,6 +66,7 @@ function CaseContent() {
   if (current === 'fixed-sizes') return <FixedSizesCase />
   if (current === 'nested-stacks') return <NestedStacksCase />
   if (current === 'max-width') return <MaxWidthCase />
+  if (current === 'margins') return <MarginsCase />
   if (current === 'app-row') return <AppRowCase />
   if (current === 'stat-row') return <StatRowCase />
   if (current === 'sidebar-shell') return <SidebarShellCase />
@@ -121,65 +123,66 @@ function GallerySidebar() {
       <NavButton label="Fixed Sizes" tag={6} caseId="fixed-sizes" />
       <NavButton label="Nested Stacks" tag={7} caseId="nested-stacks" />
       <NavButton label="Max Width" tag={8} caseId="max-width" />
+      <NavButton label="Margins" tag={9} caseId="margins" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Composite</Text>
-      <NavButton label="App Row" tag={9} caseId="app-row" />
-      <NavButton label="Stat Row" tag={10} caseId="stat-row" />
-      <NavButton label="Sidebar Shell" tag={11} caseId="sidebar-shell" />
+      <NavButton label="App Row" tag={10} caseId="app-row" />
+      <NavButton label="Stat Row" tag={11} caseId="stat-row" />
+      <NavButton label="Sidebar Shell" tag={12} caseId="sidebar-shell" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Text Deep</Text>
-      <NavButton label="Text Sizes" tag={12} caseId="text-sizes" />
-      <NavButton label="Text Weights" tag={13} caseId="text-weights" />
-      <NavButton label="Line Height" tag={14} caseId="text-lineheight" />
-      <NavButton label="Align + Transform" tag={15} caseId="text-align-transform" />
-      <NavButton label="Text in Card" tag={16} caseId="text-in-card" />
+      <NavButton label="Text Sizes" tag={13} caseId="text-sizes" />
+      <NavButton label="Text Weights" tag={14} caseId="text-weights" />
+      <NavButton label="Line Height" tag={15} caseId="text-lineheight" />
+      <NavButton label="Align + Transform" tag={16} caseId="text-align-transform" />
+      <NavButton label="Text in Card" tag={17} caseId="text-in-card" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Button Deep</Text>
-      <NavButton label="All Variants" tag={17} caseId="button-variants" />
+      <NavButton label="All Variants" tag={18} caseId="button-variants" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Card Deep</Text>
-      <NavButton label="Card Deep" tag={18} caseId="card-deep" />
+      <NavButton label="Card Deep" tag={19} caseId="card-deep" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Image Deep</Text>
-      <NavButton label="Image Deep" tag={19} caseId="image-deep" />
+      <NavButton label="Image Deep" tag={20} caseId="image-deep" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Input Deep</Text>
-      <NavButton label="Search + Input" tag={20} caseId="input-deep" />
+      <NavButton label="Search + Input" tag={21} caseId="input-deep" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Badge Deep</Text>
-      <NavButton label="All Variants" tag={21} caseId="badge-deep" />
+      <NavButton label="All Variants" tag={22} caseId="badge-deep" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Stat Deep</Text>
-      <NavButton label="All Variants" tag={22} caseId="stat-deep" />
+      <NavButton label="All Variants" tag={23} caseId="stat-deep" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Progress Deep</Text>
-      <NavButton label="Bar Variants" tag={23} caseId="progress-deep" />
+      <NavButton label="Bar Variants" tag={24} caseId="progress-deep" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">Divider Deep</Text>
-      <NavButton label="Separators" tag={24} caseId="divider-deep" />
+      <NavButton label="Separators" tag={25} caseId="divider-deep" />
 
       <Divider />
       <Text className="text-xs text-zinc-500 uppercase">App Store Patterns</Text>
-      <NavButton label="Flex Basis" tag={25} caseId="flex-basis" />
-      <NavButton label="Justify End" tag={26} caseId="justify-end" />
-      <NavButton label="Items End" tag={27} caseId="items-end" />
-      <NavButton label="Empty Spacer" tag={28} caseId="empty-spacer" />
-      <NavButton label="ZStack Overlay" tag={29} caseId="zstack-overlay" />
-      <NavButton label="H-Scroll" tag={30} caseId="horizontal-scroll" />
-      <NavButton label="Multi-Col Grid" tag={31} caseId="multi-col-grid" />
-      <NavButton label="Metric Strip" tag={32} caseId="metric-strip" />
-      <NavButton label="Editorial Card" tag={33} caseId="editorial-card" />
-      <NavButton label="Card No Padding" tag={34} caseId="card-no-padding" />
+      <NavButton label="Flex Basis" tag={26} caseId="flex-basis" />
+      <NavButton label="Justify End" tag={27} caseId="justify-end" />
+      <NavButton label="Items End" tag={28} caseId="items-end" />
+      <NavButton label="Empty Spacer" tag={29} caseId="empty-spacer" />
+      <NavButton label="ZStack Overlay" tag={30} caseId="zstack-overlay" />
+      <NavButton label="H-Scroll" tag={31} caseId="horizontal-scroll" />
+      <NavButton label="Multi-Col Grid" tag={32} caseId="multi-col-grid" />
+      <NavButton label="Metric Strip" tag={33} caseId="metric-strip" />
+      <NavButton label="Editorial Card" tag={34} caseId="editorial-card" />
+      <NavButton label="Card No Padding" tag={35} caseId="card-no-padding" />
     </VStack>
   )
 }

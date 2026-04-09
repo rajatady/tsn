@@ -238,14 +238,12 @@ export function topStripApps(): StoreApp[] {
 export function topArcadeGames(): RankedApp[] {
   const items: RankedApp[] = [
     { rank: '1', app: { id: 'sneaky', title: 'Sneaky Sasquatch', subtitle: 'Apple Arcade', caption: 'Stealthy shenanigans', icon: iconSneaky, action: 'Get', route: 'game:rural-life', detailTag: 9 } },
-    { rank: '2', app: { id: 'nba', title: 'NBA 2K26 Arcade Edition', subtitle: 'Apple Arcade', caption: 'Make history in every era', icon: iconLego, action: 'Get', route: 'game:rural-life', detailTag: 10 } },
-    { rank: '3', app: { id: 'powerwash', title: 'PowerWash Simulator', subtitle: 'Apple Arcade', caption: 'Release the pressure', icon: iconPacman, action: 'Get', route: 'game:rural-life', detailTag: 11 } },
+    { rank: '2', app: { id: 'naruto', title: 'Naruto x Boruto', subtitle: 'Apple Arcade', caption: 'Action RPG', icon: iconNaruto, action: 'Get', route: 'game:rural-life', detailTag: 10 } },
+    { rank: '3', app: { id: 'bloons-rank', title: 'Bloons TD 6+', subtitle: 'Apple Arcade', caption: 'Tower Defense', icon: iconBloons, action: 'Get', route: 'game:rural-life', detailTag: 14 } },
     { rank: '4', app: { id: 'dredge-rank', title: 'DREDGE+', subtitle: 'Apple Arcade', caption: 'A sinister fishing adventure', icon: iconDredge, action: 'Get', route: 'game:dredge', detailTag: 2 } },
-    { rank: '5', app: { id: 'snake', title: 'Snake.io+', subtitle: 'Apple Arcade', caption: 'Fun battle royale game', icon: iconCult, action: 'Get', route: 'game:rural-life', detailTag: 12 } },
-    { rank: '6', app: { id: 'kitty-rank', title: 'Hello Kitty Island Adventure', subtitle: 'Apple Arcade', caption: 'Island adventures await', icon: iconHelloKitty, action: 'Get', route: 'game:hello-kitty', detailTag: 3 } },
-    { rank: '7', app: { id: 'balatro', title: 'Balatro+', subtitle: 'Apple Arcade', caption: 'When poker meets solitaire', icon: iconDreamlight, action: 'Get', route: 'game:rural-life', detailTag: 13 } },
-    { rank: '8', app: { id: 'bloons-rank', title: 'Bloons TD 6+', subtitle: 'Apple Arcade', caption: 'Mega popular tower defense', icon: iconBloons, action: 'Get', route: 'game:rural-life', detailTag: 14 } },
-    { rank: '9', app: { id: 'angry-rank', title: 'Angry Birds Reloaded', subtitle: 'Apple Arcade', caption: 'Classic slingshot action', icon: iconAngryBirds, action: 'Get', route: 'game:rural-life', detailTag: 15 } },
+    { rank: '5', app: { id: 'cooking-rank', title: 'Cooking Mama', subtitle: 'Apple Arcade', caption: "Let's Cook!", icon: iconCooking, action: 'Get', route: 'game:rural-life', detailTag: 23 } },
+    { rank: '6', app: { id: 'cult-rank', title: 'Cult of the Lamb+', subtitle: 'Apple Arcade', caption: 'Build Your Own Cult', icon: iconCult, action: 'Get', route: 'game:rural-life', detailTag: 12 } },
+    { rank: '7', app: { id: 'kitty-rank', title: 'Hello Kitty Island', subtitle: 'Apple Arcade', caption: 'Island adventures await', icon: iconHelloKitty, action: 'Get', route: 'game:hello-kitty', detailTag: 3 } },
   ]
   return items
 }
@@ -279,10 +277,10 @@ export function fameGames(): StoreApp[] {
 
 export function arcadePerks(): Perk[] {
   const perks: Perk[] = [
-    { title: 'Get a quick overview of Arcade', subtitle: 'Discover the perks of the subscription.', image: perkOverview },
-    { title: 'Share with family and friends', subtitle: 'A more playful lineup for all ages.', image: perkFamily },
-    { title: 'No ads or in-app purchases', subtitle: 'The cleanest way to play on Mac.', image: perkNoAds },
-    { title: 'New games and more', subtitle: 'Fresh recommendations every week.', image: perkNewGames },
+    { title: 'Overview', subtitle: 'Discover the perks of the subscription.', image: perkOverview },
+    { title: 'New Games Weekly', subtitle: 'Fresh recommendations every week.', image: perkNewGames },
+    { title: 'No Ads', subtitle: 'The cleanest way to play on Mac.', image: perkNoAds },
+    { title: 'Family Sharing', subtitle: 'A more playful lineup for all ages.', image: perkFamily },
   ]
   return perks
 }
@@ -356,7 +354,7 @@ export function discoverHeroCards(): EditorialCard[] {
     {
       eyebrow: 'GAMES WE LOVE',
       title: 'Rural Life Village',
-      subtitle: 'Farm, craft, and explore a peaceful countryside.',
+      subtitle: 'Farm, craft, and explore a peaceful countryside -- in this charming adventure.',
       image: ruralHeroImage,
       route: 'discover',
     },
@@ -381,39 +379,25 @@ export function discoverHeroCards(): EditorialCard[] {
 export function discoverFeatureCards(): EditorialCard[] {
   const cards: EditorialCard[] = [
     {
-      eyebrow: 'GET STARTED',
-      title: 'The best Safari extensions',
-      subtitle: 'Enhance your browser with these apps.',
-      image: developHeroImage,
-      route: 'discover',
-    },
-    {
-      eyebrow: 'GET STARTED',
-      title: 'Explore Apple Creator Studio',
-      subtitle: 'Powerful creativity apps.',
-      image: developSpotlightImage,
-      route: 'discover',
-    },
-    {
-      eyebrow: "LET'S PLAY",
-      title: "Don't miss these games",
-      subtitle: 'Download the latest on Mac.',
-      image: playCardTwoImage,
-      route: 'play',
-    },
-    {
-      eyebrow: 'NEW RELEASE',
-      title: 'Level up with Bluey',
-      subtitle: 'A charming family adventure.',
+      eyebrow: 'NEW GAME',
+      title: 'Slide into adventure in Arranger',
+      subtitle: 'Rearrange the furniture...and everything else.',
       image: playCardOneImage,
-      route: 'play',
+      route: 'discover',
     },
     {
-      eyebrow: 'FEATURED',
-      title: 'Craft your perfect day',
-      subtitle: 'Productivity tools for everyone.',
-      image: playCardThreeImage,
+      eyebrow: 'MAJOR UPDATE',
+      title: 'Can you save a dying world?',
+      subtitle: 'Battle the darkness with furry friend Neva.',
+      image: playCardTwoImage,
       route: 'discover',
+    },
+    {
+      eyebrow: 'APPLE ARCADE',
+      title: 'Can you build a lasting empire?',
+      subtitle: 'A new Civilization is here.',
+      image: playCardThreeImage,
+      route: 'play',
     },
   ]
   return cards
@@ -421,28 +405,21 @@ export function discoverFeatureCards(): EditorialCard[] {
 
 export function discoverLovedApps(): StoreApp[] {
   const apps: StoreApp[] = [
-    { id: 'helm', title: 'Helm for App Store Connect', subtitle: 'Manage updates & beta testers', caption: 'Developer Tools', icon: iconDredge, action: 'Get', route: 'discover', detailTag: 24 },
-    { id: 'dropzone', title: 'Dropzone 5', subtitle: 'Streamline Your Workflow', caption: 'Utilities', icon: iconBloons, action: 'Get', route: 'discover', detailTag: 25 },
-    { id: 'craft', title: 'Craft: Notes, Documents, AI', subtitle: 'Task, Schedule & Reminder', caption: 'Productivity', icon: iconHelloKitty, action: 'Get', route: 'discover', detailTag: 26 },
-    { id: 'crimson', title: 'Crimson Desert', subtitle: 'Action', caption: 'Games', icon: iconCult, action: '₹ 3,999', route: 'discover', detailTag: 27 },
-    { id: 'wuthering', title: 'Wuthering Waves', subtitle: 'Waking of a World', caption: 'Games', icon: iconOceanhorn, action: 'Get', route: 'discover', detailTag: 28 },
-    { id: 'return-dark', title: 'Return to Dark Castle', subtitle: 'Action', caption: 'Games', icon: iconDredge, action: '₹ 1,999', route: 'discover', detailTag: 29 },
-    { id: 'prompt-three', title: 'Prompt 3', subtitle: 'The SSH app with speed & style', caption: 'Developer Tools', icon: iconDreamlight, action: 'Get', route: 'develop', detailTag: 30 },
-    { id: 'tabpilot', title: 'TabPilot', subtitle: 'Quick tab search for Safari', caption: 'Utilities', icon: iconPacman, action: '₹ 399', route: 'discover', detailTag: 32 },
-    { id: 'ratcheteer', title: 'Ratcheteer DX', subtitle: 'A lo-fi action-adventure', caption: 'Games', icon: iconLego, action: '₹ 1,299', route: 'discover', detailTag: 33 },
+    { id: 'oceanhorn', title: 'Oceanhorn', subtitle: 'Monster of Uncharted Seas', caption: 'Games', icon: iconOceanhorn, action: 'View', route: 'discover', detailTag: 24 },
+    { id: 'angry-birds', title: 'Angry Birds Reloaded', subtitle: 'Slingshot Fun Returns', caption: 'Games', icon: iconAngryBirds, action: 'View', route: 'discover', detailTag: 25 },
+    { id: 'cult', title: 'Cult of the Lamb', subtitle: 'Build Your Own Cult', caption: 'Games', icon: iconCult, action: 'View', route: 'discover', detailTag: 26 },
+    { id: 'bloons', title: 'Bloons TD 6+', subtitle: 'Tower Defense', caption: 'Games', icon: iconBloons, action: 'View', route: 'discover', detailTag: 27 },
+    { id: 'sneaky', title: 'Sneaky Sasquatch', subtitle: 'Open World Adventure', caption: 'Games', icon: iconSneaky, action: 'View', route: 'discover', detailTag: 28 },
+    { id: 'dredge', title: 'DREDGE', subtitle: 'A lo-fi fishing adventure', caption: 'Games', icon: iconDredge, action: 'View', route: 'discover', detailTag: 29 },
+    { id: 'pacman', title: 'PAC-MAN Party Royale', subtitle: 'Classic Arcade Fun', caption: 'Games', icon: iconPacman, action: 'View', route: 'discover', detailTag: 30 },
+    { id: 'cooking', title: 'Cooking Mama: Cuisine!', subtitle: "Let's Cook!", caption: 'Games', icon: iconCooking, action: 'View', route: 'discover', detailTag: 32 },
+    { id: 'hello-kitty', title: 'Hello Kitty Island', subtitle: 'Explore a Tropical Paradise', caption: 'Games', icon: iconHelloKitty, action: 'View', route: 'discover', detailTag: 33 },
   ]
   return apps
 }
 
 export function discoverLatestGames(): EditorialCard[] {
   const cards: EditorialCard[] = [
-    {
-      eyebrow: 'GAMES WE LOVE',
-      title: 'Draft your destiny in Blue Prince',
-      subtitle: 'Investigate a mysterious mansion.',
-      image: playCardThreeImage,
-      route: 'play',
-    },
     {
       eyebrow: 'NEW GAME',
       title: 'Explore ancient shrines',
@@ -453,22 +430,49 @@ export function discoverLatestGames(): EditorialCard[] {
     {
       eyebrow: 'MAJOR UPDATE',
       title: 'Tend your garden',
-      subtitle: 'Grow rare plants and discover recipes.',
+      subtitle: 'Grow rare plants and discover new recipes.',
       image: ruralScreenTwoImage,
       route: 'play',
     },
     {
-      eyebrow: 'WORLD PREMIERE',
-      title: 'Embark on a Bluey Adventure',
-      subtitle: 'Track down the elusive gold pen.',
-      image: playCardOneImage,
+      eyebrow: 'APPLE ARCADE',
+      title: 'Can you build a lasting empire?',
+      subtitle: 'Civilization awaits your command.',
+      image: playHeroImage,
+      route: 'play',
+    },
+  ]
+  return cards
+}
+
+export function arcadeWhatToPlayCards(): EditorialCard[] {
+  const cards: EditorialCard[] = [
+    {
+      eyebrow: 'BEST NEW GAMES',
+      title: 'Draft your destiny in Blue Prince',
+      subtitle: 'A world of adventure awaits.',
+      image: playCardThreeImage,
       route: 'play',
     },
     {
       eyebrow: 'APPLE ARCADE',
-      title: "Beat the king in Let's! Revolution!",
-      subtitle: 'Fight hidden foes on dangerous roads.',
-      image: playCardTwoImage,
+      title: 'Can you build a lasting empire?',
+      subtitle: 'Civilization awaits your command.',
+      image: playHeroImage,
+      route: 'play',
+    },
+    {
+      eyebrow: 'GAMES WE LOVE',
+      title: 'Explore ancient shrines',
+      subtitle: 'Rural Life Village is full of secrets.',
+      image: ruralScreenOneImage,
+      route: 'play',
+    },
+    {
+      eyebrow: "EDITOR'S PICK",
+      title: 'Warp reality in Control',
+      subtitle: 'A mind-bending action game.',
+      image: playCardOneImage,
       route: 'play',
     },
   ]

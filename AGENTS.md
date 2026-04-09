@@ -61,18 +61,17 @@ examples/native-gui/
 ├── dashboard.tsx            Thin entry point → dashboard/app.tsx
 ├── incident-tracker.tsx     Thin entry point → incident-tracker/app.tsx
 ├── app-store.tsx            Thin entry point → app-store/app.tsx
-├── ui-gallery.tsx           Thin entry point → ui-gallery/app.tsx
 ├── dashboard/
 ├── incident-tracker/
 ├── app-store/
-├── ui-gallery/
+├── conformance/gallery.tsx  Geometry oracle gallery app
 └── lib/
 ```
 
 ## Key Rules
 
 1. **Every change must pass `bash harness/correctness.sh`** — 9 tests (3 targets x 3 runtimes).
-2. **Compile the maintained UI apps after host/compiler changes**: `./strictts build examples/native-gui/dashboard.tsx`, `./strictts build examples/native-gui/incident-tracker.tsx`, `./strictts build examples/native-gui/app-store.tsx`, and `./strictts build examples/native-gui/ui-gallery.tsx`
+2. **Compile the maintained UI apps after host/compiler changes**: `./strictts build examples/native-gui/dashboard.tsx`, `./strictts build examples/native-gui/incident-tracker.tsx`, `./strictts build examples/native-gui/app-store.tsx`, and `./strictts build conformance/gallery.tsx`
 3. **Test debug mode too**: `./strictts build <file> --debug` — bounds checking is only active in debug builds.
 4. **No `any`, no `unknown`, no type assertions** in target TypeScript. The validator rejects them.
 5. **Variables used by functions need explicit type annotations** — the compiler defaults to `double`.
@@ -87,7 +86,7 @@ examples/native-gui/
 2. Use `create(...)` to emit the UIHandle (auto-registers element ID)
 3. Add the C function to `packages/tsn-host-appkit/src/ui.h`
 4. Implement in the appropriate AppKit host runtime fragment under `packages/tsn-host-appkit/src/runtime/` (or `ui.m` only if it is truly shared compile entry glue)
-5. Add or update a case in `examples/native-gui/ui-gallery/`
+5. Add or update a case in `conformance/cases/` and wire it into `conformance/gallery.tsx`
 6. Document in `docs/jsx.md` and `docs/ui-framework.md`
 
 ### Adding a Tailwind class
@@ -123,7 +122,7 @@ bash harness/correctness.sh
 ./strictts build examples/native-gui/dashboard.tsx --debug
 ./strictts build examples/native-gui/incident-tracker.tsx
 ./strictts build examples/native-gui/app-store.tsx
-./strictts build examples/native-gui/ui-gallery.tsx
+./strictts build conformance/gallery.tsx
 
 # Visual conformance harness
 bash harness/ui-conformance.sh

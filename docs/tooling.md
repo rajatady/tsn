@@ -117,7 +117,7 @@ Query running UI apps via Unix socket. When a single app is running, the inspect
 
 The inspector commands are synchronous now: `click` and `type` only return after the main-thread interaction has been applied. This makes screenshot- and state-based verification reliable in automated checks.
 
-The default UI verification path now includes the native gallery app at [examples/native-gui/ui-gallery.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/examples/native-gui/ui-gallery.tsx). `bash harness/ui-conformance.sh` builds it, launches it, drives it through the inspector, and writes screenshots plus tree dumps to `/tmp/tsn-ui-conformance`.
+The default UI verification path now includes the native gallery app at [conformance/gallery.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/conformance/gallery.tsx). `bash harness/ui-conformance.sh` builds it, launches it, drives it through the inspector, and writes screenshots plus tree dumps to `/tmp/tsn-ui-conformance`.
 
 ### Commands
 

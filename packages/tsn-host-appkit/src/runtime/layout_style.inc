@@ -33,6 +33,12 @@ static inline BOOL tsn_layout_length_is_set(TSNLayoutLength length) {
     int paddingBottom;
     int paddingLeft;
 
+    BOOL hasMargin;
+    int marginTop;
+    int marginRight;
+    int marginBottom;
+    int marginLeft;
+
     BOOL hasSpacing;
     int spacing;
 
@@ -140,6 +146,12 @@ static void tsn_apply_pending_layout_style(NSView *view, YGNodeRef node) {
         YGNodeStyleSetPadding(node, YGEdgeRight, style->paddingRight);
         YGNodeStyleSetPadding(node, YGEdgeBottom, style->paddingBottom);
         YGNodeStyleSetPadding(node, YGEdgeLeft, style->paddingLeft);
+    }
+    if (style->hasMargin) {
+        YGNodeStyleSetMargin(node, YGEdgeTop, style->marginTop);
+        YGNodeStyleSetMargin(node, YGEdgeRight, style->marginRight);
+        YGNodeStyleSetMargin(node, YGEdgeBottom, style->marginBottom);
+        YGNodeStyleSetMargin(node, YGEdgeLeft, style->marginLeft);
     }
     if (style->hasSpacing) YGNodeStyleSetGap(node, YGGutterAll, style->spacing);
     if (style->hasFlex) YGNodeStyleSetFlex(node, style->flex);

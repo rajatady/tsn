@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-col w-[500px] bg-zinc-900 p-4">
+    <div data-testid="hero" class="h-[60px] rounded-xl bg-zinc-800 mb-6"></div>
+    <div data-testid="title" class="h-[33px] rounded bg-zinc-700 mb-4"></div>
+    <div data-testid="row" class="flex gap-4 mb-10">
+      <div data-testid="card-a" class="w-[355px] h-[292px] rounded-xl bg-zinc-800 shrink-0"></div>
+      <div data-testid="card-b" class="w-[355px] h-[292px] rounded-xl bg-zinc-700 shrink-0"></div>
+    </div>
+    <div data-testid="footer" class="h-[20px] rounded bg-zinc-800 mt-[2px]"></div>
+  </div>
+</body>
+</html>

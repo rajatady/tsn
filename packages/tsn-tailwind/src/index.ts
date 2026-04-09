@@ -61,6 +61,8 @@ function renderTailwindOp(op: TailwindOp, handle: string): string[] {
       return [`ui_set_spacing(${handle}, ${op.value});`]
     case 'padding':
       return [`ui_set_padding(${handle}, ${op.top}, ${op.right}, ${op.bottom}, ${op.left});`]
+    case 'margin':
+      return [`ui_set_margin(${handle}, ${op.top}, ${op.right}, ${op.bottom}, ${op.left});`]
     case 'size':
       return renderLengthOp('size', handle, op.width, op.height)
     case 'min-size':
@@ -141,6 +143,12 @@ function applyStylePatch(result: TailwindResult, op: TailwindOp): void {
       result.stylePatch.layoutStyle.paddingRight = op.right
       result.stylePatch.layoutStyle.paddingBottom = op.bottom
       result.stylePatch.layoutStyle.paddingLeft = op.left
+      return
+    case 'margin':
+      result.stylePatch.layoutStyle.marginTop = op.top
+      result.stylePatch.layoutStyle.marginRight = op.right
+      result.stylePatch.layoutStyle.marginBottom = op.bottom
+      result.stylePatch.layoutStyle.marginLeft = op.left
       return
     case 'size':
       if (op.width) result.stylePatch.layoutStyle.width = op.width
@@ -243,6 +251,10 @@ export function parseTailwind(className: string, handle: string): TailwindResult
   let pr = -1
   let pb = -1
   let pl = -1
+  let mt = -1
+  let mr = -1
+  let mb = -1
+  let ml = -1
   let widthValue: LengthValue | null = null
   let heightValue: LengthValue | null = null
 
@@ -304,13 +316,13 @@ export function parseTailwind(className: string, handle: string): TailwindResult
     if (mMatch) {
       const value = px(parseFloat(mMatch[2]))
       switch (mMatch[1]) {
-        case 'm': pt = pr = pb = pl = value; break
-        case 'mx': pl = pr = value; break
-        case 'my': pt = pb = value; break
-        case 'mt': pt = value; break
-        case 'mr': pr = value; break
-        case 'mb': pb = value; break
-        case 'ml': pl = value; break
+        case 'm': mt = mr = mb = ml = value; break
+        case 'mx': ml = mr = value; break
+        case 'my': mt = mb = value; break
+        case 'mt': mt = value; break
+        case 'mr': mr = value; break
+        case 'mb': mb = value; break
+        case 'ml': ml = value; break
       }
       continue
     }
@@ -320,13 +332,13 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       if (parsed && parsed.unit === 'point') {
         const value = parsed.value
         switch (mArbitrary[1]) {
-          case 'm': pt = pr = pb = pl = value; break
-          case 'mx': pl = pr = value; break
-          case 'my': pt = pb = value; break
-          case 'mt': pt = value; break
-          case 'mr': pr = value; break
-          case 'mb': pb = value; break
-          case 'ml': pl = value; break
+          case 'm': mt = mr = mb = ml = value; break
+          case 'mx': ml = mr = value; break
+          case 'my': mt = mb = value; break
+          case 'mt': mt = value; break
+          case 'mr': mr = value; break
+          case 'mb': mb = value; break
+          case 'ml': ml = value; break
         }
         continue
       }
@@ -518,6 +530,12 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       }
     }
 
+    const roundArbitrary = cls.match(/^rounded-\[(\d+)(?:px)?\]$/)
+    if (roundArbitrary) {
+      pushOps(result, { kind: 'corner-radius', radius: parseInt(roundArbitrary[1]) })
+      continue
+    }
+
     const roundMatch = cls.match(/^rounded(-(\w+))?$/)
     if (roundMatch) {
       const radii: Record<string, number> = {
@@ -572,6 +590,16 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       right: pr < 0 ? 0 : pr,
       bottom: pb < 0 ? 0 : pb,
       left: pl < 0 ? 0 : pl,
+    })
+  }
+
+  if (mt >= 0 || mr >= 0 || mb >= 0 || ml >= 0) {
+    pushOps(result, {
+      kind: 'margin',
+      top: mt < 0 ? 0 : mt,
+      right: mr < 0 ? 0 : mr,
+      bottom: mb < 0 ? 0 : mb,
+      left: ml < 0 ? 0 : ml,
     })
   }
 

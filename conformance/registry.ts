@@ -98,6 +98,15 @@ export const geometryCases: GeometryCase[] = [
     testIds: ['root', 'rail'],
     features: ['max-w-[]', 'mx-auto'],
   },
+  {
+    id: 'margins',
+    label: 'Margin spacing and stacked rhythm',
+    category: 'layout',
+    viewport: { width: 760, height: 520 },
+    testIds: ['root', 'hero', 'title', 'row', 'card-a', 'card-b', 'footer'],
+    features: ['mb-*', 'mt-*', 'gap-0', 'w-[px]', 'h-[px]'],
+    tolerance: { position: 2, size: 2 },
+  },
 
   // ─── Composite Patterns ─────────────────────────────────────────
   {
