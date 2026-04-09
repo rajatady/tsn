@@ -130,18 +130,16 @@ export function ChatLoginScreen(theme: string) {
         </VStack>
         <HStack className="flex-1 items-center justify-center bg-[#1b1b1f] p-12">
           <View testId="login-card" className="w-[380] rounded-[24] border border-white/10 bg-[#232327] p-8">
-            <VStack className="gap-6">
+            <VStack>
               <View className="w-[48] h-[48] rounded-[16] bg-white items-center justify-center">
                 <Text className="text-lg font-semibold text-zinc-950">◎</Text>
               </View>
-              <VStack className="gap-2">
-                <Text className="text-[34] font-semibold leading-[38] text-zinc-50">Welcome back</Text>
-                <Text className="text-sm leading-6 text-zinc-400">
+              <Text className="mt-6 text-3xl font-semibold text-zinc-50">Welcome back</Text>
+              <Text className="mt-2 text-sm leading-6 text-zinc-400">
                   Continue with a simulated Apple sign-in. No networking, just local state transitions.
-                </Text>
-              </VStack>
-              <Button testId="apple-login-btn" className="h-[48]" variant="primary" onClick={beginChatLogin}>Continue with Apple</Button>
-              <Button className="h-[48]" variant="ghost">Continue with email</Button>
+              </Text>
+              <Button testId="apple-login-btn" className="mt-8 h-[48]" variant="primary" onClick={beginChatLogin}>Continue with Apple</Button>
+              <Button className="mt-3 h-[48]" variant="ghost">Continue with email</Button>
             </VStack>
           </View>
         </HStack>

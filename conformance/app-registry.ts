@@ -91,7 +91,7 @@ export const appScreens: AppScreen[] = [
     windowTitle: 'TSN Chat',
     buildTarget: 'examples/native-gui/chat.tsx',
     htmlOracle: 'scratch/chatgpt-html/index.html',
-    viewport: { width: 1440, height: 856 },
+    viewport: { width: 1440, height: 838 },
     testIds: [
       'login-screen',
       'login-card',
@@ -106,7 +106,7 @@ export const appScreens: AppScreen[] = [
     windowTitle: 'TSN Chat',
     buildTarget: 'examples/native-gui/chat.tsx',
     htmlOracle: 'scratch/chatgpt-html/app.html',
-    viewport: { width: 1440, height: 856 },
+    viewport: { width: 1440, height: 838 },
     navigateTo: 'apple-login-btn',
     testIds: [
       'sidebar',

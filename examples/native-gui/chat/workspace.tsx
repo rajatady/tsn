@@ -311,9 +311,9 @@ export function ChatWorkspace(
             <VStack testId="conversation-panel" className="max-w-[840] mx-auto gap-5">
             <HStack className="justify-end">
               <View testId="msg-user-0" className="w-[720] rounded-[18] border border-white/10 bg-[#27272a] px-5 py-4">
-                <VStack className="w-[640] gap-4">
+                <VStack className="gap-4">
                   <Text className="text-sm leading-6 text-zinc-50">
-                    Build a clean TSN-native chat app with simulated login, themes, files, and a calm chat shell.
+                    Build a clean TSN-native chat app that feels close to ChatGPT. Keep the design standard, keep the architecture honest, and simulate login, themes, files, and thinking UI.
                   </Text>
                   <HStack className="gap-2">
                     {roadmap ? <View testId="attached-pill-0" className="rounded-[8] border border-white/10 bg-[#232327] px-3 py-2"><Text className="text-xs text-zinc-400">roadmap-q3.pdf</Text></View> : <View />}
@@ -322,9 +322,9 @@ export function ChatWorkspace(
                 </VStack>
               </View>
             </HStack>
-            <HStack className="justify-start">
-              <View testId="msg-assistant-0" className="w-[760] rounded-[18] border border-white/10 bg-[#18181b] px-5 py-5">
-                <VStack className="w-[680] gap-4">
+            <HStack className="justify-start mt-1">
+              <View testId="msg-assistant-0" className="w-[760] rounded-[18] border border-white/10 bg-[#18181b] px-5 py-7">
+                <VStack className="gap-4">
                   <HStack className="items-center gap-3">
                     <View className="w-[32] h-[32] rounded-[10] bg-white items-center justify-center"><Text className="text-xs font-semibold text-zinc-950">◎</Text></View>
                     <VStack className="gap-1">
@@ -332,14 +332,14 @@ export function ChatWorkspace(
                       <Text className="text-xs text-zinc-500">Drafting the oracle first</Text>
                     </VStack>
                   </HStack>
-                  <View testId="thinking-panel-0" className="rounded-[14] border border-white/10 bg-[#232327]">
+                  <View testId="thinking-panel-0" className="w-[720] rounded-[14] border border-white/10 bg-[#232327]">
                     <VStack className="gap-0">
                       <Button testId="thinking-toggle-0" className="h-[48]" variant="ghost" onClick={toggleThinkingOpen}>Thinking</Button>
-                      {thinkingOpen ? <Text className="px-4 pb-4 text-sm leading-6 text-zinc-400">Start with the browser oracle and keep the native pass inside the current primitive set.</Text> : <View />}
+                      {thinkingOpen ? <Text className="px-4 pb-4 text-sm leading-6 text-zinc-400">Start with a browser oracle, keep the surfaces flat, and make the native version prove the primitive split by avoiding framework edits unless a real low-level gap shows up.</Text> : <View />}
                     </VStack>
                   </View>
-                  <Text className="text-sm leading-6 text-zinc-50">Keep the layout standard: compact sidebar, centered transcript, quiet header, and a simple composer.</Text>
-                  <Text className="text-sm leading-6 text-zinc-50">The interesting part is the state and composition, not dramatic styling.</Text>
+                  <Text className="text-sm leading-6 text-zinc-50">I’d keep the shell very standard: a compact sidebar, a centered transcript, a quiet header, and a composer with attachments and a send action.</Text>
+                  <Text className="text-sm leading-6 text-zinc-50">The interesting part is the state and composition, not dramatic styling. This should feel familiar before it feels fancy.</Text>
                 </VStack>
               </View>
             </HStack>

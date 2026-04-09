@@ -34,6 +34,10 @@ static NSArray<NSView *> *inspector_child_views(NSView *view) {
 
 static NSString *inspector_node_text(NSView *view) {
     if ([view isKindOfClass:[TSNTextLabelView class]]) return tsn_text_string(view);
+    if ([view respondsToSelector:@selector(title)]) {
+        id title = [view valueForKey:@"title"];
+        if ([title isKindOfClass:[NSString class]]) return (NSString *)title;
+    }
     if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).stringValue ?: @"";
     if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) return ((NSTextView *)((NSScrollView *)view).documentView).string ?: @"";
     if ([view isKindOfClass:[NSPopUpButton class]]) return ((NSPopUpButton *)view).titleOfSelectedItem ?: @"";
@@ -110,6 +114,16 @@ static NSString *click_button(NSString *label, NSView *view) {
             return [NSString stringWithFormat:@"Clicked: %@", btn.title];
         }
     }
+    if ([view respondsToSelector:@selector(tsnPerformClick)]) {
+        NSString *text = inspector_node_text(view);
+        if ([text containsString:label]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            [view performSelector:@selector(tsnPerformClick)];
+#pragma clang diagnostic pop
+            return [NSString stringWithFormat:@"Clicked: %@", text];
+        }
+    }
 
     for (NSView *child in inspector_child_views(view)) {
         NSString *result = click_button(label, child);
@@ -126,6 +140,14 @@ static NSString *click_element(NSString *element_id) {
         NSButton *btn = (NSButton *)view;
         [btn performClick:nil];
         return [NSString stringWithFormat:@"Clicked: %@", btn.title];
+    }
+    if ([view respondsToSelector:@selector(tsnPerformClick)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [view performSelector:@selector(tsnPerformClick)];
+#pragma clang diagnostic pop
+        NSString *text = inspector_node_text(view);
+        return text.length > 0 ? [NSString stringWithFormat:@"Clicked: %@", text] : [NSString stringWithFormat:@"Clicked: %@", element_id];
     }
 
     for (NSGestureRecognizer *gesture in view.gestureRecognizers) {
@@ -262,6 +284,11 @@ static void find_text(NSView *view, NSString *query, int depth, NSMutableString 
 static NSString *get_property(NSString *element_id, NSString *prop) {
     NSView *view = g_element_ids[element_id];
     if (!view) return [NSString stringWithFormat:@"Element not found: %@\n", element_id];
+
+    if (view.window.contentView) {
+        [view.window.contentView layoutSubtreeIfNeeded];
+        [view.window.contentView displayIfNeeded];
+    }
 
     TSNShadowNode *node = tsn_shadow_node_for_obj(view);
 

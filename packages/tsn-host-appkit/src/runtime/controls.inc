@@ -67,6 +67,7 @@
 @property (nonatomic) CGFloat tsnCornerRadius;
 @property (nonatomic) NSEdgeInsets tsnContentInsets;
 - (void)setClickFn:(UIClickFn)fn tag:(int)tag;
+- (void)tsnPerformClick;
 @end
 
 @implementation TSNPressableView
@@ -80,6 +81,9 @@
         _tsnTitleColor = NSColor.labelColor;
         _tsnCornerRadius = 8;
         _tsnContentInsets = NSEdgeInsetsMake(6, 12, 6, 12);
+        NSClickGestureRecognizer *gesture = [[NSClickGestureRecognizer alloc] initWithTarget:self action:@selector(handleClickGesture:)];
+        [self addGestureRecognizer:gesture];
+        retain_persistent(gesture);
     }
     return self;
 }
@@ -124,6 +128,12 @@
 - (void)setClickFn:(UIClickFn)fn tag:(int)tag {
     _tsnClickFn = fn;
     _tsnClickTag = tag;
+}
+- (void)handleClickGesture:(__unused NSGestureRecognizer *)gesture {
+    if (_tsnClickFn) _tsnClickFn(_tsnClickTag);
+}
+- (void)tsnPerformClick {
+    if (_tsnClickFn) _tsnClickFn(_tsnClickTag);
 }
 @end
 
