@@ -6,6 +6,7 @@ UIHandle ui_symbol(const char *name, int size) {
     NSImageView *iv = [NSImageView imageViewWithImage:img];
     iv.symbolConfiguration = [NSImageSymbolConfiguration configurationWithPointSize:size weight:NSFontWeightMedium];
     iv.contentTintColor = [NSColor colorWithWhite:0.7 alpha:1];
+    tsn_create_view_node(iv, TSNNodeKindLeaf, 0, YES);
     retain_render(iv);
     return (__bridge UIHandle)iv;
 }
@@ -37,6 +38,7 @@ UIHandle ui_image(const char *path) {
     /* Don't pre-set frame to natural image size — let Tailwind w-[]/h-[] and
        the layout system control sizing. Images without explicit dimensions will
        get avail_w/avail_h from their parent container (correct CSS behavior). */
+    tsn_create_view_node(iv, TSNNodeKindLeaf, 0, YES);
     retain_render(iv);
     return (__bridge UIHandle)iv;
 }
@@ -65,19 +67,27 @@ void ui_image_set_scaling(UIHandle img, int mode) {
 /* ─── Search Field ───────────────────────────────────────────────── */
 
 UIHandle ui_search_field(const char *placeholder) {
-    NSSearchField *f = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 300, 28)];
+    NSSearchField *f = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 0, 28)];
     f.placeholderString = [NSString stringWithUTF8String:placeholder];
     f.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+    tsn_text_set_kind(f, TSNTextRuntimeKindSearch);
+    tsn_text_set_wrap_mode(f, TSNTextRuntimeWrapModeTruncate, NO);
+    TSNShadowNode *node = tsn_create_view_node(f, TSNNodeKindLeaf, 0, YES);
+    YGNodeStyleSetHeight(node.yogaNode, 28);
     retain_render(f);
     return (__bridge UIHandle)f;
 }
 
 UIHandle ui_text_field(const char *placeholder) {
-    NSTextField *f = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 200, 24)];
+    NSTextField *f = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 0, 24)];
     f.placeholderString = [NSString stringWithUTF8String:placeholder];
     f.drawsBackground = NO;
     f.bordered = YES;
     f.bezelStyle = NSTextFieldRoundedBezel;
+    tsn_text_set_kind(f, TSNTextRuntimeKindInput);
+    tsn_text_set_wrap_mode(f, TSNTextRuntimeWrapModeTruncate, NO);
+    TSNShadowNode *node = tsn_create_view_node(f, TSNNodeKindLeaf, 0, YES);
+    YGNodeStyleSetHeight(node.yogaNode, 24);
     retain_render(f);
     return (__bridge UIHandle)f;
 }
@@ -87,9 +97,9 @@ void ui_on_text_changed(UIHandle field, UITextChangedFn fn) {
     d.callback = fn;
     retain_persistent(d);
     if ([(__bridge NSView *)field isKindOfClass:[NSSearchField class]])
-        ((NSSearchField *)(__bridge NSView *)field).delegate = d;
+        ((NSSearchField *)(__bridge NSView *)field).delegate = (id<NSSearchFieldDelegate>)d;
     else if ([(__bridge NSView *)field isKindOfClass:[NSTextField class]])
-        ((NSTextField *)(__bridge NSView *)field).delegate = d;
+        ((NSTextField *)(__bridge NSView *)field).delegate = (id<NSTextFieldDelegate>)d;
 }
 
 void ui_text_input_set_value(UIHandle field, const char *text) {
@@ -134,6 +144,7 @@ UIHandle ui_button(const char *label, UIClickFn fn, int tag) {
         b.action = @selector(clicked:);
         retain_persistent(t);
     }
+    tsn_create_view_node(b, TSNNodeKindLeaf, 0, YES);
     retain_render(b);
     return (__bridge UIHandle)b;
 }
@@ -151,6 +162,7 @@ UIHandle ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, 
         b.target = t; b.action = @selector(clicked:);
         retain_persistent(t);
     }
+    tsn_create_view_node(b, TSNNodeKindLeaf, 0, YES);
     retain_render(b);
     return (__bridge UIHandle)b;
 }

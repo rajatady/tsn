@@ -47,9 +47,9 @@ build_case "app-store release" "examples/native-gui/app-store.tsx"
 build_case "app-store debug" "examples/native-gui/app-store.tsx" --debug
 
 echo ""
-echo "━━━ ui-gallery ━━━"
-build_case "ui-gallery release" "examples/native-gui/ui-gallery.tsx"
-build_case "ui-gallery debug" "examples/native-gui/ui-gallery.tsx" --debug
+echo "━━━ gallery ━━━"
+build_case "gallery release" "conformance/gallery.tsx"
+build_case "gallery debug" "conformance/gallery.tsx" --debug
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -220,6 +220,15 @@ void ui_replace_root(UIHandle root) {
     [current makeKeyAndOrderFront:nil];
     g_inspect_window = current;
 
+    TSNShadowNode *nextNode = tsn_shadow_node_for_obj(next);
+    if (!nextNode) nextNode = tsn_shadow_node_for_obj(replacement);
+    if (nextNode) {
+        nextNode.window = current;
+        nextNode.view = replacement;
+        tsn_set_shadow_node_for_obj(current, nextNode);
+        tsn_set_shadow_node_for_obj(replacement, nextNode);
+    }
+
     [next orderOut:nil];
     [next close];
     finish_render_cycle();
@@ -240,10 +249,10 @@ UIHandle ui_window(const char *title, int w, int h, bool dark) {
 
     UIStackContainer *root = [UIStackContainer new];
     root.direction = 0;
-    root.flex = 1;
     root.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     root.frame = win.contentView.bounds;
     win.contentView = root;
+    tsn_create_window_node(win, root);
 
     retain_render(win);
     return (__bridge UIHandle)win;

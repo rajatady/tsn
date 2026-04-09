@@ -110,6 +110,9 @@ bash harness/examples-correctness.sh
 
 # Native GUI build smoke tests
 bash harness/gui-builds.sh
+
+# Geometry gallery app
+./strictts build conformance/gallery.tsx
 ```
 
 ## Native GUI: HR Dashboard
@@ -273,9 +276,9 @@ strictts build examples/native-gui/app-store.tsx
 strictts build examples/native-gui/app-store.tsx --debug
 ```
 
-## Native GUI: UI Gallery
+## Native GUI: Geometry Gallery
 
-Located in [examples/native-gui/ui-gallery.tsx](../examples/native-gui/ui-gallery.tsx). This is the provider-facing visual verification surface for the TSN UI stack rather than an end-user product demo.
+Located in [conformance/gallery.tsx](../conformance/gallery.tsx). This is the provider-facing visual verification surface for the TSN UI stack rather than an end-user product demo.
 
 It exercises:
 
@@ -289,8 +292,8 @@ It exercises:
 The gallery is paired with the conformance harness:
 
 ```bash
-strictts build examples/native-gui/ui-gallery.tsx
-strictts build examples/native-gui/ui-gallery.tsx --debug
+strictts build conformance/gallery.tsx
+strictts build conformance/gallery.tsx --debug
 bash harness/ui-conformance.sh
 ```
 

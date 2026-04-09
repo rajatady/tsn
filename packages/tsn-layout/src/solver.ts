@@ -1,4 +1,4 @@
-import type { TSNAxis } from '@tsn/core'
+import type { TSNAxis, TSNLengthResolvable } from '@tsn/core'
 
 import type {
   LayoutAlign,
@@ -197,7 +197,7 @@ function measureLeaf(node: LayoutNode, available: LayoutSize): MeasuredNode {
   if (node.role === 'content-rail') {
     return clampSize(
       {
-        width: Math.min(available.width, constraints.maxWidth ?? available.width),
+        width: Math.min(available.width, resolveLength(constraints.maxWidth, available.width) ?? available.width),
         height: resolveExplicitHeight(constraints, available.height) ?? node.intrinsicHeight ?? 0,
       },
       constraints,
@@ -289,9 +289,10 @@ function sumMain(sizes: MeasuredNode[], axis: TSNAxis): number {
 function resolveWidth(node: LayoutNode, availableWidth: number, measuredWidth: number): number {
   if (node.role === 'content-rail') {
     return clampDimension(
-      Math.min(availableWidth, node.constraints.maxWidth ?? availableWidth),
+      Math.min(availableWidth, resolveLength(node.constraints.maxWidth, availableWidth) ?? availableWidth),
       node.constraints.minWidth,
       node.constraints.maxWidth,
+      availableWidth,
     )
   }
   return resolveExplicitWidth(node.constraints, availableWidth) ?? (availableWidth > 0 ? availableWidth : measuredWidth)
@@ -302,20 +303,24 @@ function resolveHeight(node: LayoutNode, availableHeight: number, measuredHeight
 }
 
 function resolveExplicitWidth(constraints: LayoutConstraints, fallback: number): number | undefined {
-  if (constraints.width != null) {
-    return constraints.width
+  const width = resolveLength(constraints.width, fallback)
+  if (width != null) {
+    return width
   }
-  if (constraints.maxWidth != null && fallback < constraints.maxWidth) {
+  const maxWidth = resolveLength(constraints.maxWidth, fallback)
+  if (maxWidth != null && fallback < maxWidth) {
     return fallback
   }
   return undefined
 }
 
 function resolveExplicitHeight(constraints: LayoutConstraints, fallback: number): number | undefined {
-  if (constraints.height != null) {
-    return constraints.height
+  const height = resolveLength(constraints.height, fallback)
+  if (height != null) {
+    return height
   }
-  if (constraints.maxHeight != null && fallback < constraints.maxHeight) {
+  const maxHeight = resolveLength(constraints.maxHeight, fallback)
+  if (maxHeight != null && fallback < maxHeight) {
     return fallback
   }
   return undefined
@@ -345,18 +350,25 @@ function effectiveGrow(node: LayoutNode): number {
 
 function clampSize(size: LayoutSize, constraints: LayoutConstraints): LayoutSize {
   return {
-    width: clampDimension(size.width, constraints.minWidth, constraints.maxWidth),
-    height: clampDimension(size.height, constraints.minHeight, constraints.maxHeight),
+    width: clampDimension(size.width, constraints.minWidth, constraints.maxWidth, size.width),
+    height: clampDimension(size.height, constraints.minHeight, constraints.maxHeight, size.height),
   }
 }
 
-function clampDimension(value: number, min?: number, max?: number): number {
+function clampDimension(
+  value: number,
+  min?: TSNLengthResolvable,
+  max?: TSNLengthResolvable,
+  fallback = value,
+): number {
   let next = Number.isFinite(value) ? value : 0
-  if (min != null) {
-    next = Math.max(next, min)
+  const resolvedMin = resolveLength(min, fallback)
+  const resolvedMax = resolveLength(max, fallback)
+  if (resolvedMin != null) {
+    next = Math.max(next, resolvedMin)
   }
-  if (max != null) {
-    next = Math.min(next, max)
+  if (resolvedMax != null) {
+    next = Math.min(next, resolvedMax)
   }
   return next
 }
@@ -372,6 +384,13 @@ function applyAspectRatio(size: LayoutSize, constraints: LayoutConstraints): Lay
     return { width: size.height * constraints.aspectRatio, height: size.height }
   }
   return size
+}
+
+function resolveLength(value: TSNLengthResolvable | undefined, fallback: number): number | undefined {
+  if (value == null) return undefined
+  if (typeof value === 'number') return value
+  if (value.unit === 'point') return value.value
+  return fallback * (value.value / 100)
 }
 
 function resolveCrossOffset(align: LayoutAlign, availableCross: number, childCross: number): number {

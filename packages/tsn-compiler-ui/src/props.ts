@@ -1,4 +1,5 @@
 import * as ts from 'typescript'
+import type { TSNPropValue } from '@tsn/core'
 import type { CodeGenContext } from './types.js'
 
 export class JsxProps {
@@ -17,10 +18,15 @@ export class JsxProps {
   propStr(props: Map<string, ts.Node | null>, key: string): string {
     const val = props.get(key)
     if (!val) return ''
-    if (ts.isStringLiteral(val)) return val.text
-    if (ts.isJsxExpression(val) && val.expression && ts.isStringLiteral(val.expression))
-      return val.expression.text
+    const resolved = this.staticStringValue(val)
+    if (resolved !== undefined) return resolved
     return ''
+  }
+
+  isStaticallyResolvableString(props: Map<string, ts.Node | null>, key: string): boolean {
+    const val = props.get(key)
+    if (!val) return false
+    return this.staticStringValue(val) !== undefined
   }
 
   propNum(props: Map<string, ts.Node | null>, key: string, fallback: number): number {
@@ -47,6 +53,17 @@ export class JsxProps {
     if (ts.isStringLiteral(val)) return JSON.stringify(val.text)
     if (ts.isJsxExpression(val) && val.expression) return this.exprToCStr(val.expression)
     return null
+  }
+
+  extractStaticProps(props: Map<string, ts.Node | null>): Record<string, TSNPropValue> {
+    const result: Record<string, TSNPropValue> = {}
+    for (const [key, val] of props.entries()) {
+      const staticValue = this.staticPropValue(val)
+      if (staticValue !== undefined) {
+        result[key] = staticValue
+      }
+    }
+    return result
   }
 
   textArg(children: readonly ts.JsxChild[]): string {
@@ -109,6 +126,125 @@ export class JsxProps {
     if (type === 'number') return `ts_str_cstr(num_to_str(${emitted}))`
     if (type === 'boolean') return `(${emitted} ? "true" : "false")`
     return '""'
+  }
+
+  private staticPropValue(value: ts.Node | null): TSNPropValue | undefined {
+    if (value === null) return true
+    const staticString = this.staticStringValue(value)
+    if (staticString !== undefined) return staticString
+    if (ts.isJsxExpression(value) && value.expression) {
+      const expr = value.expression
+      if (ts.isNumericLiteral(expr)) return parseFloat(expr.text)
+      if (expr.kind === ts.SyntaxKind.TrueKeyword) return true
+      if (expr.kind === ts.SyntaxKind.FalseKeyword) return false
+    }
+    return undefined
+  }
+
+  private staticStringValue(value: ts.Node | null, seen: Set<ts.Node> = new Set()): string | undefined {
+    if (!value || seen.has(value)) return undefined
+    seen.add(value)
+
+    if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) return value.text
+
+    if (ts.isJsxExpression(value)) {
+      return value.expression ? this.staticStringFromExpression(value.expression, seen) : undefined
+    }
+
+    if (ts.isExpression(value)) {
+      return this.staticStringFromExpression(value, seen)
+    }
+
+    return undefined
+  }
+
+  private staticStringFromExpression(expr: ts.Expression, seen: Set<ts.Node>): string | undefined {
+    if (seen.has(expr)) return undefined
+    seen.add(expr)
+
+    if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) return expr.text
+
+    if (ts.isParenthesizedExpression(expr)) {
+      return this.staticStringFromExpression(expr.expression, seen)
+    }
+
+    if (ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      const left = this.staticStringFromExpression(expr.left, seen)
+      const right = this.staticStringFromExpression(expr.right, seen)
+      if (left !== undefined && right !== undefined) return left + right
+      return undefined
+    }
+
+    if (ts.isTemplateExpression(expr)) {
+      let text = expr.head.text
+      for (const span of expr.templateSpans) {
+        const part = this.staticStringFromExpression(span.expression, seen)
+        if (part === undefined) return undefined
+        text += part + span.literal.text
+      }
+      return text
+    }
+
+    if (ts.isConditionalExpression(expr)) {
+      const condition = this.staticBooleanFromExpression(expr.condition)
+      if (condition === undefined) return undefined
+      return condition
+        ? this.staticStringFromExpression(expr.whenTrue, seen)
+        : this.staticStringFromExpression(expr.whenFalse, seen)
+    }
+
+    if (ts.isIdentifier(expr)) {
+      const init = this.findConstInitializer(expr)
+      return init ? this.staticStringFromExpression(init, seen) : undefined
+    }
+
+    return undefined
+  }
+
+  private staticBooleanFromExpression(expr: ts.Expression): boolean | undefined {
+    if (expr.kind === ts.SyntaxKind.TrueKeyword) return true
+    if (expr.kind === ts.SyntaxKind.FalseKeyword) return false
+    if (ts.isParenthesizedExpression(expr)) return this.staticBooleanFromExpression(expr.expression)
+    if (ts.isIdentifier(expr)) {
+      const init = this.findConstInitializer(expr)
+      if (!init) return undefined
+      return this.staticBooleanFromExpression(init)
+    }
+    return undefined
+  }
+
+  private findConstInitializer(id: ts.Identifier): ts.Expression | undefined {
+    let current: ts.Node | undefined = id
+    while (current) {
+      if (ts.isBlock(current) || ts.isSourceFile(current)) {
+        const container = current
+        const boundary = this.enclosingStatement(id)
+        let latest: ts.Expression | undefined
+        for (const stmt of container.statements) {
+          if (boundary && stmt.pos >= boundary.pos) break
+          if (!ts.isVariableStatement(stmt)) continue
+          const isConst = (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0
+          if (!isConst) continue
+          for (const decl of stmt.declarationList.declarations) {
+            if (ts.isIdentifier(decl.name) && decl.name.text === id.text && decl.initializer) {
+              latest = decl.initializer
+            }
+          }
+        }
+        if (latest) return latest
+      }
+      current = current.parent
+    }
+    return undefined
+  }
+
+  private enclosingStatement(node: ts.Node): ts.Statement | undefined {
+    let current: ts.Node | undefined = node
+    while (current) {
+      if (ts.isStatement(current)) return current
+      current = current.parent
+    }
+    return undefined
   }
 
   private textContent(children: readonly ts.JsxChild[]): string {

@@ -65,10 +65,13 @@ function compile(): boolean {
 
     if (hasUi) {
       const runtimeDir = path.join('compiler', 'runtime')
+      const yogaLib = path.join('build', 'libyoga.a')
+      const yogaInclude = 'vendor'
 
       execSync(
         `clang -O0 -g -DSTRICTTS_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} -I ${appKitHostRoot} -I ${runtimeDir} -o ${binaryPath}`,
+        `${cPath} ${appKitSourcePath} ${yogaLib} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} ` +
+        `-lc++ -o ${binaryPath}`,
         { stdio: 'pipe' }
       )
     } else {

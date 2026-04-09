@@ -79,19 +79,34 @@ function AppActionButton({ app }: AppActionButtonProps) {
 interface AppRowProps {
   app: StoreApp
   testId: string
+  actionLabel?: string
 }
 
-export function AppRow({ app, testId }: AppRowProps) {
+interface ViewButtonProps {
+  tag: number
+}
+
+function ViewButton({ tag }: ViewButtonProps) {
+  return (
+    <HStack className="items-center justify-center rounded-full bg-blue/[0.14] px-[18px] py-[4px]" onClick={openStoreApp} tag={tag}>
+      <Text className="text-[14px] font-bold text-[#3b9aff]">View</Text>
+    </HStack>
+  )
+}
+
+export function AppRow({ app, testId, actionLabel }: AppRowProps) {
   const iconId: string = testId + '-icon'
+  let buttonText: string = app.action
+  if (actionLabel.length > 0) buttonText = actionLabel
 
   return (
-    <HStack testId={testId} className="items-center gap-3 py-3" onClick={openStoreApp} tag={app.detailTag}>
-      <Image testId={iconId} src={app.icon} className="w-[52] h-[52] rounded-xl object-cover" />
-      <VStack className="flex-1 gap-0">
-        <Text className="text-[14] font-medium truncate">{app.title}</Text>
-        <Text className="text-[12] text-white/35 truncate">{app.subtitle}</Text>
+    <HStack testId={testId} className="items-center gap-3 py-3 pr-5" onClick={openStoreApp} tag={app.detailTag}>
+      <Image testId={iconId} src={app.icon} className="w-[52px] h-[52px] rounded-[13px] object-cover" />
+      <VStack className="flex-1 min-w-0 gap-0">
+        <Text className="text-[14px] font-medium truncate">{app.title}</Text>
+        <Text className="text-[12px] text-white/35 truncate">{app.subtitle}</Text>
       </VStack>
-      <AppActionButton app={app} />
+      {buttonText === 'View' ? <ViewButton tag={app.detailTag} /> : <AppActionButton app={app} />}
     </HStack>
   )
 }

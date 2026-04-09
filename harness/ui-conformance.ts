@@ -12,7 +12,7 @@ import { uiConformanceSuites } from '../conformance/ui/specs/registry.js'
 
 const root = '/Users/kumardivyarajat/WebstormProjects/bun-vite/vite'
 const artifactRoot = '/tmp/tsn-ui-conformance'
-const inspectApp = 'ui-gallery'
+const inspectApp = 'gallery'
 const inspectSocket = `/tmp/strictts-inspect-${inspectApp}.sock`
 const captureCaseScreenshots = process.env.UI_CONFORMANCE_CASE_SCREENSHOTS === '1'
 
@@ -56,13 +56,13 @@ async function waitForInspector(): Promise<void> {
   while (attempt < 40) {
     try {
       const tree = await inspect(['tree'])
-      if (tree.includes('Window "UI Gallery"')) return
+      if (tree.includes('Window "Geometry Conformance"')) return
     } catch (_err) {
     }
     attempt = attempt + 1
     await sleep(250)
   }
-  throw new Error('UI Gallery inspector did not become ready in time')
+  throw new Error('Geometry conformance inspector did not become ready in time')
 }
 
 function copyLatestScreenshot(targetPath: string): void {
@@ -187,10 +187,10 @@ async function main(): Promise<void> {
   fs.mkdirSync(artifactRoot, { recursive: true })
 
   console.log('Building UI conformance gallery...')
-  runCommand('./strictts', ['build', 'examples/native-gui/ui-gallery.tsx'])
+  runCommand('./strictts', ['build', 'conformance/gallery.tsx'])
 
   console.log('Launching UI conformance gallery...')
-  const child = spawn('./build/ui-gallery', [], {
+  const child = spawn('./build/gallery', [], {
     cwd: root,
     stdio: 'ignore',
   })

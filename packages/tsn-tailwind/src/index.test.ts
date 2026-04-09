@@ -29,11 +29,37 @@ test('px-2 py-3 emits correct padding', () => {
   assert.ok(r.calls.some(c => c.includes('ui_set_padding(h, 12, 8, 12, 8)')))
 })
 
+test('mb-10 mt-0.5 emit real margins, not padding', () => {
+  const r = parseTailwind('mb-10 mt-[2px]', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_margin(h, 2, 0, 40, 0)')))
+  assert.equal(r.stylePatch.layoutStyle.marginTop, 2)
+  assert.equal(r.stylePatch.layoutStyle.marginBottom, 40)
+  assert.equal(r.stylePatch.layoutStyle.paddingTop, undefined)
+})
+
 /* ─── Size ─────────────────────────────────────────────────────────── */
 
 test('w-[200] h-[100] emits ui_set_size', () => {
   const r = parseTailwind('w-[200] h-[100]', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_size(h, 200, 100)')))
+  assert.equal(r.widthValue?.unit, 'point')
+  assert.equal(r.heightValue?.unit, 'point')
+})
+
+test('w-[30%] h-[60%] emits percent sizing', () => {
+  const r = parseTailwind('w-[30%] h-[60%]', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_size_pct(h, 30, 60)')))
+  assert.equal(r.widthValue?.unit, 'percent')
+  assert.equal(r.heightValue?.unit, 'percent')
+  assert.deepEqual(r.stylePatch.layoutStyle.width, { unit: 'percent', value: 30 })
+  assert.deepEqual(r.stylePatch.layoutStyle.height, { unit: 'percent', value: 60 })
+})
+
+test('w-full h-full emits 100 percent sizing', () => {
+  const r = parseTailwind('w-full h-full', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_size_pct(h, 100, 100)')))
+  assert.equal(r.widthValue?.unit, 'percent')
+  assert.equal(r.heightValue?.unit, 'percent')
 })
 
 test('h-16 emits height 64px', () => {
@@ -46,6 +72,7 @@ test('h-16 emits height 64px', () => {
 test('items-center emits ui_set_align_items', () => {
   const r = parseTailwind('items-center', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_align_items(h, 1)')))
+  assert.equal(r.stylePatch.layoutStyle.alignItems, 'center')
 })
 
 test('items-start emits ui_set_align_items 0', () => {
@@ -85,9 +112,9 @@ test('justify-start emits ui_set_justify_content 0', () => {
 
 /* ─── Self alignment ───────────────────────────────────────────────── */
 
-test('mx-auto emits ui_set_alignment 1', () => {
+test('mx-auto emits ui_set_margin_auto', () => {
   const r = parseTailwind('mx-auto', 'h')
-  assert.ok(r.calls.some(c => c.includes('ui_set_alignment(h, 1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_margin_auto(h)')))
 })
 
 test('self-center emits ui_set_alignment 1', () => {
@@ -105,6 +132,7 @@ test('self-end emits ui_set_alignment 2', () => {
 test('bg-zinc-900 emits ui_set_background_rgb', () => {
   const r = parseTailwind('bg-zinc-900', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_background_rgb')))
+  assert.equal(typeof r.stylePatch.visualStyle.backgroundColor, 'string')
 })
 
 test('bg-black emits ui_set_background_rgb', () => {
@@ -120,6 +148,16 @@ test('bg-[#2F2823] emits ui_set_background_rgb with hex values', () => {
 test('bg-white/5 emits white at 5% alpha', () => {
   const r = parseTailwind('bg-white/5', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_background_rgb(h, 1, 1, 1, 0.05)')))
+})
+
+test('oracle sidebar classes with px and bracket alpha parse cleanly', () => {
+  const r = parseTailwind('w-[240px] min-w-[240px] py-[6px] bg-white/[0.04] gap-1.5 space-y-[1px] text-[15px]', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_size(h, 240, -1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_min_size(h, 240, -1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_padding(h, 6, 0, 6, 0)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_background_rgb(h, 1, 1, 1, 0.04)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_spacing(h, 1)')))
+  assert.equal(r.textSize, 15)
 })
 
 test('bg-zinc-800/50 emits zinc-800 at 50% alpha', () => {
@@ -152,6 +190,7 @@ test('text-white/10 emits white at 10% alpha', () => {
 test('text-sm sets textSize to 14', () => {
   const r = parseTailwind('text-sm', 'h')
   assert.equal(r.textSize, 14)
+  assert.equal(r.stylePatch.textStyle.size, 14)
 })
 
 test('text-4xl sets textSize to 36', () => {
@@ -168,6 +207,7 @@ test('font-bold sets textBold and textWeight 7', () => {
 test('font-semibold sets textWeight 6', () => {
   const r = parseTailwind('font-semibold', 'h')
   assert.equal(r.textWeight, 6)
+  assert.equal(r.stylePatch.textStyle.weight, 6)
 })
 
 test('font-medium sets textWeight 4', () => {
@@ -222,6 +262,7 @@ test('rounded-full emits ui_set_corner_radius 9999', () => {
 test('overflow-x-auto emits ui_scroll_set_axis 1', () => {
   const r = parseTailwind('overflow-x-auto', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_scroll_set_axis(h, 1)')))
+  assert.equal(r.stylePatch.behavior.scrollAxis, 'horizontal')
 })
 
 test('overflow-y-auto emits ui_scroll_set_axis 0', () => {

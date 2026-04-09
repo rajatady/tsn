@@ -12,6 +12,7 @@
 #include <dlfcn.h>
 #include "ui.h"
 #include "runtime.h"
+#include <yoga/Yoga.h>
 
 /* ─── Internal Helpers ───────────────────────────────────────────── */
 
@@ -38,6 +39,273 @@ static inline void retain_render(id obj);
 static inline void retain_persistent(id obj);
 static void finish_render_cycle(void);
 
+typedef NS_ENUM(NSInteger, TSNTextRuntimeKind) {
+    TSNTextRuntimeKindStatic = 0,
+    TSNTextRuntimeKindInput = 1,
+    TSNTextRuntimeKindSearch = 2,
+};
+
+typedef NS_ENUM(NSInteger, TSNTextRuntimeWrapMode) {
+    TSNTextRuntimeWrapModeWrap = 0,
+    TSNTextRuntimeWrapModeTruncate = 1,
+    TSNTextRuntimeWrapModeClip = 2,
+};
+
+static char kTextRuntimeKindKey;
+static char kTextRuntimeWrapModeKey;
+static char kTextRuntimeMultilineKey;
+static char kTextRuntimeLineHeightMultiplierKey;
+static char kTextRuntimeMonospaceKey;
+
+@class TSNTextLabelView;
+static CGFloat tsn_text_resolved_line_height(NSView *view);
+static NSAttributedString *tsn_text_attributed_string(NSView *view);
+static NSSize tsn_text_bounding_size(NSView *view, CGFloat maxWidth);
+
+@interface TSNTextLabelView : NSView
+@property (nonatomic, copy) NSString *stringValue;
+@property (nonatomic, strong) NSFont *font;
+@property (nonatomic, strong) NSColor *textColor;
+@property (nonatomic) NSTextAlignment alignment;
+@property (nonatomic) CGFloat tracking;
+@end
+
+@implementation TSNTextLabelView
+- (instancetype)initWithString:(NSString *)string {
+    self = [super initWithFrame:NSZeroRect];
+    if (!self) return nil;
+    _stringValue = [string copy] ?: @"";
+    _font = [NSFont systemFontOfSize:14 weight:NSFontWeightRegular];
+    _textColor = [NSColor colorWithWhite:0.9 alpha:1];
+    _alignment = NSTextAlignmentLeft;
+    _tracking = 0;
+    return self;
+}
+- (BOOL)isFlipped { return YES; }
+- (void)setStringValue:(NSString *)stringValue {
+    _stringValue = [stringValue copy] ?: @"";
+    [self invalidateIntrinsicContentSize];
+    [self setNeedsDisplay:YES];
+}
+- (void)setFont:(NSFont *)font {
+    _font = font ?: [NSFont systemFontOfSize:14 weight:NSFontWeightRegular];
+    [self invalidateIntrinsicContentSize];
+    [self setNeedsDisplay:YES];
+}
+- (void)setTextColor:(NSColor *)textColor {
+    _textColor = textColor ?: [NSColor colorWithWhite:0.9 alpha:1];
+    [self setNeedsDisplay:YES];
+}
+- (void)setAlignment:(NSTextAlignment)alignment {
+    _alignment = alignment;
+    [self setNeedsDisplay:YES];
+}
+- (void)setTracking:(CGFloat)tracking {
+    _tracking = tracking;
+    [self invalidateIntrinsicContentSize];
+    [self setNeedsDisplay:YES];
+}
+- (NSSize)intrinsicContentSize {
+    return tsn_text_bounding_size(self, CGFLOAT_MAX);
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    [super drawRect:dirtyRect];
+    NSAttributedString *attr = tsn_text_attributed_string(self);
+    if (attr.length == 0) return;
+    NSStringDrawingOptions options = NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading;
+    [attr drawWithRect:self.bounds options:options];
+}
+@end
+
+static CGFloat tsn_default_css_line_height_for_size(CGFloat fontSize) {
+    if (fontSize <= 12) return 16;
+    if (fontSize <= 14) return 20;
+    if (fontSize <= 16) return 24;
+    if (fontSize <= 20) return 28;
+    if (fontSize <= 24) return 32;
+    if (fontSize <= 30) return 36;
+    if (fontSize <= 36) return 40;
+    return fontSize * 1.2;
+}
+
+static NSFont *tsn_browser_text_font(CGFloat size, CGFloat weight, BOOL monospace) {
+    if (monospace) return [NSFont monospacedSystemFontOfSize:size weight:weight];
+    return [NSFont systemFontOfSize:size weight:weight];
+}
+
+static void tsn_text_set_kind(NSView *view, TSNTextRuntimeKind kind) {
+    objc_setAssociatedObject(view, &kTextRuntimeKindKey, @(kind), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static TSNTextRuntimeKind tsn_text_kind(NSView *view) {
+    NSNumber *value = objc_getAssociatedObject(view, &kTextRuntimeKindKey);
+    return value ? (TSNTextRuntimeKind)value.integerValue : TSNTextRuntimeKindStatic;
+}
+
+static void tsn_text_set_wrap_mode(NSView *view, TSNTextRuntimeWrapMode wrapMode, BOOL multiline) {
+    objc_setAssociatedObject(view, &kTextRuntimeWrapModeKey, @(wrapMode), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(view, &kTextRuntimeMultilineKey, @(multiline), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static TSNTextRuntimeWrapMode tsn_text_wrap_mode(NSView *view) {
+    NSNumber *value = objc_getAssociatedObject(view, &kTextRuntimeWrapModeKey);
+    return value ? (TSNTextRuntimeWrapMode)value.integerValue : TSNTextRuntimeWrapModeWrap;
+}
+
+static BOOL tsn_text_is_multiline(NSView *view) {
+    NSNumber *value = objc_getAssociatedObject(view, &kTextRuntimeMultilineKey);
+    return value ? value.boolValue : YES;
+}
+
+static void tsn_text_set_line_height_multiplier(NSView *view, CGFloat multiplier) {
+    objc_setAssociatedObject(view, &kTextRuntimeLineHeightMultiplierKey, @(multiplier), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static void tsn_text_set_monospace(NSView *view, BOOL monospace) {
+    objc_setAssociatedObject(view, &kTextRuntimeMonospaceKey, @(monospace), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static BOOL tsn_text_is_monospace(NSView *view) {
+    NSNumber *value = objc_getAssociatedObject(view, &kTextRuntimeMonospaceKey);
+    return value ? value.boolValue : NO;
+}
+
+static NSFont *tsn_text_font(NSView *view) {
+    if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).font;
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).font;
+    return nil;
+}
+
+static void tsn_text_set_font(NSView *view, NSFont *font) {
+    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).font = font;
+    else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).font = font;
+}
+
+static NSColor *tsn_text_color(NSView *view) {
+    if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).textColor;
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).textColor;
+    return [NSColor colorWithWhite:0.9 alpha:1];
+}
+
+static void tsn_text_set_color(NSView *view, NSColor *color) {
+    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).textColor = color;
+    else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).textColor = color;
+}
+
+static NSString *tsn_text_string(NSView *view) {
+    if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).stringValue ?: @"";
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).stringValue ?: @"";
+    return @"";
+}
+
+static void tsn_text_set_string(NSView *view, NSString *string) {
+    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).stringValue = string ?: @"";
+    else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).stringValue = string ?: @"";
+}
+
+static NSTextAlignment tsn_text_alignment(NSView *view) {
+    if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).alignment;
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).alignment;
+    return NSTextAlignmentLeft;
+}
+
+static void tsn_text_set_alignment_value(NSView *view, NSTextAlignment alignment) {
+    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).alignment = alignment;
+    else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).alignment = alignment;
+}
+
+static CGFloat tsn_text_tracking(NSView *view) {
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).tracking;
+    return 0;
+}
+
+static void tsn_text_set_tracking_value(NSView *view, CGFloat tracking) {
+    if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).tracking = tracking;
+}
+
+static CGFloat tsn_text_line_height_multiplier(NSView *view) {
+    NSNumber *value = objc_getAssociatedObject(view, &kTextRuntimeLineHeightMultiplierKey);
+    if (value) return value.doubleValue;
+    NSFont *font = tsn_text_font(view);
+    CGFloat fontSize = font ? font.pointSize : 13;
+    if (fontSize <= 0) return 1.2;
+    return tsn_default_css_line_height_for_size(fontSize) / fontSize;
+}
+
+static CGFloat tsn_text_resolved_line_height(NSView *view) {
+    NSFont *font = tsn_text_font(view);
+    CGFloat fontSize = font ? font.pointSize : 13;
+    return fontSize * tsn_text_line_height_multiplier(view);
+}
+
+static NSAttributedString *tsn_text_attributed_string(NSView *view) {
+    NSString *string = tsn_text_string(view);
+    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
+    TSNTextRuntimeWrapMode wrapMode = tsn_text_wrap_mode(view);
+    BOOL multiline = tsn_text_is_multiline(view);
+    NSLineBreakMode lineBreakMode = NSLineBreakByWordWrapping;
+    if (wrapMode == TSNTextRuntimeWrapModeTruncate) lineBreakMode = NSLineBreakByTruncatingTail;
+    else if (wrapMode == TSNTextRuntimeWrapModeClip) lineBreakMode = NSLineBreakByClipping;
+    style.lineBreakMode = lineBreakMode;
+    style.alignment = tsn_text_alignment(view);
+    CGFloat lineHeight = tsn_text_resolved_line_height(view);
+    style.minimumLineHeight = lineHeight;
+    style.maximumLineHeight = lineHeight;
+    NSDictionary *attrs = @{
+        NSFontAttributeName: tsn_text_font(view) ?: [NSFont systemFontOfSize:14 weight:NSFontWeightRegular],
+        NSForegroundColorAttributeName: tsn_text_color(view) ?: [NSColor colorWithWhite:0.9 alpha:1],
+        NSKernAttributeName: @(tsn_text_tracking(view)),
+        NSParagraphStyleAttributeName: style,
+    };
+    NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:string attributes:attrs];
+    if (!multiline && wrapMode == TSNTextRuntimeWrapModeWrap) {
+        [attr addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0, attr.length)];
+    }
+    return attr;
+}
+
+static NSSize tsn_text_bounding_size(NSView *view, CGFloat maxWidth) {
+    NSAttributedString *attr = tsn_text_attributed_string(view);
+    if (attr.length == 0) return NSMakeSize(0, tsn_text_resolved_line_height(view));
+    CGSize constraint = CGSizeMake(maxWidth > 0 ? maxWidth : CGFLOAT_MAX, CGFLOAT_MAX);
+    NSStringDrawingOptions options = NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading;
+    CGRect bounds = [attr boundingRectWithSize:constraint options:options];
+    return NSMakeSize(ceil(bounds.size.width), ceil(MAX(bounds.size.height, tsn_text_resolved_line_height(view))));
+}
+
+static void tsn_apply_text_layout_traits(NSTextField *field) {
+    TSNTextRuntimeWrapMode wrapMode = tsn_text_wrap_mode(field);
+    BOOL multiline = tsn_text_is_multiline(field);
+
+    field.maximumNumberOfLines = multiline ? 0 : 1;
+    [field setUsesSingleLineMode:!multiline];
+
+    NSLineBreakMode lineBreakMode = NSLineBreakByWordWrapping;
+    BOOL wraps = multiline;
+    if (wrapMode == TSNTextRuntimeWrapModeTruncate) {
+        lineBreakMode = NSLineBreakByTruncatingTail;
+        wraps = NO;
+    } else if (wrapMode == TSNTextRuntimeWrapModeClip) {
+        lineBreakMode = NSLineBreakByClipping;
+        wraps = NO;
+    }
+
+    field.lineBreakMode = lineBreakMode;
+    [[field cell] setWraps:wraps];
+
+    NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
+    if (attr.length > 0) {
+        NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
+        CGFloat lineHeight = tsn_text_resolved_line_height(field);
+        style.minimumLineHeight = lineHeight;
+        style.maximumLineHeight = lineHeight;
+        style.lineBreakMode = lineBreakMode;
+        style.alignment = field.alignment;
+        [attr addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0, attr.length)];
+        field.attributedStringValue = attr;
+    }
+}
+
 typedef CGImageRef (*CGWindowListCreateImageFn)(CGRect, uint32_t, uint32_t, uint32_t);
 
 static CGImageRef capture_window_image(CGWindowID windowID) {
@@ -46,6 +314,7 @@ static CGImageRef capture_window_image(CGWindowID windowID) {
     return fn(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageNominalResolution);
 }
 
+#include "runtime/layout_style.inc"
 #include "runtime/layout.inc"
 
 /* ─── Bar Chart View ─────────────────────────────────────────────── */
@@ -259,49 +528,37 @@ void ui_inspector_start(void);
 /* ─── Text ───────────────────────────────────────────────────────── */
 
 UIHandle ui_text(const char *content, int size, bool bold) {
-    NSTextField *t = [NSTextField labelWithString:[NSString stringWithUTF8String:content]];
-    t.font = [NSFont systemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
+    TSNTextLabelView *t = [[TSNTextLabelView alloc] initWithString:[NSString stringWithUTF8String:content]];
+    t.font = tsn_browser_text_font(size, bold ? NSFontWeightBold : NSFontWeightRegular, NO);
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
-    t.drawsBackground = NO;
-    t.lineBreakMode = NSLineBreakByWordWrapping;
-    t.maximumNumberOfLines = 0;
-    [t setUsesSingleLineMode:NO];
-    [[t cell] setWraps:YES];
-    /* Default line-height 1.5 to match Tailwind preflight (html { line-height: 1.5 }) */
-    CGFloat lh = size * 1.5;
-    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:t.attributedStringValue];
-    NSMutableParagraphStyle *pstyle = [NSMutableParagraphStyle new];
-    pstyle.minimumLineHeight = lh;
-    pstyle.maximumLineHeight = lh;
-    [attrStr addAttribute:NSParagraphStyleAttributeName value:pstyle range:NSMakeRange(0, attrStr.length)];
-    t.attributedStringValue = attrStr;
-    [t sizeToFit];
+    tsn_text_set_kind(t, TSNTextRuntimeKindStatic);
+    tsn_text_set_wrap_mode(t, TSNTextRuntimeWrapModeWrap, YES);
+    tsn_text_set_line_height_multiplier(t, tsn_default_css_line_height_for_size(size) / size);
+    tsn_text_set_monospace(t, NO);
+    tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
     retain_render(t);
     return (__bridge UIHandle)t;
 }
 
 UIHandle ui_text_mono(const char *content, int size, bool bold) {
-    NSTextField *t = [NSTextField labelWithString:[NSString stringWithUTF8String:content]];
-    t.font = [NSFont monospacedDigitSystemFontOfSize:size weight:bold ? NSFontWeightBold : NSFontWeightRegular];
+    TSNTextLabelView *t = [[TSNTextLabelView alloc] initWithString:[NSString stringWithUTF8String:content]];
+    t.font = tsn_browser_text_font(size, bold ? NSFontWeightBold : NSFontWeightRegular, YES);
     t.textColor = [NSColor colorWithWhite:0.9 alpha:1];
-    t.drawsBackground = NO;
-    t.lineBreakMode = NSLineBreakByWordWrapping;
-    t.maximumNumberOfLines = 0;
-    [t setUsesSingleLineMode:NO];
-    [[t cell] setWraps:YES];
-    [t sizeToFit];
+    tsn_text_set_kind(t, TSNTextRuntimeKindStatic);
+    tsn_text_set_wrap_mode(t, TSNTextRuntimeWrapModeWrap, YES);
+    tsn_text_set_line_height_multiplier(t, tsn_default_css_line_height_for_size(size) / size);
+    tsn_text_set_monospace(t, YES);
+    tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
     retain_render(t);
     return (__bridge UIHandle)t;
 }
 
 void ui_text_set_color_rgb(UIHandle t, double r, double g, double b, double a) {
-    if ([(__bridge NSView *)t isKindOfClass:[NSTextField class]])
-        ((NSTextField *)(__bridge NSView *)t).textColor = [NSColor colorWithRed:r green:g blue:b alpha:a];
+    tsn_text_set_color((__bridge NSView *)t, [NSColor colorWithRed:r green:g blue:b alpha:a]);
 }
 
 void ui_text_set_color_system(UIHandle t, int c) {
-    if ([(__bridge NSView *)t isKindOfClass:[NSTextField class]])
-        ((NSTextField *)(__bridge NSView *)t).textColor = system_color(c);
+    tsn_text_set_color((__bridge NSView *)t, system_color(c));
 }
 
 void ui_text_set_selectable(UIHandle t, bool sel) {
@@ -328,74 +585,86 @@ static CGFloat font_weight_value(int w) {
 
 void ui_text_set_weight(UIHandle t, int weight) {
     NSView *view = (__bridge NSView *)t;
-    if (![view isKindOfClass:[NSTextField class]]) return;
-    NSTextField *field = (NSTextField *)view;
-    CGFloat size = field.font.pointSize;
-    field.font = [NSFont systemFontOfSize:size weight:font_weight_value(weight)];
-    [field sizeToFit];
+    NSFont *font = tsn_text_font(view);
+    if (!font) return;
+    CGFloat size = font.pointSize;
+    NSFont *updated = tsn_browser_text_font(size, font_weight_value(weight), tsn_text_is_monospace(view));
+    tsn_text_set_font(view, updated);
+    if ([view isKindOfClass:[NSTextField class]]) {
+        tsn_apply_text_layout_traits((NSTextField *)view);
+        [(NSTextField *)view sizeToFit];
+    } else {
+        [view invalidateIntrinsicContentSize];
+        [view setNeedsDisplay:YES];
+    }
 }
 
 void ui_text_set_line_height(UIHandle t, double mult) {
     NSView *view = (__bridge NSView *)t;
-    if (![view isKindOfClass:[NSTextField class]]) return;
-    NSTextField *field = (NSTextField *)view;
-    /* CSS line-height is font-size * multiplier. NSParagraphStyle lineHeightMultiple
-       multiplies the natural line height (ascender+descender), which is already ~1.2x
-       the font size. To match CSS, use explicit min/max line height = font-size * mult. */
-    CGFloat fontSize = field.font.pointSize;
-    CGFloat targetLineHeight = fontSize * mult;
-    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
-    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
-    style.minimumLineHeight = targetLineHeight;
-    style.maximumLineHeight = targetLineHeight;
-    [attrStr addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0, attrStr.length)];
-    field.attributedStringValue = attrStr;
-    [field sizeToFit];
+    tsn_text_set_line_height_multiplier(view, mult);
+    if ([view isKindOfClass:[NSTextField class]]) {
+        tsn_apply_text_layout_traits((NSTextField *)view);
+        [(NSTextField *)view sizeToFit];
+    } else {
+        [view invalidateIntrinsicContentSize];
+        [view setNeedsDisplay:YES];
+    }
 }
 
 void ui_text_set_tracking(UIHandle t, double kern) {
     NSView *view = (__bridge NSView *)t;
-    if (![view isKindOfClass:[NSTextField class]]) return;
-    NSTextField *field = (NSTextField *)view;
-    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
-    [attrStr addAttribute:NSKernAttributeName value:@(kern) range:NSMakeRange(0, attrStr.length)];
-    field.attributedStringValue = attrStr;
-    [field sizeToFit];
+    if ([view isKindOfClass:[NSTextField class]]) {
+        NSTextField *field = (NSTextField *)view;
+        NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
+        [attrStr addAttribute:NSKernAttributeName value:@(kern) range:NSMakeRange(0, attrStr.length)];
+        field.attributedStringValue = attrStr;
+        tsn_apply_text_layout_traits(field);
+        [field sizeToFit];
+        return;
+    }
+    tsn_text_set_tracking_value(view, kern);
+    [view invalidateIntrinsicContentSize];
+    [view setNeedsDisplay:YES];
 }
 
 void ui_text_set_transform(UIHandle t, int xform) {
     NSView *view = (__bridge NSView *)t;
-    if (![view isKindOfClass:[NSTextField class]]) return;
-    NSTextField *field = (NSTextField *)view;
-    /* Preserve paragraph style (line-height) when transforming text */
-    NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithAttributedString:field.attributedStringValue];
-    NSString *transformed = [attrStr string];
+    NSString *transformed = tsn_text_string(view);
     if (xform == 1) transformed = [transformed uppercaseString];
     else if (xform == 2) transformed = [transformed lowercaseString];
     else return;
-    NSDictionary *attrs = attrStr.length > 0 ? [attrStr attributesAtIndex:0 effectiveRange:NULL] : @{};
-    field.attributedStringValue = [[NSAttributedString alloc] initWithString:transformed attributes:attrs];
-    [field sizeToFit];
+    tsn_text_set_string(view, transformed);
+    if ([view isKindOfClass:[NSTextField class]]) {
+        tsn_apply_text_layout_traits((NSTextField *)view);
+        [(NSTextField *)view sizeToFit];
+    } else {
+        [view invalidateIntrinsicContentSize];
+        [view setNeedsDisplay:YES];
+    }
 }
 
 void ui_text_set_align(UIHandle t, int align) {
     NSView *view = (__bridge NSView *)t;
-    if (![view isKindOfClass:[NSTextField class]]) return;
-    NSTextField *field = (NSTextField *)view;
-    if (align == 0) field.alignment = NSTextAlignmentLeft;
-    else if (align == 1) field.alignment = NSTextAlignmentCenter;
-    else if (align == 2) field.alignment = NSTextAlignmentRight;
+    if (align == 0) tsn_text_set_alignment_value(view, NSTextAlignmentLeft);
+    else if (align == 1) tsn_text_set_alignment_value(view, NSTextAlignmentCenter);
+    else if (align == 2) tsn_text_set_alignment_value(view, NSTextAlignmentRight);
+    if ([view isKindOfClass:[NSTextField class]]) {
+        tsn_apply_text_layout_traits((NSTextField *)view);
+    } else {
+        [view setNeedsDisplay:YES];
+    }
 }
 
 void ui_text_set_truncate(UIHandle t) {
     NSView *view = (__bridge NSView *)t;
-    if (![view isKindOfClass:[NSTextField class]]) return;
-    NSTextField *field = (NSTextField *)view;
-    field.maximumNumberOfLines = 1;
-    field.lineBreakMode = NSLineBreakByTruncatingTail;
-    [field setUsesSingleLineMode:YES];
-    [[field cell] setWraps:NO];
-    [field sizeToFit];
+    tsn_text_set_wrap_mode(view, TSNTextRuntimeWrapModeTruncate, NO);
+    if ([view isKindOfClass:[NSTextField class]]) {
+        tsn_apply_text_layout_traits((NSTextField *)view);
+        [(NSTextField *)view sizeToFit];
+    } else {
+        [view invalidateIntrinsicContentSize];
+        [view setNeedsDisplay:YES];
+    }
 }
 
 UIHandle ui_label(const char *content) {
@@ -413,6 +682,7 @@ UIHandle ui_segmented(int count, const char **labels) {
     NSSegmentedControl *sc = [NSSegmentedControl segmentedControlWithLabels:arr
         trackingMode:NSSegmentSwitchTrackingSelectOne target:nil action:nil];
     sc.selectedSegment = 0;
+    tsn_create_view_node(sc, TSNNodeKindLeaf, 0, YES);
     retain_render(sc);
     return (__bridge UIHandle)sc;
 }
@@ -423,6 +693,7 @@ void ui_segmented_on_change(UIHandle seg, UISegmentFn fn) { /* TODO */ }
 UIHandle ui_toggle(const char *label, bool initial) {
     NSSwitch *sw = [NSSwitch new];
     sw.state = initial ? NSControlStateValueOn : NSControlStateValueOff;
+    tsn_create_view_node(sw, TSNNodeKindLeaf, 0, YES);
     retain_render(sw);
     return (__bridge UIHandle)sw;
 }
@@ -432,6 +703,7 @@ void ui_toggle_on_change(UIHandle tog, UIToggleFn fn) { /* TODO */ }
 UIHandle ui_progress(double value) {
     UIProgressBar *bar = [UIProgressBar new];
     bar.progress = value;
+    tsn_create_view_node(bar, TSNNodeKindLeaf, 0, YES);
     retain_render(bar);
     return (__bridge UIHandle)bar;
 }
@@ -448,23 +720,30 @@ void ui_progress_set(UIHandle p, double value) {
 UIHandle ui_badge(const char *text, int sc) {
     /* Wrap text in a padded stack to match CSS padding: 2px 8px */
     UIStackContainer *wrap = [UIStackContainer new];
-    wrap.direction = 1; /* horizontal — single child, just for padding */
-    wrap.padding_top = 2; wrap.padding_bottom = 2;
-    wrap.padding_left = 8; wrap.padding_right = 8;
+    TSNShadowNode *wrapNode = tsn_create_container_node(wrap, TSNNodeKindHStack, 1);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeTop, 2);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeBottom, 2);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeLeft, 8);
+    YGNodeStyleSetPadding(wrapNode.yogaNode, YGEdgeRight, 8);
+    YGNodeStyleSetAlignSelf(wrapNode.yogaNode, YGAlignFlexStart);
     wrap.wantsLayer = YES;
     wrap.layer.backgroundColor = system_color(sc).CGColor;
     wrap.layer.cornerRadius = 8;
     wrap.layer.masksToBounds = YES;
 
-    NSTextField *t = [NSTextField labelWithString:[NSString stringWithUTF8String:text]];
-    t.font = [NSFont systemFontOfSize:10 weight:NSFontWeightBold];
+    TSNTextLabelView *t = [[TSNTextLabelView alloc] initWithString:[NSString stringWithUTF8String:text]];
+    t.font = tsn_browser_text_font(10, NSFontWeightBold, NO);
     t.textColor = [NSColor whiteColor];
-    t.drawsBackground = NO;
     t.alignment = NSTextAlignmentCenter;
-    [wrap addSubview:t];
-    [wrap.children addObject:t];
+    tsn_text_set_kind(t, TSNTextRuntimeKindStatic);
+    tsn_text_set_wrap_mode(t, TSNTextRuntimeWrapModeTruncate, NO);
+    tsn_text_set_line_height_multiplier(t, tsn_default_css_line_height_for_size(10) / 10.0);
+    tsn_text_set_monospace(t, NO);
+    TSNShadowNode *textNode = tsn_create_view_node(t, TSNNodeKindLeaf, 0, YES);
+    tsn_attach_child_nodes(wrapNode, textNode);
 
     retain_render(wrap);
+    retain_render(t);
     return (__bridge UIHandle)wrap;
 }
 
@@ -476,7 +755,9 @@ UIHandle ui_card(void) {
     c.layer.backgroundColor = [NSColor colorWithWhite:0.12 alpha:1].CGColor;
     c.layer.cornerRadius = 12;
     c.layer.masksToBounds = YES;
-    c.padding_top = 12; c.padding_right = 12; c.padding_bottom = 12; c.padding_left = 12;
+    objc_setAssociatedObject(c, &kCardContainerKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    /* No default padding — let Tailwind classes set it via ui_set_padding */
+    tsn_create_container_node(c, TSNNodeKindVStack, 0);
     retain_render(c);
     return (__bridge UIHandle)c;
 }
@@ -493,6 +774,7 @@ UIHandle ui_stat(const char *value, const char *label, int sc) {
     sv.value_text = [NSString stringWithUTF8String:value];
     sv.label_text = [NSString stringWithUTF8String:label];
     sv.accent = system_color(sc);
+    tsn_create_view_node(sv, TSNNodeKindLeaf, 0, YES);
     retain_render(sv);
     return (__bridge UIHandle)sv;
 }
@@ -522,6 +804,7 @@ UIHandle ui_data_table(void) {
     sv.documentView = tv;
     tv.tag = (NSInteger)(__bridge void *)mgr;  /* stash manager ref */
 
+    tsn_create_view_node(sv, TSNNodeKindLeaf, 0, YES);
     retain_render(sv);
     retain_render(tv);
     return (__bridge UIHandle)sv;
@@ -563,6 +846,7 @@ UIHandle ui_bar_chart(int height) {
     UIBarChartView *c = [UIBarChartView new];
     c.fixed_height = height;
     c.bar_count = 0;
+    tsn_create_view_node(c, TSNNodeKindLeaf, 0, YES);
     retain_render(c);
     return (__bridge UIHandle)c;
 }

@@ -8,6 +8,28 @@
 import * as ts from 'typescript'
 import { parseTailwind } from '../../tsn-tailwind/src/index.js'
 import { CallbackBridge } from './callbacks.js'
+import {
+  emitBarChartTitleCall,
+  emitButtonStyleCall,
+  emitHandleCreate,
+  emitRuntimeCalls,
+  emitSidebarSectionCall,
+  emitTableConfigCalls,
+  emitTableDataBindingCalls,
+  emitTextInputBindings,
+  emitTextStyleCalls,
+} from './host_adapter.js'
+import { buildHostPlanEmission, emitHostPlan } from './host_plan.js'
+import { buildPrimitivePlan } from './planner.js'
+import {
+  barChartCreateCall,
+  badgeCreateCall,
+  buttonCreateCall,
+  imageCreateCall,
+  sidebarItemCreateCall,
+  statCreateCall,
+  tableCreateCall,
+} from './primitive_cases.js'
 import { JsxProps } from './props.js'
 import type { CodeGenContext } from './types.js'
 
@@ -126,6 +148,11 @@ export class JsxEmitter {
     push(`ui_on_click(${handle}, ${fnRef}, ${tagExpr});`)
   }
 
+  private liftOptionalCallback(prop: ts.Node | null | undefined, fnType: 'UIClickFn' | 'UITextChangedFn' | 'UITableCellFn'): string | null {
+    if (!prop || !ts.isJsxExpression(prop) || !prop.expression) return null
+    return this.callbackBridge.liftCallback(prop.expression, fnType)
+  }
+
   // ─── Main Element Emitter ──────────────────────────────────────
 
   emitElement(
@@ -136,25 +163,40 @@ export class JsxEmitter {
     const tag = element.tagName.getText()
     const props = this.propsUtil.getProps(element)
     const handle = `_j${this.jsxCounter++}`
+    if (props.has('className') && !this.propsUtil.isStaticallyResolvableString(props, 'className')) {
+      throw new Error(`className on <${tag}> must be statically resolvable at compile time`)
+    }
     const className = this.propsUtil.propStr(props, 'className')
+    const staticProps = this.propsUtil.extractStaticProps(props)
     const tw = className ? parseTailwind(className, handle) : null
+    const plan = buildPrimitivePlan(tag, handle, className, staticProps, tw)
     const pad = () => this.ctx.pad()
     const push = (line: string) => this.ctx.pushJsxStmt(pad() + line)
     /** Emit UIHandle creation + ui_set_id registration */
     const create = (call: string) => {
-      push(`UIHandle ${handle} = ${call};`)
-      push(`ui_set_id(${handle}, "${handle}");`)
       const testId = this.propsUtil.propCStr(props, 'testId')
-      if (testId) push(`ui_set_id(${handle}, ${testId});`)
+      emitHandleCreate(push, handle, call, testId)
+    }
+    const createFromPlan = (
+      propOverrides: Record<string, string | number | boolean | null> = {},
+      rawCStringProps: Record<string, string> = {},
+    ) => {
+      const testId = this.propsUtil.propCStr(props, 'testId')
+      const emission = buildHostPlanEmission(plan.node, {
+        props: propOverrides,
+        rawCStringProps,
+      })
+      emitHostPlan(push, emission, testId)
     }
 
     switch (tag) {
       case 'Window': {
-        const title = this.propsUtil.propCStr(props, 'title') ?? '""'
-        const w = this.propsUtil.propNum(props, 'width', 1200)
-        const h = this.propsUtil.propNum(props, 'height', 780)
-        const dark = this.propsUtil.propBool(props, 'dark')
-        create(`ui_window(${title}, ${w}, ${h}, ${dark})`)
+        createFromPlan({
+          title: this.propsUtil.propStr(props, 'title') ?? '',
+          width: this.propsUtil.propNum(props, 'width', 1200),
+          height: this.propsUtil.propNum(props, 'height', 780),
+          dark: this.propsUtil.propBool(props, 'dark'),
+        })
         const sub = this.propsUtil.propCStr(props, 'subtitle')
         if (sub) push(`ui_window_subtitle(${handle}, ${sub});`)
         const titlebarTransparent = this.propsUtil.propBool(props, 'titlebarTransparent')
@@ -167,8 +209,7 @@ export class JsxEmitter {
       }
 
       case 'ZStack': {
-        create(`ui_zstack()`)
-        if (tw) for (const c of tw.calls) push(c)
+        createFromPlan()
         this.emitChildren(children, handle)
         return handle
       }
@@ -189,9 +230,7 @@ export class JsxEmitter {
 
       case 'VStack':
       case 'HStack': {
-        const fn = tag === 'VStack' ? 'ui_vstack' : 'ui_hstack'
-        create(`${fn}()`)
-        if (tw) for (const c of tw.calls) push(c)
+        createFromPlan()
         this.emitOnClick(handle, props, push)
         this.emitChildren(children, handle)
         return handle
@@ -199,16 +238,12 @@ export class JsxEmitter {
 
       case 'Text': {
         const text = this.propsUtil.textArg(children)
-        const size = tw?.textSize || 14
-        const bold = tw?.textBold || false
-        create(`ui_text(${text}, ${size}, ${bold})`)
-        if (tw) {
-          for (const c of tw.calls) push(c)
-          if (tw.textWeight >= 0) push(`ui_text_set_weight(${handle}, ${tw.textWeight});`)
-          if (tw.textLineHeight >= 0) push(`ui_text_set_line_height(${handle}, ${tw.textLineHeight});`)
-          if (!Number.isNaN(tw.textTracking)) push(`ui_text_set_tracking(${handle}, ${(tw.textTracking * size).toFixed(4)});`)
-          if (tw.textTransform > 0) push(`ui_text_set_transform(${handle}, ${tw.textTransform});`)
-          if (tw.textAlign >= 0) push(`ui_text_set_align(${handle}, ${tw.textAlign});`)
+        if (text.startsWith('"')) {
+          createFromPlan({
+            value: JSON.parse(text) as string,
+          })
+        } else {
+          createFromPlan({}, { value: text })
         }
         return handle
       }
@@ -219,7 +254,7 @@ export class JsxEmitter {
         create(`ui_symbol(${name}, ${size})`)
         const color = this.propsUtil.propStr(props, 'color')
         if (color) push(`ui_symbol_set_color(${handle}, ${this.propsUtil.colorIndex(color)});`)
-        if (tw) for (const c of tw.calls) push(c)
+        emitRuntimeCalls(push, plan.runtimeCalls)
         return handle
       }
 
@@ -228,58 +263,47 @@ export class JsxEmitter {
         return handle
 
       case 'Search': {
-        const placeholder = this.propsUtil.propCStr(props, 'placeholder') ?? '""'
-        create(`ui_search_field(${placeholder})`)
+        createFromPlan({
+          placeholder: this.propsUtil.propStr(props, 'placeholder') ?? '',
+        })
         const value = this.propsUtil.propCStr(props, 'value')
-        if (value) push(`ui_text_input_set_value(${handle}, ${value});`)
-        const onChange = props.get('onChange')
-        if (onChange && ts.isJsxExpression(onChange) && onChange.expression) {
-          const wrapName = this.callbackBridge.liftCallback(onChange.expression, 'UITextChangedFn')
-          push(`ui_on_text_changed(${handle}, ${wrapName});`)
-        }
-        if (tw) for (const c of tw.calls) push(c)
+        const onChangeWrap = this.liftOptionalCallback(props.get('onChange'), 'UITextChangedFn')
+        emitTextInputBindings(push, handle, value, onChangeWrap)
         return handle
       }
 
       case 'Input': {
-        const placeholder = this.propsUtil.propCStr(props, 'placeholder') ?? '""'
-        create(`ui_text_field(${placeholder})`)
+        createFromPlan({
+          placeholder: this.propsUtil.propStr(props, 'placeholder') ?? '',
+        })
         const value = this.propsUtil.propCStr(props, 'value')
-        if (value) push(`ui_text_input_set_value(${handle}, ${value});`)
-        const onChange = props.get('onChange')
-        if (onChange && ts.isJsxExpression(onChange) && onChange.expression) {
-          const wrapName = this.callbackBridge.liftCallback(onChange.expression, 'UITextChangedFn')
-          push(`ui_on_text_changed(${handle}, ${wrapName});`)
-        }
-        if (tw) for (const c of tw.calls) push(c)
+        const onChangeWrap = this.liftOptionalCallback(props.get('onChange'), 'UITextChangedFn')
+        emitTextInputBindings(push, handle, value, onChangeWrap)
         return handle
       }
 
       case 'Image': {
         const src = this.propsUtil.propCStr(props, 'src') ?? '""'
-        create(`ui_image(${src})`)
-        if (tw) for (const c of tw.calls) push(c)
+        create(imageCreateCall(src))
+        emitRuntimeCalls(push, plan.runtimeCalls)
         this.emitOnClick(handle, props, push)
         return handle
       }
 
       case 'Sidebar': {
-        const width = tw && tw.width > 0 ? tw.width : 200
-        create(`ui_sidebar(${width})`)
+        createFromPlan()
         this.emitChildren(children, handle)
         return handle
       }
 
       case 'Scroll': {
-        create(`ui_scroll()`)
-        if (tw) for (const c of tw.calls) push(c)
+        createFromPlan()
         this.emitChildren(children, handle)
         return handle
       }
 
       case 'Card': {
-        create(`ui_card()`)
-        if (tw) for (const c of tw.calls) push(c)
+        createFromPlan()
         this.emitOnClick(handle, props, push)
         this.emitChildren(children, handle)
         return handle
@@ -289,7 +313,7 @@ export class JsxEmitter {
         const title = this.propsUtil.propCStr(props, 'title') ?? '""'
         const parent = this.currentParent()
         if (!parent) return ''
-        push(`ui_sidebar_section(${parent}, ${title});`)
+        emitSidebarSectionCall(push, parent, title)
         for (const child of children) {
           if (ts.isJsxText(child) && child.text.trim().length === 0) continue
           if (ts.isJsxElement(child))
@@ -315,14 +339,9 @@ export class JsxEmitter {
         if (!parent) return '((UIHandle)0)'
         const icon = this.propsUtil.propCStr(props, 'icon') ?? '""'
         const text = this.propsUtil.textArg(children)
-        const onClick = props.get('onClick')
-        let fnRef = 'NULL'
-        let tagNum = 0
-        if (onClick && ts.isJsxExpression(onClick) && onClick.expression) {
-          fnRef = this.callbackBridge.liftCallback(onClick.expression, 'UIClickFn')
-          tagNum = this.jsxOnClickCounter++
-        }
-        create(`ui_sidebar_item(${parent}, ${text}, ${icon}, ${this.clickTag(props, tagNum)}, ${fnRef})`)
+        const fnRef = this.liftOptionalCallback(props.get('onClick'), 'UIClickFn') ?? 'NULL'
+        const tagNum = fnRef !== 'NULL' ? this.jsxOnClickCounter++ : 0
+        create(sidebarItemCreateCall(parent, text, icon, this.clickTag(props, tagNum), fnRef))
         return handle
       }
 
@@ -330,14 +349,14 @@ export class JsxEmitter {
         const value = this.propsUtil.propCStr(props, 'value') ?? '""'
         const label = this.propsUtil.propCStr(props, 'label') ?? '""'
         const color = this.propsUtil.colorIndex(this.propsUtil.propStr(props, 'color'))
-        create(`ui_stat(${value}, ${label}, ${color})`)
+        create(statCreateCall(value, label, color))
         return handle
       }
 
       case 'Badge': {
         const text = this.propsUtil.propCStr(props, 'text') ?? this.propsUtil.textArg(children)
         const color = this.propsUtil.colorIndex(this.propsUtil.propStr(props, 'color'))
-        create(`ui_badge(${text}, ${color})`)
+        create(badgeCreateCall(text, color))
         return handle
       }
 
@@ -345,46 +364,36 @@ export class JsxEmitter {
         const label = this.propsUtil.propCStr(props, 'text') ?? this.propsUtil.textArg(children)
         const icon = this.propsUtil.propCStr(props, 'icon')
         const variant = this.propsUtil.buttonStyle(this.propsUtil.propStr(props, 'variant'))
-        const onClick = props.get('onClick')
-        let fnRef = 'NULL'
-        let tagNum = 0
-        if (onClick && ts.isJsxExpression(onClick) && onClick.expression) {
-          fnRef = this.callbackBridge.liftCallback(onClick.expression, 'UIClickFn')
-          tagNum = this.jsxOnClickCounter++
-        }
-        if (icon) create(`ui_button_icon(${icon}, ${label}, ${fnRef}, ${this.clickTag(props, tagNum)})`)
-        else create(`ui_button(${label}, ${fnRef}, ${this.clickTag(props, tagNum)})`)
-        push(`ui_button_set_style(${handle}, ${variant});`)
-        if (tw) for (const c of tw.calls) push(c)
+        const fnRef = this.liftOptionalCallback(props.get('onClick'), 'UIClickFn') ?? 'NULL'
+        const tagNum = fnRef !== 'NULL' ? this.jsxOnClickCounter++ : 0
+        create(buttonCreateCall(icon, label, fnRef, this.clickTag(props, tagNum)))
+        emitButtonStyleCall(push, handle, variant)
+        emitRuntimeCalls(push, plan.runtimeCalls)
         return handle
       }
 
       case 'BarChart': {
         const title = this.propsUtil.propCStr(props, 'title')
-        const h = tw && tw.height > 0 ? tw.height : 180
-        create(`ui_bar_chart(${h})`)
-        if (title) push(`ui_bar_chart_set_title(${handle}, ${title});`)
-        if (tw) for (const c of tw.calls) push(c)
+        const h = plan.pointHeight ?? 180
+        create(barChartCreateCall(h))
+        emitBarChartTitleCall(push, handle, title)
+        emitRuntimeCalls(push, plan.runtimeCalls)
         return handle
       }
 
       case 'Table': {
-        create(`ui_data_table()`)
+        create(tableCreateCall())
         const colsProp = props.get('columns')
         if (colsProp && ts.isJsxExpression(colsProp) && colsProp.expression)
           this.emitTableColumns(handle, colsProp.expression)
         const rowHeight = this.propsUtil.propNum(props, 'rowHeight', 26)
-        push(`ui_data_table_set_row_height(${handle}, ${rowHeight});`)
-        if (this.propsUtil.propBool(props, 'alternating'))
-          push(`ui_data_table_set_alternating(${handle}, true);`)
+        emitTableConfigCalls(push, handle, rowHeight, this.propsUtil.propBool(props, 'alternating'))
         // cellFn prop — wrap TypeScript function for C callback
         const cellFnProp = props.get('cellFn')
         if (cellFnProp && ts.isJsxExpression(cellFnProp) && cellFnProp.expression) {
           const wrapName = this.callbackBridge.liftCallback(cellFnProp.expression, 'UITableCellFn')
           const rows = this.propsUtil.propNum(props, 'rows', 500)
-          push(`ui_data_table_set_data(${handle}, ${rows}, ${wrapName}, NULL);`)
-          // Generate refreshTable() — stores handle globally, callable from TS
-          push(`_g_table = ${handle};`)
+          emitTableDataBindingCalls(push, handle, rows, wrapName)
           this.ctx.lambdas.push(
             `static UIHandle _g_table = NULL;\n` +
             `void refreshTable(double rows) {\n` +
@@ -392,19 +401,25 @@ export class JsxEmitter {
             `}`
           )
         }
-        if (tw) for (const c of tw.calls) push(c)
+        emitRuntimeCalls(push, plan.runtimeCalls)
         return handle
       }
 
       case 'Progress':
-        create(`ui_progress(${this.propsUtil.propNum(props, 'value', -1)})`)
+        createFromPlan({
+          value: this.propsUtil.propNum(props, 'value', -1),
+        })
         return handle
 
       case 'Divider':
-        create(`ui_divider()`)
+        createFromPlan()
         return handle
 
       default: {
+        if (plan.primitive) {
+          push(`/* Registered primitive <${tag}> (${plan.primitive.kind}) has no dedicated emitter yet */`)
+          return '((UIHandle)0)'
+        }
         const component = this.emitComponentCall(tag, props, children)
         if (component) return component
         push(`/* Unknown JSX: <${tag}> */`)

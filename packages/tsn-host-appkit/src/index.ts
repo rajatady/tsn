@@ -4,6 +4,13 @@ export const appKitHostRoot = path.join('packages', 'tsn-host-appkit', 'src')
 export const appKitHeaderPath = path.join(appKitHostRoot, 'ui.h')
 export const appKitSourcePath = path.join(appKitHostRoot, 'ui.m')
 
+export { adaptNodeToAppKitPlan, type AppKitNodePlan } from './node_adapter.js'
+export {
+  buildTextMeasureRequest,
+  defaultCssLineHeightForSize as appKitDefaultCssLineHeightForSize,
+  measureTextRequest as appKitMeasureTextRequest,
+} from './text_adapter.js'
+
 export {
   appKitAccessibilityProvider,
   appKitAnimationProvider,

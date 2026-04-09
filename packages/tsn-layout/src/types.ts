@@ -1,7 +1,7 @@
-import type { TSNAxis, TSNNodeKind } from '@tsn/core'
+import type { TSNAxis, TSNLayoutAlign, TSNLayoutJustify, TSNLayoutStyle, TSNNodeKind } from '@tsn/core'
 
-export type LayoutAlign = 'start' | 'center' | 'end' | 'stretch'
-export type LayoutJustify = 'start' | 'center' | 'end' | 'space-between'
+export type LayoutAlign = TSNLayoutAlign
+export type LayoutJustify = TSNLayoutJustify
 export type LayoutRole = 'node' | 'spacer' | 'content-rail'
 
 export interface LayoutSize {
@@ -21,23 +21,7 @@ export interface LayoutInsets {
   left: number
 }
 
-export interface LayoutConstraints {
-  width?: number
-  height?: number
-  minWidth?: number
-  minHeight?: number
-  maxWidth?: number
-  maxHeight?: number
-  grow?: number
-  shrink?: number
-  gap?: number
-  paddingTop?: number
-  paddingRight?: number
-  paddingBottom?: number
-  paddingLeft?: number
-  alignSelf?: LayoutAlign
-  aspectRatio?: number
-}
+export type LayoutConstraints = TSNLayoutStyle
 
 export interface LayoutNode {
   id: string
