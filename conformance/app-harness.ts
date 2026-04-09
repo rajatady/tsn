@@ -193,6 +193,7 @@ async function main(): Promise<void> {
   for (const [appName, screens] of byApp) {
     const buildTarget = screens[0].buildTarget
     const socket = inspectSocket(appName)
+    const windowTitle = screens[0].windowTitle
 
     // Build
     console.log(`Building ${appName}...`)
@@ -201,12 +202,13 @@ async function main(): Promise<void> {
     })
 
     // Launch
-    console.log(`Launching ${appName}...`)
-    const binaryName = path.basename(buildTarget, '.tsx')
-    const child: ChildProcess = spawn(`./build/${binaryName}`, [], { cwd: root, stdio: 'ignore' })
+      console.log(`Launching ${appName}...`)
+      const binaryName = path.basename(buildTarget, '.tsx')
+      const child: ChildProcess = spawn(`./build/${binaryName}`, [], { cwd: root, stdio: 'ignore' })
 
     try {
-      await waitForInspector(socket, 'App Store')
+      await waitForInspector(socket, windowTitle)
+      await sleep(250)
       console.log('Inspector ready.\n')
 
       for (const screen of screens) {

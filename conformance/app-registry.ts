@@ -10,6 +10,7 @@ export interface AppScreen {
   id: string
   label: string
   app: string                    // app name for inspector socket
+  windowTitle: string
   buildTarget: string            // TSX entry point to compile
   htmlOracle: string             // path to HTML oracle file
   viewport: { width: number, height: number }
@@ -23,6 +24,7 @@ export const appScreens: AppScreen[] = [
     id: 'discover',
     label: 'App Store — Discover',
     app: 'app-store',
+    windowTitle: 'App Store',
     buildTarget: 'examples/native-gui/app-store.tsx',
     htmlOracle: 'scratch/app-store-html/discover.html',
     viewport: { width: 1400, height: 836 },  // window content area (900 - 64px title bar)
@@ -56,6 +58,7 @@ export const appScreens: AppScreen[] = [
     id: 'arcade',
     label: 'App Store — Arcade',
     app: 'app-store',
+    windowTitle: 'App Store',
     buildTarget: 'examples/native-gui/app-store.tsx',
     htmlOracle: 'scratch/app-store-html/arcade.html',
     viewport: { width: 1400, height: 836 },
@@ -80,5 +83,48 @@ export const appScreens: AppScreen[] = [
       'perk-3', 'perk-3-img',
     ],
     tolerance: { position: 8, size: 8 },
+  },
+  {
+    id: 'chat-login',
+    label: 'TSN Chat — Login',
+    app: 'chat',
+    windowTitle: 'TSN Chat',
+    buildTarget: 'examples/native-gui/chat.tsx',
+    htmlOracle: 'scratch/chatgpt-html/index.html',
+    viewport: { width: 1440, height: 838 },
+    testIds: [
+      'login-screen',
+      'login-card',
+      'apple-login-btn',
+    ],
+    tolerance: { position: 10, size: 10 },
+  },
+  {
+    id: 'chat-workspace',
+    label: 'TSN Chat — Workspace',
+    app: 'chat',
+    windowTitle: 'TSN Chat',
+    buildTarget: 'examples/native-gui/chat.tsx',
+    htmlOracle: 'scratch/chatgpt-html/app.html',
+    viewport: { width: 1440, height: 838 },
+    navigateTo: 'apple-login-btn',
+    testIds: [
+      'sidebar',
+      'chat-main',
+      'chat-header',
+      'model-chip',
+      'conversation-panel',
+      'msg-user-0',
+      'attached-pill-0',
+      'attached-pill-1',
+      'msg-assistant-0',
+      'thinking-panel-0',
+      'composer-wrap',
+      'composer-input',
+      'attach-btn',
+      'send-btn',
+      'context-rail',
+    ],
+    tolerance: { position: 12, size: 12 },
   },
 ]

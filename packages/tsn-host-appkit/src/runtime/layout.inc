@@ -269,6 +269,13 @@ void ui_set_size(UIHandle v, int w, int h) {
     if (!node) return;
     if (w >= 0) YGNodeStyleSetWidth(node, w);
     if (h >= 0) YGNodeStyleSetHeight(node, h);
+    NSView *view = view_for_handle(v);
+    if (!view) return;
+    NSRect frame = view.frame;
+    if (w >= 0) frame.size.width = w;
+    if (h >= 0) frame.size.height = h;
+    view.frame = frame;
+    [view invalidateIntrinsicContentSize];
 }
 
 void ui_set_size_pct(UIHandle v, double w, double h) {

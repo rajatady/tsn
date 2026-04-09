@@ -15,8 +15,9 @@
     ▼
 [4] Codegen ── Emit C code with #line directives
     │           core codegen in packages/tsn-compiler-core
-    │           JSX lowering in packages/tsn-compiler-ui
+    │           JSX planning + lowering in packages/tsn-compiler-ui
     │           Tailwind lowering in packages/tsn-tailwind
+    │           canonical UI contracts in tsn-core / tsn-layout / tsn-style / tsn-ui
     ▼
 [5] Compile ── clang with platform-specific flags
     │           CLI links only runtime headers
@@ -34,6 +35,8 @@ The compiler is now organized as TSN packages:
 - `packages/tsn-compiler-core` owns build orchestration, validation, resolver flow, and core codegen
 - `packages/tsn-compiler-ui` owns JSX lowering and hook/store UI codegen support
 - `packages/tsn-tailwind` owns compile-time Tailwind parsing
+- `packages/tsn-core`, `packages/tsn-layout`, and `packages/tsn-style` own the host-independent UI contracts used by the newer planning path
+- `packages/tsn-ui` owns the primitive catalog and helper layer exposed to TSX authors
 - `packages/tsn-host-appkit` owns the macOS host runtime
 - `compiler/` remains as compatibility and CLI-facing entrypoints
 
@@ -104,7 +107,7 @@ A function named `main` is renamed to `ts_main` to avoid conflicting with the C 
 - Top-level variables become C globals (declaration before functions, initialization in `main()`)
 - `main()` calls `ui_init()`, initializes globals, emits the JSX tree, captures the root `UIHandle`, then calls `ui_run()` once
 - hook/store state is emitted through generated apply helpers from `packages/tsn-compiler-core/src/hooks.ts`
-- JSX elements emit `ui_*()` calls accumulated in `jsxStmts`
+- JSX elements first build a planner-side primitive/style intent, then emit `ui_*()` calls accumulated in `jsxStmts`
 
 ### Output Assembly
 

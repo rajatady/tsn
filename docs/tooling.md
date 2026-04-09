@@ -7,7 +7,8 @@ tsn build <file.ts|.tsx>           # Optimized binary (-O2)
 tsn build <file> --debug           # Debug binary (-O0 -g, bounds checking)
 tsn dev <file.ts|.tsx>             # Watch mode, auto-recompile + relaunch
 tsn run <file.ts|.tsx>             # Compile and run once
-npx tsx compiler/inspect.ts <command>   # Query running app
+tsn inspect <command>              # Query running app
+npx tsx compiler/inspect.ts <command>   # Raw inspector entrypoint
 ```
 
 ## Build Modes
@@ -119,6 +120,11 @@ The inspector commands are synchronous now: `click` and `type` only return after
 
 The default UI verification path now includes the native gallery app at [conformance/gallery.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/conformance/gallery.tsx). `bash harness/ui-conformance.sh` builds it, launches it, drives it through the inspector, and writes screenshots plus tree dumps to `/tmp/tsn-ui-conformance`.
 
+The repo also has two additional UI verification entrypoints:
+
+- [conformance/ui.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/conformance/ui.tsx) for interactive control/state verification
+- [conformance/app-harness.ts](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/conformance/app-harness.ts) for full-page browser-oracle comparison of larger apps such as App Store and Chat
+
 ### Commands
 
 | Command | Description |
@@ -161,6 +167,12 @@ npx tsx compiler/inspect.ts --app incident-tracker screenshot
 
 # Native visual conformance
 bash harness/ui-conformance.sh
+
+# Full-page browser-oracle comparison
+npx tsx conformance/app-harness.ts
+
+# Interactive control app
+./tsn build conformance/ui.tsx
 ```
 
 ### Element IDs

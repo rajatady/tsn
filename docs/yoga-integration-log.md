@@ -4,6 +4,8 @@ description: Complete record of the Yoga layout engine integration attempt — w
 type: project
 ---
 
+This file is a historical session log, not the current source-of-truth architecture doc. It intentionally preserves older references from that session, including mentions of the removed `examples/native-gui/ui-gallery.tsx` path.
+
 ## Pre-Yoga: What Led Here
 
 ### App Store Visual Quality Gap

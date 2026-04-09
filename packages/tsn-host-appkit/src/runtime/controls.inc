@@ -6,6 +6,137 @@
 @implementation TSNTextAreaView
 @end
 
+@interface TSNButtonView : NSButton
+@property (nonatomic, strong) NSColor *tsnFillColor;
+@property (nonatomic, strong) NSColor *tsnStrokeColor;
+@property (nonatomic, strong) NSColor *tsnTitleColor;
+@property (nonatomic) CGFloat tsnCornerRadius;
+@property (nonatomic) NSEdgeInsets tsnContentInsets;
+@end
+
+@implementation TSNButtonView
+- (BOOL)isFlipped { return YES; }
+- (NSSize)intrinsicContentSize {
+    NSAttributedString *title = self.attributedTitle ?: [[NSAttributedString alloc] initWithString:self.title ?: @""];
+    NSSize titleSize = title.length > 0 ? title.size : NSMakeSize(0, 0);
+    return NSMakeSize(ceil(titleSize.width + self.tsnContentInsets.left + self.tsnContentInsets.right),
+                      ceil(MAX(titleSize.height + self.tsnContentInsets.top + self.tsnContentInsets.bottom, 24)));
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    if (self.image != nil) {
+        [super drawRect:dirtyRect];
+        return;
+    }
+    NSRect bounds = self.bounds;
+    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:bounds xRadius:self.tsnCornerRadius yRadius:self.tsnCornerRadius];
+    if (self.tsnFillColor != nil && self.tsnFillColor.alphaComponent > 0) {
+        [self.tsnFillColor setFill];
+        [path fill];
+    }
+    if (self.tsnStrokeColor != nil && self.tsnStrokeColor.alphaComponent > 0) {
+        [self.tsnStrokeColor setStroke];
+        path.lineWidth = 1;
+        [path stroke];
+    }
+
+    NSAttributedString *title = self.attributedTitle ?: [[NSAttributedString alloc] initWithString:self.title ?: @""];
+    if (title.length == 0) return;
+    NSRect contentRect = NSInsetRect(bounds, self.tsnContentInsets.left, self.tsnContentInsets.top);
+    contentRect.size.width -= MAX(0, self.tsnContentInsets.right - self.tsnContentInsets.left);
+    contentRect.size.height -= MAX(0, self.tsnContentInsets.bottom - self.tsnContentInsets.top);
+    NSSize titleSize = title.size;
+    NSRect titleRect = NSMakeRect(
+        floor(NSMinX(contentRect) + (contentRect.size.width - titleSize.width) * 0.5),
+        floor(NSMinY(contentRect) + (contentRect.size.height - titleSize.height) * 0.5),
+        ceil(titleSize.width),
+        ceil(titleSize.height)
+    );
+    [title drawInRect:titleRect];
+}
+@end
+
+@interface TSNPressableView : NSView {
+    UIClickFn _tsnClickFn;
+    int _tsnClickTag;
+}
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, strong) NSAttributedString *attributedTitle;
+@property (nonatomic, strong) NSColor *tsnFillColor;
+@property (nonatomic, strong) NSColor *tsnStrokeColor;
+@property (nonatomic, strong) NSColor *tsnTitleColor;
+@property (nonatomic) CGFloat tsnCornerRadius;
+@property (nonatomic) NSEdgeInsets tsnContentInsets;
+- (void)setClickFn:(UIClickFn)fn tag:(int)tag;
+- (void)tsnPerformClick;
+@end
+
+@implementation TSNPressableView
+- (instancetype)initWithTitle:(NSString *)title {
+    self = [super initWithFrame:NSZeroRect];
+    if (self) {
+        _title = [title copy] ?: @"";
+        _attributedTitle = [[NSAttributedString alloc] initWithString:_title];
+        _tsnFillColor = NSColor.clearColor;
+        _tsnStrokeColor = NSColor.clearColor;
+        _tsnTitleColor = NSColor.labelColor;
+        _tsnCornerRadius = 8;
+        _tsnContentInsets = NSEdgeInsetsMake(6, 12, 6, 12);
+        NSClickGestureRecognizer *gesture = [[NSClickGestureRecognizer alloc] initWithTarget:self action:@selector(handleClickGesture:)];
+        [self addGestureRecognizer:gesture];
+        retain_persistent(gesture);
+    }
+    return self;
+}
+- (BOOL)isFlipped { return YES; }
+- (void)setAttributedTitle:(NSAttributedString *)attributedTitle {
+    _attributedTitle = attributedTitle ?: [[NSAttributedString alloc] initWithString:self.title ?: @""];
+    [self invalidateIntrinsicContentSize];
+    [self setNeedsDisplay:YES];
+}
+- (NSSize)intrinsicContentSize {
+    NSSize titleSize = self.attributedTitle.length > 0 ? self.attributedTitle.size : NSMakeSize(0, 0);
+    return NSMakeSize(ceil(titleSize.width + self.tsnContentInsets.left + self.tsnContentInsets.right),
+                      ceil(MAX(titleSize.height + self.tsnContentInsets.top + self.tsnContentInsets.bottom, 24)));
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    [super drawRect:dirtyRect];
+    NSRect bounds = self.bounds;
+    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:bounds xRadius:self.tsnCornerRadius yRadius:self.tsnCornerRadius];
+    if (self.tsnFillColor != nil && self.tsnFillColor.alphaComponent > 0) {
+        [self.tsnFillColor setFill];
+        [path fill];
+    }
+    if (self.tsnStrokeColor != nil && self.tsnStrokeColor.alphaComponent > 0) {
+        [self.tsnStrokeColor setStroke];
+        path.lineWidth = 1;
+        [path stroke];
+    }
+    if (self.attributedTitle.length == 0) return;
+    NSSize titleSize = self.attributedTitle.size;
+    NSRect titleRect = NSMakeRect(
+        floor((bounds.size.width - titleSize.width) * 0.5),
+        floor((bounds.size.height - titleSize.height) * 0.5),
+        ceil(titleSize.width),
+        ceil(titleSize.height)
+    );
+    [self.attributedTitle drawInRect:titleRect];
+}
+- (void)mouseDown:(NSEvent *)event {
+    [super mouseDown:event];
+    if (_tsnClickFn) _tsnClickFn(_tsnClickTag);
+}
+- (void)setClickFn:(UIClickFn)fn tag:(int)tag {
+    _tsnClickFn = fn;
+    _tsnClickTag = tag;
+}
+- (void)handleClickGesture:(__unused NSGestureRecognizer *)gesture {
+    if (_tsnClickFn) _tsnClickFn(_tsnClickTag);
+}
+- (void)tsnPerformClick {
+    if (_tsnClickFn) _tsnClickFn(_tsnClickTag);
+}
+@end
+
 UIHandle ui_symbol(const char *name, int size) {
     NSString *n = [NSString stringWithUTF8String:name];
     NSImage *img = [NSImage imageWithSystemSymbolName:n accessibilityDescription:n];
@@ -264,20 +395,11 @@ void ui_text_input_set_value(UIHandle field, const char *text) {
 @end
 
 UIHandle ui_button(const char *label, UIClickFn fn, int tag) {
-    NSButton *b = [NSButton buttonWithTitle:[NSString stringWithUTF8String:label]
-                                     target:nil action:nil];
-    b.bezelStyle = NSBezelStyleRecessed;
-    if (fn) {
-        UIButtonTarget *t = [UIButtonTarget new];
-        t.fn = fn;
-        t.tag = tag;
-        b.target = t;
-        b.action = @selector(clicked:);
-        retain_persistent(t);
-    }
-    tsn_create_view_node(b, TSNNodeKindLeaf, 0, YES);
-    retain_render(b);
-    return (__bridge UIHandle)b;
+    TSNPressableView *button = [[TSNPressableView alloc] initWithTitle:[NSString stringWithUTF8String:label]];
+    [button setClickFn:fn tag:tag];
+    tsn_create_view_node(button, TSNNodeKindLeaf, 0, YES);
+    retain_render(button);
+    return (__bridge UIHandle)button;
 }
 
 UIHandle ui_checkbox(const char *label, bool initial) {
@@ -339,8 +461,8 @@ void ui_bool_control_set_value(UIHandle control, bool on) {
 UIHandle ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, int tag) {
     NSString *sym = [NSString stringWithUTF8String:sf_symbol];
     NSImage *img = [NSImage imageWithSystemSymbolName:sym accessibilityDescription:sym];
-    NSButton *b = [NSButton buttonWithTitle:[NSString stringWithUTF8String:label]
-                                      image:img target:nil action:nil];
+    TSNButtonView *b = [TSNButtonView buttonWithTitle:[NSString stringWithUTF8String:label]
+                                                image:img target:nil action:nil];
     b.bezelStyle = NSBezelStyleRecessed;
     b.imagePosition = NSImageLeading;
     if (fn) {
@@ -358,28 +480,131 @@ static void style_button_surface(NSButton *btn, NSColor *bg, NSColor *fg, CGFloa
                                  bool bordered, NSTextAlignment align,
                                  CGFloat top, CGFloat left, CGFloat bottom, CGFloat right,
                                  NSFontWeight weight) {
+    NSString *trimmed = [btn.title stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    if (left > 10 || right > 10) {
+        trimmed = [NSString stringWithFormat:@"  %@  ", trimmed];
+    }
+    btn.title = trimmed;
     btn.bordered = bordered;
     btn.alignment = align;
     btn.wantsLayer = YES;
     btn.layer.cornerRadius = radius;
     btn.layer.masksToBounds = YES;
     btn.layer.backgroundColor = bg ? bg.CGColor : NSColor.clearColor.CGColor;
-    btn.font = [NSFont systemFontOfSize:13 weight:weight];
+    NSFont *font = [NSFont systemFontOfSize:13 weight:weight];
+    btn.font = font;
     btn.contentTintColor = fg;
     btn.bezelColor = bg ?: NSColor.clearColor;
-    if (left > 10 || right > 10) {
-        NSString *trimmed = [btn.title stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-        btn.title = [NSString stringWithFormat:@"  %@  ", trimmed];
+    btn.focusRingType = NSFocusRingTypeNone;
+    NSDictionary *attrs = @{
+        NSForegroundColorAttributeName: fg ?: NSColor.labelColor,
+        NSFontAttributeName: font,
+    };
+    btn.attributedTitle = [[NSAttributedString alloc] initWithString:trimmed attributes:attrs];
+    btn.attributedAlternateTitle = btn.attributedTitle;
+    if ([btn isKindOfClass:[TSNButtonView class]]) {
+        TSNButtonView *custom = (TSNButtonView *)btn;
+        custom.tsnFillColor = bg ?: NSColor.clearColor;
+        custom.tsnStrokeColor = bordered ? (bg ?: fg ?: NSColor.clearColor) : NSColor.clearColor;
+        custom.tsnTitleColor = fg ?: NSColor.labelColor;
+        custom.tsnCornerRadius = radius;
+        custom.tsnContentInsets = NSEdgeInsetsMake(top, left, bottom, right);
+        [custom invalidateIntrinsicContentSize];
     }
+    [btn setNeedsDisplay:YES];
 }
 
 void ui_button_set_style(UIHandle b, int style) {
-    NSButton *btn = (__bridge NSButton *)b;
+    NSView *view = (__bridge NSView *)b;
+    if ([view isKindOfClass:[TSNPressableView class]]) {
+        TSNPressableView *btn = (TSNPressableView *)view;
+        NSString *trimmed = [btn.title stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        NSColor *bg = NSColor.clearColor;
+        NSColor *fg = NSColor.labelColor;
+        CGFloat radius = 10;
+        CGFloat top = 6, left = 12, bottom = 6, right = 12;
+        NSFontWeight weight = NSFontWeightMedium;
+        switch (style) {
+            case 1:
+                bg = NSColor.whiteColor;
+                fg = NSColor.blackColor;
+                radius = 999;
+                top = 8; left = 20; bottom = 8; right = 20;
+                weight = NSFontWeightSemibold;
+                trimmed = [NSString stringWithFormat:@"  %@  ", trimmed];
+                break;
+            case 2:
+                bg = [NSColor systemRedColor];
+                fg = NSColor.whiteColor;
+                radius = 999;
+                top = 8; left = 16; bottom = 8; right = 16;
+                weight = NSFontWeightSemibold;
+                trimmed = [NSString stringWithFormat:@"  %@  ", trimmed];
+                break;
+            case 3:
+                bg = NSColor.clearColor;
+                fg = NSColor.systemBlueColor;
+                radius = 0;
+                top = 4; left = 6; bottom = 4; right = 6;
+                weight = NSFontWeightSemibold;
+                break;
+            case 4:
+                bg = NSColor.clearColor;
+                fg = [NSColor colorWithWhite:0.88 alpha:1];
+                radius = 6;
+                top = 10; left = 12; bottom = 10; right = 12;
+                weight = NSFontWeightMedium;
+                break;
+            case 5:
+                bg = [NSColor colorWithWhite:0.22 alpha:1];
+                fg = NSColor.systemBlueColor;
+                radius = 6;
+                top = 10; left = 12; bottom = 10; right = 12;
+                weight = NSFontWeightSemibold;
+                break;
+            case 6:
+                bg = NSColor.whiteColor;
+                fg = NSColor.systemBlueColor;
+                radius = 999;
+                top = 4; left = 16; bottom = 4; right = 16;
+                weight = NSFontWeightSemibold;
+                trimmed = [NSString stringWithFormat:@"  %@  ", trimmed];
+                break;
+            case 7:
+                bg = [NSColor colorWithWhite:0.25 alpha:1];
+                fg = [NSColor colorWithWhite:0.92 alpha:1];
+                radius = 999;
+                top = 5; left = 12; bottom = 5; right = 12;
+                weight = NSFontWeightSemibold;
+                break;
+            default:
+                bg = [NSColor colorWithWhite:0.16 alpha:1];
+                fg = [NSColor colorWithWhite:0.92 alpha:1];
+                radius = 10;
+                top = 6; left = 12; bottom = 6; right = 12;
+                weight = NSFontWeightMedium;
+                break;
+        }
+        NSFont *font = [NSFont systemFontOfSize:13 weight:weight];
+        btn.tsnFillColor = bg;
+        btn.tsnStrokeColor = NSColor.clearColor;
+        btn.tsnTitleColor = fg;
+        btn.tsnCornerRadius = radius;
+        btn.tsnContentInsets = NSEdgeInsetsMake(top, left, bottom, right);
+        btn.attributedTitle = [[NSAttributedString alloc] initWithString:trimmed attributes:@{
+            NSForegroundColorAttributeName: fg,
+            NSFontAttributeName: font,
+        }];
+        [btn invalidateIntrinsicContentSize];
+        [btn setNeedsDisplay:YES];
+        return;
+    }
+    NSButton *btn = (NSButton *)view;
     if (![btn isKindOfClass:[NSButton class]]) return;
     switch (style) {
         case 1:
             btn.bezelStyle = NSBezelStyleRounded;
-            style_button_surface(btn, NSColor.controlAccentColor, NSColor.whiteColor, 999, NO,
+            style_button_surface(btn, NSColor.whiteColor, NSColor.blackColor, 999, NO,
                                  NSTextAlignmentCenter, 8, 20, 8, 20, NSFontWeightSemibold);
             break;
         case 2:
