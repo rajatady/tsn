@@ -276,6 +276,27 @@ tsn build examples/native-gui/app-store.tsx
 tsn build examples/native-gui/app-store.tsx --debug
 ```
 
+The App Store example is paired with browser oracles under `scratch/app-store-html/` and is covered by the full-page harness in `conformance/app-harness.ts`.
+
+## Native GUI: Chat
+
+Located in [examples/native-gui/chat.tsx](../examples/native-gui/chat.tsx). This is the newest multi-file UI example and the best current stress test for the low-level primitive layer.
+
+It exercises:
+
+- simulated login plus workspace-state transitions through `useStore()`
+- a sidebar, transcript, composer, file-attach dialog, and theme switching
+- multiline text, wrapped message cards, and control-heavy surfaces
+- a paired browser oracle under `scratch/chatgpt-html/`
+- the full-page app harness path in `conformance/app-harness.ts`
+
+Compile it with:
+
+```bash
+tsn build examples/native-gui/chat.tsx
+tsn build examples/native-gui/chat.tsx --debug
+```
+
 ## Native GUI: Geometry Gallery
 
 Located in [conformance/gallery.tsx](../conformance/gallery.tsx). This is the provider-facing visual verification surface for the TSN UI stack rather than an end-user product demo.
@@ -285,7 +306,7 @@ It exercises:
 - sidebar shells and spacer-to-footer layout
 - centered content rails
 - horizontal shelves and overflow cases
-- button, card, stat, text, and search primitives
+- button, view, card, stat, text, search, textarea, select, and bool-control primitives
 - media hero, icon, screenshot, and circular crop cases
 - shared-store interactions that can be driven through the inspector
 
@@ -298,6 +319,27 @@ bash harness/ui-conformance.sh
 ```
 
 The harness launches the gallery, clicks through the suites, captures screenshots, writes tree snapshots, and stores artifacts in `/tmp/tsn-ui-conformance`.
+
+## UI Conformance App
+
+Located in [conformance/ui.tsx](../conformance/ui.tsx). This is the interactive control-verification surface rather than a static geometry gallery.
+
+It is where stateful controls and reset flows are validated:
+
+- `Input`
+- `Search`
+- `TextArea`
+- `Checkbox`
+- `Radio`
+- `Switch`
+- `Select`
+
+Compile it with:
+
+```bash
+tsn build conformance/ui.tsx
+tsn build conformance/ui.tsx --debug
+```
 
 ## Correctness Tests
 

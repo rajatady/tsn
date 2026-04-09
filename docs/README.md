@@ -1,6 +1,6 @@
 # TSN Documentation
 
-TSN compiles a strict subset of TypeScript to native ARM64 binaries via C. No runtime. No garbage collector. No Electron.
+TSN compiles a strict subset of TypeScript to native ARM64 binaries via C. No JavaScript runtime. No Electron.
 
 The compiler remains general-purpose first. The UI stack is a packaged subsystem layered on top of the same compiler pipeline, not a separate product.
 
@@ -25,6 +25,8 @@ The implementation now lives behind `packages/tsn-*` boundaries:
 - `packages/tsn-compiler-ui` owns JSX lowering and hook/store UI codegen support.
 - `packages/tsn-tailwind` owns compile-time Tailwind parsing.
 - `packages/tsn-host-appkit` owns the macOS AppKit host runtime.
+- `packages/tsn-ui` owns the developer-facing primitive catalog and helper layer.
+- `packages/tsn-core`, `packages/tsn-layout`, and `packages/tsn-style` own the canonical host-independent UI contracts.
 - `compiler/` remains as compatibility entrypoints and CLI-facing wrappers.
 
 ## Quick Start
