@@ -169,7 +169,10 @@ function resolveStyleCalls(node: TSNNode): string[] {
 function emitTextStyleCalls(calls: string[], handle: string, textStyle: Partial<TSNTextStyle>): void {
   emitTextColorCall(calls, handle, textStyle.color)
   if (textStyle.weight != null) calls.push(`ui_text_set_weight(${handle}, ${textStyle.weight});`)
-  if (textStyle.lineHeight != null) calls.push(`ui_text_set_line_height(${handle}, ${textStyle.lineHeight});`)
+  if (textStyle.lineHeight != null) {
+    const size = textStyle.size ?? 14
+    calls.push(`ui_text_set_line_height(${handle}, ${resolveLineHeightMultiplier(textStyle.lineHeight, size)});`)
+  }
   if (textStyle.tracking != null) {
     const size = textStyle.size ?? 14
     calls.push(`ui_text_set_tracking(${handle}, ${(textStyle.tracking * size).toFixed(4)});`)
@@ -179,6 +182,11 @@ function emitTextStyleCalls(calls: string[], handle: string, textStyle: Partial<
   if (textStyle.align === 'start') calls.push(`ui_text_set_align(${handle}, 0);`)
   if (textStyle.align === 'center') calls.push(`ui_text_set_align(${handle}, 1);`)
   if (textStyle.align === 'end') calls.push(`ui_text_set_align(${handle}, 2);`)
+}
+
+function resolveLineHeightMultiplier(lineHeight: number, size: number): string {
+  const multiplier = lineHeight > 4 ? lineHeight / size : lineHeight
+  return multiplier.toFixed(4)
 }
 
 function resolveTextPresentation(textStyle: Partial<TSNTextStyle>): { size: number; bold: boolean } {

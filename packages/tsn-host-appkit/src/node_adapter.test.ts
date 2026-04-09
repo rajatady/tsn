@@ -24,13 +24,22 @@ test('adaptNodeToAppKitPlan maps canonical text node styles to AppKit calls', ()
   assert.equal(hostPlan.createCall, 'ui_text("Hello", 14, false)')
   assert.ok(hostPlan.styleCalls.includes('ui_set_size_pct(_j0, 30, -1);'))
   assert.ok(hostPlan.styleCalls.includes('ui_text_set_weight(_j0, 6);'))
-  assert.ok(hostPlan.styleCalls.includes('ui_text_set_line_height(_j0, 1.25);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_text_set_line_height(_j0, 1.2500);'))
   assert.ok(hostPlan.styleCalls.includes('ui_text_set_tracking(_j0, -0.3500);'))
   assert.ok(hostPlan.styleCalls.includes('ui_text_set_color_rgb(_j0, 1, 1, 1, 0.8);'))
   assert.ok(hostPlan.styleCalls.includes('ui_text_set_transform(_j0, 1);'))
   assert.ok(hostPlan.styleCalls.includes('ui_text_set_align(_j0, 1);'))
   assert.ok(hostPlan.styleCalls.includes('ui_text_set_truncate(_j0);'))
   assert.ok(hostPlan.styleCalls.includes('ui_text_set_selectable(_j0, true);'))
+})
+
+test('adaptNodeToAppKitPlan converts arbitrary line-height values into multipliers', () => {
+  const tailwind = parseTailwind('text-[15] leading-[28]', '_jline')
+  const plan = buildPrimitivePlan('Text', '_jline', 'text-[15] leading-[28]', { value: 'Hello world' }, tailwind)
+
+  const hostPlan = adaptNodeToAppKitPlan(plan.node)
+
+  assert.ok(hostPlan.styleCalls.includes('ui_text_set_line_height(_jline, 1.8667);'))
 })
 
 test('adaptNodeToAppKitPlan maps canonical sidebar/search nodes and preserves children', () => {

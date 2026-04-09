@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TSN Chat Oracle</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg: 10 10 11;
+      --panel: 24 24 27;
+      --panel-2: 31 31 35;
+      --sidebar: 18 18 20;
+      --border: 255 255 255;
+      --text: 250 250 250;
+      --muted: 161 161 170;
+      --accent: 244 244 245;
+      --accent-ink: 24 24 27;
+      --user: 39 39 42;
+      --assistant: 24 24 27;
+    }
+
+    body.theme-stone {
+      --bg: 245 245 244;
+      --panel: 255 255 255;
+      --panel-2: 250 250 249;
+      --sidebar: 250 250 249;
+      --border: 24 24 27;
+      --text: 24 24 27;
+      --muted: 113 113 122;
+      --accent: 24 24 27;
+      --accent-ink: 250 250 250;
+      --user: 231 229 228;
+      --assistant: 255 255 255;
+    }
+
+    body.theme-emerald {
+      --bg: 7 18 14;
+      --panel: 14 28 22;
+      --panel-2: 17 37 29;
+      --sidebar: 9 22 17;
+      --border: 167 243 208;
+      --text: 236 253 245;
+      --muted: 167 243 208;
+      --accent: 16 185 129;
+      --accent-ink: 236 253 245;
+      --user: 20 40 32;
+      --assistant: 14 28 22;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: rgb(var(--bg));
+      color: rgb(var(--text));
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .surface { background: rgb(var(--panel)); border: 1px solid rgba(var(--border), 0.08); }
+    .surface-soft { background: rgb(var(--panel-2)); border: 1px solid rgba(var(--border), 0.08); }
+    .sidebar-bg { background: rgb(var(--sidebar)); border-right: 1px solid rgba(var(--border), 0.08); }
+    .muted { color: rgba(var(--muted), 0.9); }
+    .faint { color: rgba(var(--muted), 0.65); }
+    .ring-soft { border: 1px solid rgba(var(--border), 0.1); }
+    .message-user { background: rgba(var(--user), 1); border: 1px solid rgba(var(--border), 0.06); }
+    .message-assistant { background: rgba(var(--assistant), 1); border: 1px solid rgba(var(--border), 0.06); }
+    .theme-chip.active { background: rgba(var(--accent), 1); color: rgb(var(--accent-ink)); border-color: transparent; }
+    .hide { display: none !important; }
+    .scrollbar-none::-webkit-scrollbar { display: none; }
+    .scrollbar-none { scrollbar-width: none; }
+    .sidebar-collapsed { width: 84px !important; min-width: 84px !important; }
+    .sidebar-collapsed .sidebar-copy,
+    .sidebar-collapsed .sidebar-heading { display: none; }
+    .sidebar-collapsed .nav-row { justify-content: center; }
+    .thinking-panel[data-open="false"] [data-role="thinking-body"] { display: none; }
+  </style>
+</head>
+<body class="theme-slate">
+  <div id="login-screen" data-testid="login-screen" class="min-h-screen flex items-center justify-center p-6">
+    <div class="surface w-full max-w-[980px] rounded-3xl shadow-2xl grid grid-cols-2 overflow-hidden">
+      <div class="p-12 bg-[rgba(255,255,255,0.02)]">
+        <div class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-soft muted mb-6">
+          Chat oracle
+        </div>
+        <h1 class="text-5xl font-semibold tracking-tight leading-[1.02] max-w-[420px]">
+          A normal, clean chat app shell.
+        </h1>
+        <p class="mt-5 text-base leading-7 muted max-w-[440px]">
+          Simulated Apple sign-in first, then a ChatGPT-style workspace with themes, attachments, a collapsible sidebar, and expandable thinking.
+        </p>
+        <div class="mt-10 grid grid-cols-2 gap-4">
+          <div class="surface-soft rounded-2xl p-5">
+            <div class="text-xs uppercase tracking-[0.14em] faint mb-2">Flow</div>
+            <div class="text-sm leading-6">Sign in, restore workspace, continue the active draft.</div>
+          </div>
+          <div class="surface-soft rounded-2xl p-5">
+            <div class="text-xs uppercase tracking-[0.14em] faint mb-2">UI</div>
+            <div class="text-sm leading-6">Sidebar, transcript, composer, attachments, and theme switcher.</div>
+          </div>
+        </div>
+      </div>
+      <div class="p-12 flex items-center justify-center bg-[rgba(255,255,255,0.01)]">
+        <div data-testid="login-card" class="surface-soft rounded-3xl p-8 w-full max-w-[380px]">
+          <div class="w-12 h-12 rounded-2xl bg-white text-zinc-900 flex items-center justify-center text-xl font-semibold mb-6">◎</div>
+          <h2 class="text-3xl font-semibold tracking-tight">Welcome back</h2>
+          <p class="mt-2 text-sm leading-6 muted">
+            Continue with a simulated Apple sign-in. No networking, just local state transitions.
+          </p>
+          <button data-testid="apple-login-btn" onclick="beginLogin()" class="mt-8 w-full h-12 rounded-xl bg-white text-zinc-950 font-medium flex items-center justify-center gap-2">
+            <span></span>
+            <span>Continue with Apple</span>
+          </button>
+          <button class="mt-3 w-full h-12 rounded-xl ring-soft muted font-medium">
+            Continue with email
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-shell" data-testid="app-shell" class="hide h-screen p-4">
+    <div class="surface h-full rounded-3xl overflow-hidden flex">
+      <aside id="sidebar" data-testid="sidebar" class="sidebar-bg w-[272px] min-w-[272px] p-4 flex flex-col gap-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-white text-zinc-950 flex items-center justify-center font-semibold">◎</div>
+            <div class="sidebar-copy min-w-0">
+              <div class="text-sm font-medium">TSN Chat</div>
+              <div class="text-xs faint">Personal workspace</div>
+            </div>
+          </div>
+          <button data-testid="sidebar-collapse-btn" onclick="toggleSidebar()" class="w-9 h-9 rounded-xl surface-soft">≡</button>
+        </div>
+
+        <button data-testid="new-chat-btn" class="h-11 rounded-xl bg-white text-zinc-950 text-sm font-medium">
+          New chat
+        </button>
+
+        <div class="surface-soft rounded-xl h-11 px-4 flex items-center text-sm muted">
+          Search chats
+        </div>
+
+        <div>
+          <div class="sidebar-heading text-xs uppercase tracking-[0.14em] faint mb-2">Recent</div>
+          <div class="space-y-1">
+            <button data-testid="nav-chat" class="nav-row w-full text-left rounded-xl px-3 py-2.5 bg-[rgba(255,255,255,0.06)] text-sm font-medium">Today’s draft</button>
+            <button class="nav-row w-full text-left rounded-xl px-3 py-2.5 text-sm muted hover:bg-[rgba(255,255,255,0.04)]">Design review</button>
+            <button class="nav-row w-full text-left rounded-xl px-3 py-2.5 text-sm muted hover:bg-[rgba(255,255,255,0.04)]">Launch notes</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="sidebar-heading text-xs uppercase tracking-[0.14em] faint mb-2">Themes</div>
+          <div data-testid="theme-switcher" class="sidebar-copy flex flex-wrap gap-2">
+            <button data-testid="theme-slate" onclick="setTheme('slate')" class="theme-chip active rounded-full px-3 py-1.5 text-xs ring-soft">Slate</button>
+            <button data-testid="theme-stone" onclick="setTheme('stone')" class="theme-chip rounded-full px-3 py-1.5 text-xs ring-soft">Stone</button>
+            <button data-testid="theme-emerald" onclick="setTheme('emerald')" class="theme-chip rounded-full px-3 py-1.5 text-xs ring-soft">Emerald</button>
+          </div>
+        </div>
+
+        <div class="mt-auto sidebar-copy">
+          <div class="text-xs uppercase tracking-[0.14em] faint mb-2">Pinned files</div>
+          <div class="space-y-2">
+            <div class="surface-soft rounded-xl px-3 py-3">
+              <div class="text-sm font-medium">roadmap-q3.pdf</div>
+              <div class="text-xs faint mt-1">Attached in this chat</div>
+            </div>
+            <div class="surface-soft rounded-xl px-3 py-3">
+              <div class="text-sm font-medium">demo-script.md</div>
+              <div class="text-xs faint mt-1">Working draft</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="flex-1 min-w-0 flex">
+        <main data-testid="chat-main" class="flex-1 min-w-0 flex flex-col">
+          <header data-testid="chat-header" class="h-16 px-6 border-b border-white/10 flex items-center justify-between gap-4">
+            <div>
+              <div class="text-sm font-medium">Launch the TSN chat app</div>
+              <div class="text-xs faint">Simulated local workspace</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div data-testid="model-chip" class="rounded-full px-3 py-1.5 text-xs ring-soft muted">GPT-5.4 • Simulated</div>
+              <button data-testid="theme-panel-btn" onclick="toggleThemePanel()" class="w-9 h-9 rounded-xl surface-soft">◐</button>
+              <div class="w-9 h-9 rounded-xl bg-white text-zinc-950 flex items-center justify-center text-sm font-semibold">RK</div>
+            </div>
+          </header>
+
+          <div id="theme-panel" data-testid="theme-panel" class="hide px-6 pt-4">
+            <div class="surface-soft rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <div class="text-sm font-medium">Theme</div>
+                <div class="text-xs faint mt-1">Keep this simple and familiar.</div>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="setTheme('slate')" class="theme-chip active rounded-full px-3 py-1.5 text-xs ring-soft">Slate</button>
+                <button onclick="setTheme('stone')" class="theme-chip rounded-full px-3 py-1.5 text-xs ring-soft">Stone</button>
+                <button onclick="setTheme('emerald')" class="theme-chip rounded-full px-3 py-1.5 text-xs ring-soft">Emerald</button>
+              </div>
+            </div>
+          </div>
+
+          <div data-testid="conversation-scroll" class="flex-1 overflow-y-auto scrollbar-none px-6 py-6">
+            <div data-testid="conversation-panel" class="max-w-[840px] mx-auto space-y-5">
+              <div class="flex justify-end">
+                <article data-testid="msg-user-0" class="message-user rounded-2xl px-5 py-4 max-w-[720px]">
+                  <p class="text-sm leading-6">
+                    Build a clean TSN-native chat app that feels close to ChatGPT. Keep the design standard, keep the architecture honest, and simulate login, themes, files, and thinking UI.
+                  </p>
+                  <div class="mt-4 flex flex-wrap gap-2">
+                    <div data-testid="attached-pill-0" class="rounded-lg px-3 py-1.5 text-xs ring-soft muted">roadmap-q3.pdf</div>
+                    <div data-testid="attached-pill-1" class="rounded-lg px-3 py-1.5 text-xs ring-soft muted">demo-script.md</div>
+                  </div>
+                </article>
+              </div>
+
+              <div class="flex justify-start">
+                <article data-testid="msg-assistant-0" class="message-assistant rounded-2xl px-5 py-5 max-w-[760px] w-full">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-white text-zinc-950 flex items-center justify-center text-sm font-semibold">◎</div>
+                    <div>
+                      <div class="text-sm font-medium">TSN Assistant</div>
+                      <div class="text-xs faint">Drafting the oracle first</div>
+                    </div>
+                  </div>
+
+                  <div id="thinking-panel-0" data-testid="thinking-panel-0" data-open="true" class="thinking-panel rounded-xl mb-4">
+                    <button data-testid="thinking-toggle-0" onclick="toggleThinking()" class="w-full px-4 py-3 flex items-center justify-between text-left">
+                      <span class="text-sm font-medium">Thinking</span>
+                      <span id="thinking-chevron">▾</span>
+                    </button>
+                    <div data-role="thinking-body" class="px-4 pb-4 text-sm leading-6 muted">
+                      Start with a browser oracle, keep the surfaces flat, and make the native version prove the primitive split by avoiding framework edits unless a real low-level gap shows up.
+                    </div>
+                  </div>
+
+                  <div class="space-y-3 text-sm leading-6">
+                    <p>I’d keep the shell very standard: a compact sidebar, a centered transcript, a quiet header, and a composer with attachments and a send action.</p>
+                    <p>The interesting part is the state and composition, not dramatic styling. This should feel familiar before it feels fancy.</p>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+
+          <div data-testid="composer-wrap" class="px-6 pb-6">
+            <div class="surface-soft max-w-[840px] mx-auto rounded-2xl p-4">
+              <div id="attachment-row" data-testid="attachment-row" class="flex flex-wrap gap-2 mb-3">
+                <div class="rounded-lg px-3 py-1.5 text-xs ring-soft muted">roadmap-q3.pdf</div>
+                <div class="rounded-lg px-3 py-1.5 text-xs ring-soft muted">demo-script.md</div>
+              </div>
+              <div class="flex items-end gap-3">
+                <div class="flex-1">
+                  <textarea data-testid="composer-input" rows="3" class="w-full bg-transparent outline-none resize-none text-sm leading-6 text-inherit" placeholder="Message TSN Chat…">Draft the native screen structure and keep the primitives clean.</textarea>
+                </div>
+                <button data-testid="attach-btn" onclick="openAttachDialog()" class="w-10 h-10 rounded-xl surface">＋</button>
+                <button data-testid="send-btn" class="h-10 px-4 rounded-xl bg-white text-zinc-950 text-sm font-medium">Send</button>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <aside data-testid="context-rail" class="w-[300px] min-w-[300px] border-l border-white/10 p-5 bg-[rgba(255,255,255,0.01)]">
+          <div class="space-y-4">
+            <div class="surface-soft rounded-2xl p-4">
+              <div class="text-sm font-medium">Session</div>
+              <div class="text-xs faint mt-1">Launch planning conversation</div>
+            </div>
+            <div class="surface-soft rounded-2xl p-4">
+              <div class="text-sm font-medium mb-3">Files</div>
+              <div class="space-y-2 text-sm">
+                <div class="rounded-lg px-3 py-2 ring-soft">roadmap-q3.pdf</div>
+                <div class="rounded-lg px-3 py-2 ring-soft">demo-script.md</div>
+                <div class="rounded-lg px-3 py-2 ring-soft">notes.txt</div>
+              </div>
+            </div>
+            <div class="surface-soft rounded-2xl p-4">
+              <div class="text-sm font-medium mb-2">Shortcuts</div>
+              <div class="space-y-2 text-xs muted">
+                <div class="flex justify-between"><span>New chat</span><span>⌘N</span></div>
+                <div class="flex justify-between"><span>Attach file</span><span>⇧⌘A</span></div>
+                <div class="flex justify-between"><span>Toggle thinking</span><span>⌘.</span></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div id="attach-dialog" data-testid="attach-dialog" class="hide fixed inset-0 bg-black/50 flex items-center justify-center p-6">
+    <div data-testid="attach-dialog-card" class="surface w-full max-w-[760px] rounded-3xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+        <div>
+          <div class="text-lg font-medium">Attach files</div>
+          <div class="text-xs faint mt-1">A simple local file picker state.</div>
+        </div>
+        <button data-testid="attach-dialog-close" onclick="closeAttachDialog()" class="w-9 h-9 rounded-xl surface-soft">✕</button>
+      </div>
+      <div data-testid="file-grid" class="p-6 grid grid-cols-3 gap-3">
+        <button class="file-card surface-soft rounded-2xl p-4 text-left selected" onclick="toggleFile(this)">
+          <div class="text-sm font-medium">roadmap-q3.pdf</div>
+          <div class="text-xs faint mt-1">Board update</div>
+        </button>
+        <button class="file-card surface-soft rounded-2xl p-4 text-left selected" onclick="toggleFile(this)">
+          <div class="text-sm font-medium">demo-script.md</div>
+          <div class="text-xs faint mt-1">Launch draft</div>
+        </button>
+        <button class="file-card surface-soft rounded-2xl p-4 text-left" onclick="toggleFile(this)">
+          <div class="text-sm font-medium">notes.txt</div>
+          <div class="text-xs faint mt-1">Loose notes</div>
+        </button>
+        <button class="file-card surface-soft rounded-2xl p-4 text-left" onclick="toggleFile(this)">
+          <div class="text-sm font-medium">analytics.csv</div>
+          <div class="text-xs faint mt-1">Retention sample</div>
+        </button>
+        <button class="file-card surface-soft rounded-2xl p-4 text-left" onclick="toggleFile(this)">
+          <div class="text-sm font-medium">wireframe.png</div>
+          <div class="text-xs faint mt-1">UI mock</div>
+        </button>
+        <button class="file-card surface-soft rounded-2xl p-4 text-left" onclick="toggleFile(this)">
+          <div class="text-sm font-medium">handoff.docx</div>
+          <div class="text-xs faint mt-1">Requirements</div>
+        </button>
+      </div>
+      <div class="px-6 py-4 border-t border-white/10 flex items-center justify-between">
+        <div class="text-xs faint">Selected files appear above the composer.</div>
+        <div class="flex gap-2">
+          <button onclick="closeAttachDialog()" class="h-10 px-4 rounded-xl ring-soft text-sm">Cancel</button>
+          <button onclick="applyAttachments()" class="h-10 px-4 rounded-xl bg-white text-zinc-950 text-sm font-medium">Attach</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      theme: 'slate',
+      sidebarCollapsed: false,
+      thinkingOpen: true,
+      themePanelOpen: false,
+      attachments: ['roadmap-q3.pdf', 'demo-script.md'],
+    };
+
+    function beginLogin() {
+      document.getElementById('login-screen').classList.add('hide');
+      document.getElementById('app-shell').classList.remove('hide');
+    }
+
+    function setTheme(theme) {
+      state.theme = theme;
+      document.body.classList.remove('theme-slate', 'theme-stone', 'theme-emerald');
+      document.body.classList.add(`theme-${theme}`);
+      document.querySelectorAll('.theme-chip').forEach((chip) => chip.classList.remove('active'));
+      document.querySelectorAll(`[data-testid="theme-${theme}"]`).forEach((el) => el.classList.add('active'));
+      document.querySelectorAll(`#theme-panel .theme-chip`).forEach((el) => {
+        if (el.textContent.trim().toLowerCase() === theme) el.classList.add('active');
+      });
+    }
+
+    function toggleSidebar() {
+      state.sidebarCollapsed = !state.sidebarCollapsed;
+      document.getElementById('sidebar').classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
+    }
+
+    function toggleThinking() {
+      state.thinkingOpen = !state.thinkingOpen;
+      document.getElementById('thinking-panel-0').setAttribute('data-open', state.thinkingOpen ? 'true' : 'false');
+      document.getElementById('thinking-chevron').textContent = state.thinkingOpen ? '▾' : '▸';
+    }
+
+    function toggleThemePanel() {
+      state.themePanelOpen = !state.themePanelOpen;
+      document.getElementById('theme-panel').classList.toggle('hide', !state.themePanelOpen);
+    }
+
+    function openAttachDialog() {
+      document.getElementById('attach-dialog').classList.remove('hide');
+    }
+
+    function closeAttachDialog() {
+      document.getElementById('attach-dialog').classList.add('hide');
+    }
+
+    function toggleFile(el) {
+      el.classList.toggle('selected');
+    }
+
+    function applyAttachments() {
+      const selected = Array.from(document.querySelectorAll('.file-card.selected .text-sm')).map((el) => el.textContent.trim());
+      state.attachments = selected;
+      document.getElementById('attachment-row').innerHTML = selected
+        .map((name) => `<div class="rounded-lg px-3 py-1.5 text-xs ring-soft muted">${name}</div>`)
+        .join('');
+      closeAttachDialog();
+    }
+
+    setTheme('slate');
+  </script>
+</body>
+</html>

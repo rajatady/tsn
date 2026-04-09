@@ -27,7 +27,10 @@ export function emitTextStyleCalls(
   textStyle: Partial<TSNTextStyle>,
 ): void {
   if (textStyle.weight != null) push(`ui_text_set_weight(${handle}, ${textStyle.weight});`)
-  if (textStyle.lineHeight != null) push(`ui_text_set_line_height(${handle}, ${textStyle.lineHeight});`)
+  if (textStyle.lineHeight != null) {
+    const size = textStyle.size ?? 14
+    push(`ui_text_set_line_height(${handle}, ${resolveLineHeightMultiplier(textStyle.lineHeight, size)});`)
+  }
   if (textStyle.tracking != null) {
     const size = textStyle.size ?? 14
     push(`ui_text_set_tracking(${handle}, ${(textStyle.tracking * size).toFixed(4)});`)
@@ -37,6 +40,11 @@ export function emitTextStyleCalls(
   if (textStyle.align === 'center') push(`ui_text_set_align(${handle}, 1);`)
   if (textStyle.align === 'end') push(`ui_text_set_align(${handle}, 2);`)
   if (textStyle.align === 'start') push(`ui_text_set_align(${handle}, 0);`)
+}
+
+function resolveLineHeightMultiplier(lineHeight: number, size: number): string {
+  const multiplier = lineHeight > 4 ? lineHeight / size : lineHeight
+  return multiplier.toFixed(4)
 }
 
 export function emitTextInputBindings(
