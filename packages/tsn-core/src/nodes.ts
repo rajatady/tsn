@@ -19,6 +19,7 @@ export type TSNAxis = 'horizontal' | 'vertical'
 export type TSNLengthUnit = 'point' | 'percent'
 export type TSNLayoutAlign = 'start' | 'center' | 'end' | 'stretch'
 export type TSNLayoutJustify = 'start' | 'center' | 'end' | 'space-between'
+export type TSNLayoutPosition = 'relative' | 'absolute'
 export type TSNTextTransform = 'none' | 'uppercase' | 'lowercase'
 export type TSNTextAlign = 'start' | 'center' | 'end'
 
@@ -64,12 +65,17 @@ export interface TSNStyleSource {
 
 export interface TSNLayoutStyle {
   axis?: TSNAxis
+  position?: TSNLayoutPosition
   width?: TSNLengthResolvable
   height?: TSNLengthResolvable
   minWidth?: TSNLengthResolvable
   minHeight?: TSNLengthResolvable
   maxWidth?: TSNLengthResolvable
   maxHeight?: TSNLengthResolvable
+  insetTop?: TSNLengthResolvable
+  insetRight?: TSNLengthResolvable
+  insetBottom?: TSNLengthResolvable
+  insetLeft?: TSNLengthResolvable
   grow?: number
   shrink?: number
   gap?: number
@@ -91,6 +97,8 @@ export interface TSNLayoutStyle {
 export interface TSNVisualStyle {
   backgroundColor?: string
   foregroundColor?: string
+  borderColor?: string
+  borderWidth?: number
   cornerRadius?: number
   shadow?: TSNShadowValue
   clip?: boolean

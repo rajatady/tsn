@@ -35,6 +35,9 @@ static NSArray<NSView *> *inspector_child_views(NSView *view) {
 static NSString *inspector_node_text(NSView *view) {
     if ([view isKindOfClass:[TSNTextLabelView class]]) return tsn_text_string(view);
     if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).stringValue ?: @"";
+    if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) return ((NSTextView *)((NSScrollView *)view).documentView).string ?: @"";
+    if ([view isKindOfClass:[NSPopUpButton class]]) return ((NSPopUpButton *)view).titleOfSelectedItem ?: @"";
+    if ([view isKindOfClass:[NSSwitch class]]) return ((NSSwitch *)view).state == NSControlStateValueOn ? @"true" : @"false";
     if ([view isKindOfClass:[NSButton class]]) return ((NSButton *)view).title ?: @"";
     if ([view isKindOfClass:[NSSearchField class]]) return ((NSSearchField *)view).stringValue ?: @"";
     return @"";
@@ -159,6 +162,15 @@ static NSString *type_text(NSString *text, NSView *view) {
         }
         return [NSString stringWithFormat:@"Typed: %@", text];
     }
+    if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) {
+        NSTextView *textView = (NSTextView *)((NSScrollView *)view).documentView;
+        textView.string = text;
+        NSNotification *note = [NSNotification notificationWithName:NSTextDidChangeNotification object:textView];
+        if (textView.delegate && [textView.delegate respondsToSelector:@selector(textDidChange:)]) {
+            [textView.delegate textDidChange:note];
+        }
+        return [NSString stringWithFormat:@"Typed: %@", text];
+    }
 
     for (NSView *child in inspector_child_views(view)) {
         NSString *result = type_text(text, child);
@@ -191,7 +203,38 @@ static NSString *type_text_into(NSString *element_id, NSString *text) {
         return [NSString stringWithFormat:@"Typed into %@: %@", element_id, text];
     }
 
+    if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) {
+        NSTextView *textView = (NSTextView *)((NSScrollView *)view).documentView;
+        textView.string = text;
+        NSNotification *note = [NSNotification notificationWithName:NSTextDidChangeNotification object:textView];
+        if (textView.delegate && [textView.delegate respondsToSelector:@selector(textDidChange:)]) {
+            [textView.delegate textDidChange:note];
+        }
+        return [NSString stringWithFormat:@"Typed into %@: %@", element_id, text];
+    }
+
     return [NSString stringWithFormat:@"Element is not text input: %@", element_id];
+}
+
+static NSString *select_option_into(NSString *element_id, NSString *text) {
+    NSView *view = g_element_ids[element_id];
+    if (!view) return [NSString stringWithFormat:@"Element not found: %@", element_id];
+    if (![view isKindOfClass:[NSPopUpButton class]]) return [NSString stringWithFormat:@"Element is not select input: %@", element_id];
+    NSPopUpButton *button = (NSPopUpButton *)view;
+    NSString *title = text ?: @"";
+    if ([button itemWithTitle:title] == nil) {
+        return [NSString stringWithFormat:@"Option not found on %@: %@", element_id, title];
+    }
+    [button selectItemWithTitle:title];
+    id target = button.target;
+    SEL action = button.action;
+    if (target && action && [target respondsToSelector:action]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [target performSelector:action withObject:button];
+#pragma clang diagnostic pop
+    }
+    return [NSString stringWithFormat:@"Selected in %@: %@", element_id, title];
 }
 
 void ui_set_id(UIHandle v, const char *element_id) {
@@ -244,6 +287,19 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
         if ([view isKindOfClass:[TSNTextLabelView class]]) return [NSString stringWithFormat:@"%@\n", tsn_text_string(view)];
         if ([view isKindOfClass:[NSTextField class]]) return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
         if ([view isKindOfClass:[NSSearchField class]]) return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
+        if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) {
+            return [NSString stringWithFormat:@"%@\n", ((NSTextView *)((NSScrollView *)view).documentView).string ?: @""];
+        }
+        if ([view isKindOfClass:[NSPopUpButton class]]) {
+            return [NSString stringWithFormat:@"%@\n", ((NSPopUpButton *)view).titleOfSelectedItem ?: @""];
+        }
+        if ([view isKindOfClass:[NSSwitch class]]) {
+            return ((NSSwitch *)view).state == NSControlStateValueOn ? @"true\n" : @"false\n";
+        }
+        if ([view isKindOfClass:[NSButton class]] && tsn_bool_control_has_state(view)) {
+            NSButton *button = (NSButton *)view;
+            return button.state == NSControlStateValueOn ? @"true\n" : @"false\n";
+        }
         if ([view isKindOfClass:[NSProgressIndicator class]]) {
             NSProgressIndicator *indicator = (NSProgressIndicator *)view;
             return indicator.indeterminate ? @"indeterminate\n" : [NSString stringWithFormat:@"%.2f\n", indicator.doubleValue];
@@ -253,6 +309,10 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
     if ([prop isEqualToString:@"placeholder"]) {
         if ([view isKindOfClass:[NSTextField class]]) return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).placeholderString ?: @""];
         if ([view isKindOfClass:[NSSearchField class]]) return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).placeholderString ?: @""];
+        if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView respondsToSelector:@selector(placeholderString)]) {
+            id placeholder = [((NSScrollView *)view).documentView valueForKey:@"placeholderString"];
+            return [NSString stringWithFormat:@"%@\n", placeholder ?: @""];
+        }
         return @"(no placeholder)\n";
     }
     if ([prop isEqualToString:@"indeterminate"]) {
@@ -384,6 +444,20 @@ static NSString *handle_command(NSString *cmd) {
             result = type_text_into(element_id, text);
         });
         return result ?: [NSString stringWithFormat:@"Input not found: %@", element_id];
+    }
+
+    if ([cmd hasPrefix:@"selectid "]) {
+        NSString *args = [cmd substringFromIndex:9];
+        NSRange firstSpace = [args rangeOfString:@" "];
+        if (firstSpace.location == NSNotFound) return @"Usage: selectid <id> <option>\n";
+        NSString *element_id = [args substringToIndex:firstSpace.location];
+        NSString *text = [args substringFromIndex:firstSpace.location + 1];
+        if (!g_inspect_window) return @"No window\n";
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            result = select_option_into(element_id, text);
+        });
+        return result ?: [NSString stringWithFormat:@"Select not found: %@", element_id];
     }
 
     if ([cmd hasPrefix:@"find "]) {

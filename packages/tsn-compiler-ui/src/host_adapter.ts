@@ -53,6 +53,38 @@ export function emitTextInputBindings(
   }
 }
 
+export function emitBoolControlBindings(
+  push: HostLineEmitter,
+  handle: string,
+  checkedExpr: string | null,
+  onChangeWrapper: string | null,
+): void {
+  if (checkedExpr) {
+    push(`ui_bool_control_set_value(${handle}, ${checkedExpr});`)
+  }
+  if (onChangeWrapper) {
+    push(`ui_on_bool_changed(${handle}, ${onChangeWrapper});`)
+  }
+}
+
+export function emitSelectBindings(
+  push: HostLineEmitter,
+  handle: string,
+  options: string[],
+  value: string | null,
+  onChangeWrapper: string | null,
+): void {
+  for (const option of options) {
+    push(`ui_select_add_option(${handle}, ${JSON.stringify(option)});`)
+  }
+  if (value) {
+    push(`ui_select_set_value(${handle}, ${value});`)
+  }
+  if (onChangeWrapper) {
+    push(`ui_on_select_changed(${handle}, ${onChangeWrapper});`)
+  }
+}
+
 export function emitButtonStyleCall(
   push: HostLineEmitter,
   handle: string,

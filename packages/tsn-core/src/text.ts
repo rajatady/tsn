@@ -1,4 +1,4 @@
-export type TSNTextKind = 'static' | 'input' | 'search'
+export type TSNTextKind = 'static' | 'input' | 'search' | 'textarea'
 export type TSNTextRole = 'body' | 'label' | 'code'
 export type TSNTextWrapMode = 'wrap' | 'truncate' | 'clip'
 

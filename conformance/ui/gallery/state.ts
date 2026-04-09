@@ -3,6 +3,11 @@ import { suiteIdByTag } from '../registry'
 
 declare function refreshTable(rows: number): void
 const defaultInputValue: string = 'preset text'
+const defaultTextAreaValue: string = 'line one\nline two'
+const defaultSelectValue: string = 'Medium'
+const defaultCheckboxValue: boolean = true
+const defaultRadioValue: boolean = false
+const defaultSwitchValue: boolean = true
 
 function setLastAction(value: string): void {
   const [_lastAction, setLastActionValue] = useStore<string>('ui-conformance:last-action', 'idle')
@@ -13,10 +18,20 @@ export function initConformanceGallery(): void {
   const [_suite, setSuite] = useStore<string>('ui-conformance:suite', 'layout')
   const [_query, setQuery] = useStore<string>('ui-conformance:query', '')
   const [_input, setInput] = useStore<string>('ui-conformance:input', defaultInputValue)
+  const [_textarea, setTextArea] = useStore<string>('ui-conformance:textarea', defaultTextAreaValue)
+  const [_select, setSelect] = useStore<string>('ui-conformance:select', defaultSelectValue)
+  const [_checkbox, setCheckbox] = useStore<boolean>('ui-conformance:checkbox', defaultCheckboxValue)
+  const [_radio, setRadio] = useStore<boolean>('ui-conformance:radio', defaultRadioValue)
+  const [_switch, setSwitch] = useStore<boolean>('ui-conformance:switch', defaultSwitchValue)
   const [_counter, setCounter] = useStore<number>('ui-conformance:counter', 0)
   setSuite('layout')
   setQuery('')
   setInput(defaultInputValue)
+  setTextArea(defaultTextAreaValue)
+  setSelect(defaultSelectValue)
+  setCheckbox(defaultCheckboxValue)
+  setRadio(defaultRadioValue)
+  setSwitch(defaultSwitchValue)
   setCounter(0)
   setLastAction('idle')
 }
@@ -35,6 +50,31 @@ export function onConformanceSearch(text: string): void {
 export function onConformanceInput(text: string): void {
   const [_input, setInput] = useStore<string>('ui-conformance:input', defaultInputValue)
   setInput(text)
+}
+
+export function onConformanceTextArea(text: string): void {
+  const [_textarea, setTextArea] = useStore<string>('ui-conformance:textarea', defaultTextAreaValue)
+  setTextArea(text)
+}
+
+export function onConformanceSelect(text: string): void {
+  const [_select, setSelect] = useStore<string>('ui-conformance:select', defaultSelectValue)
+  setSelect(text)
+}
+
+export function onConformanceCheckbox(next: boolean): void {
+  const [_checkbox, setCheckbox] = useStore<boolean>('ui-conformance:checkbox', defaultCheckboxValue)
+  setCheckbox(next)
+}
+
+export function onConformanceRadio(next: boolean): void {
+  const [_radio, setRadio] = useStore<boolean>('ui-conformance:radio', defaultRadioValue)
+  setRadio(next)
+}
+
+export function onConformanceSwitch(next: boolean): void {
+  const [_switch, setSwitch] = useStore<boolean>('ui-conformance:switch', defaultSwitchValue)
+  setSwitch(next)
 }
 
 export function incrementConformanceCounter(): void {
@@ -87,9 +127,19 @@ export function onConformanceAction(tag: number): void {
 export function resetConformanceDemo(): void {
   const [_query, setQuery] = useStore<string>('ui-conformance:query', '')
   const [_input, setInput] = useStore<string>('ui-conformance:input', defaultInputValue)
+  const [_textarea, setTextArea] = useStore<string>('ui-conformance:textarea', defaultTextAreaValue)
+  const [_select, setSelect] = useStore<string>('ui-conformance:select', defaultSelectValue)
+  const [_checkbox, setCheckbox] = useStore<boolean>('ui-conformance:checkbox', defaultCheckboxValue)
+  const [_radio, setRadio] = useStore<boolean>('ui-conformance:radio', defaultRadioValue)
+  const [_switch, setSwitch] = useStore<boolean>('ui-conformance:switch', defaultSwitchValue)
   const [_counter, setCounter] = useStore<number>('ui-conformance:counter', 0)
   setQuery('')
   setInput(defaultInputValue)
+  setTextArea(defaultTextAreaValue)
+  setSelect(defaultSelectValue)
+  setCheckbox(defaultCheckboxValue)
+  setRadio(defaultRadioValue)
+  setSwitch(defaultSwitchValue)
   setCounter(0)
   setLastAction('reset')
 }

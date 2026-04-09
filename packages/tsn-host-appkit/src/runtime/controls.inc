@@ -1,5 +1,11 @@
 /* ─── SF Symbols ─────────────────────────────────────────────────── */
 
+@interface TSNTextAreaView : NSTextView
+@end
+
+@implementation TSNTextAreaView
+@end
+
 UIHandle ui_symbol(const char *name, int size) {
     NSString *n = [NSString stringWithUTF8String:name];
     NSImage *img = [NSImage imageWithSystemSymbolName:n accessibilityDescription:n];
@@ -92,6 +98,92 @@ UIHandle ui_text_field(const char *placeholder) {
     return (__bridge UIHandle)f;
 }
 
+UIHandle ui_text_area(const char *placeholder) {
+    NSScrollView *scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, 0, 96)];
+    scroll.hasVerticalScroller = YES;
+    scroll.hasHorizontalScroller = NO;
+    scroll.autohidesScrollers = YES;
+    scroll.drawsBackground = NO;
+    scroll.borderType = NSBezelBorder;
+
+    NSTextContainer *container = [[NSTextContainer alloc] initWithContainerSize:NSMakeSize(CGFLOAT_MAX, CGFLOAT_MAX)];
+    container.widthTracksTextView = YES;
+    NSLayoutManager *layoutManager = [NSLayoutManager new];
+    [layoutManager addTextContainer:container];
+    NSTextStorage *storage = [NSTextStorage new];
+    [storage addLayoutManager:layoutManager];
+
+    TSNTextAreaView *textView = [[TSNTextAreaView alloc] initWithFrame:NSMakeRect(0, 0, 0, 96) textContainer:container];
+    NSString *placeholderText = [NSString stringWithUTF8String:placeholder];
+    if ([textView respondsToSelector:NSSelectorFromString(@"setPlaceholderString:")]) {
+        [textView setValue:placeholderText forKey:@"placeholderString"];
+    }
+    textView.minSize = NSMakeSize(0, 96);
+    textView.maxSize = NSMakeSize(CGFLOAT_MAX, CGFLOAT_MAX);
+    textView.verticallyResizable = YES;
+    textView.horizontallyResizable = NO;
+    textView.richText = NO;
+    textView.importsGraphics = NO;
+    textView.usesFindBar = NO;
+    textView.allowsUndo = YES;
+    textView.automaticQuoteSubstitutionEnabled = NO;
+    textView.automaticDashSubstitutionEnabled = NO;
+    textView.font = tsn_browser_text_font(14, NSFontWeightRegular, NO);
+    textView.textColor = [NSColor colorWithWhite:0.92 alpha:1];
+    textView.backgroundColor = NSColor.clearColor;
+    scroll.documentView = textView;
+
+    tsn_text_set_kind(scroll, TSNTextRuntimeKindTextArea);
+    tsn_text_set_kind(textView, TSNTextRuntimeKindTextArea);
+    tsn_text_set_wrap_mode(scroll, TSNTextRuntimeWrapModeWrap, YES);
+    tsn_text_set_wrap_mode(textView, TSNTextRuntimeWrapModeWrap, YES);
+    tsn_text_set_line_height_multiplier(scroll, tsn_default_css_line_height_for_size(14) / 14);
+    tsn_text_set_line_height_multiplier(textView, tsn_default_css_line_height_for_size(14) / 14);
+
+    TSNShadowNode *node = tsn_create_view_node(scroll, TSNNodeKindLeaf, 0, YES);
+    YGNodeStyleSetHeight(node.yogaNode, 96);
+    retain_render(textView);
+    retain_render(scroll);
+    return (__bridge UIHandle)scroll;
+}
+
+@interface UISelectDelegate : NSObject
+@property (nonatomic) UITextChangedFn callback;
+@end
+@implementation UISelectDelegate
+- (void)changed:(id)sender {
+    if (!_callback) return;
+    if ([sender isKindOfClass:[NSPopUpButton class]]) {
+        NSString *title = ((NSPopUpButton *)sender).titleOfSelectedItem ?: @"";
+        _callback(title.UTF8String);
+    }
+}
+@end
+
+UIHandle ui_select(void) {
+    NSPopUpButton *button = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 0, 28) pullsDown:NO];
+    button.autoenablesItems = NO;
+    button.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+    TSNShadowNode *node = tsn_create_view_node(button, TSNNodeKindLeaf, 0, YES);
+    YGNodeStyleSetHeight(node.yogaNode, 28);
+    retain_render(button);
+    return (__bridge UIHandle)button;
+}
+
+void ui_select_add_option(UIHandle select, const char *label) {
+    NSView *view = (__bridge NSView *)select;
+    if (![view isKindOfClass:[NSPopUpButton class]]) return;
+    NSString *title = label ? [NSString stringWithUTF8String:label] : @"";
+    [((NSPopUpButton *)view) addItemWithTitle:title];
+}
+
+void ui_select_set_value(UIHandle select, const char *value) {
+    NSView *view = (__bridge NSView *)select;
+    if (![view isKindOfClass:[NSPopUpButton class]]) return;
+    NSString *title = value ? [NSString stringWithUTF8String:value] : @"";
+    [((NSPopUpButton *)view) selectItemWithTitle:title];
+}
+
 void ui_on_text_changed(UIHandle field, UITextChangedFn fn) {
     UISearchDelegate *d = [UISearchDelegate new];
     d.callback = fn;
@@ -100,6 +192,23 @@ void ui_on_text_changed(UIHandle field, UITextChangedFn fn) {
         ((NSSearchField *)(__bridge NSView *)field).delegate = (id<NSSearchFieldDelegate>)d;
     else if ([(__bridge NSView *)field isKindOfClass:[NSTextField class]])
         ((NSTextField *)(__bridge NSView *)field).delegate = (id<NSTextFieldDelegate>)d;
+    else if ([(__bridge NSView *)field isKindOfClass:[NSScrollView class]]) {
+        NSView *document = ((NSScrollView *)(__bridge NSView *)field).documentView;
+        if ([document isKindOfClass:[NSTextView class]]) {
+            ((NSTextView *)document).delegate = (id<NSTextViewDelegate>)d;
+        }
+    }
+}
+
+void ui_on_select_changed(UIHandle select, UITextChangedFn fn) {
+    if (!fn) return;
+    NSView *view = (__bridge NSView *)select;
+    if (![view isKindOfClass:[NSPopUpButton class]]) return;
+    UISelectDelegate *delegate = [UISelectDelegate new];
+    delegate.callback = fn;
+    ((NSPopUpButton *)view).target = delegate;
+    ((NSPopUpButton *)view).action = @selector(changed:);
+    retain_persistent(delegate);
 }
 
 void ui_text_input_set_value(UIHandle field, const char *text) {
@@ -111,6 +220,14 @@ void ui_text_input_set_value(UIHandle field, const char *text) {
     }
     if ([view isKindOfClass:[NSTextField class]]) {
         ((NSTextField *)view).stringValue = value;
+        return;
+    }
+    if ([view isKindOfClass:[NSScrollView class]]) {
+        NSView *document = ((NSScrollView *)view).documentView;
+        if ([document isKindOfClass:[NSTextView class]]) {
+            ((NSTextView *)document).string = value;
+            [document setNeedsDisplay:YES];
+        }
     }
 }
 
@@ -132,6 +249,20 @@ void ui_text_input_set_value(UIHandle field, const char *text) {
 - (void)clicked:(id)sender { if (_fn) _fn(_tag); }
 @end
 
+@interface UIBoolTarget : NSObject
+@property (nonatomic) UIBoolChangedFn fn;
+@end
+@implementation UIBoolTarget
+- (void)changed:(id)sender {
+    if (!_fn) return;
+    id control = sender;
+    bool on = false;
+    if ([control isKindOfClass:[NSSwitch class]]) on = (((NSSwitch *)control).state == NSControlStateValueOn);
+    else if ([control isKindOfClass:[NSButton class]]) on = (((NSButton *)control).state == NSControlStateValueOn);
+    _fn(on);
+}
+@end
+
 UIHandle ui_button(const char *label, UIClickFn fn, int tag) {
     NSButton *b = [NSButton buttonWithTitle:[NSString stringWithUTF8String:label]
                                      target:nil action:nil];
@@ -147,6 +278,62 @@ UIHandle ui_button(const char *label, UIClickFn fn, int tag) {
     tsn_create_view_node(b, TSNNodeKindLeaf, 0, YES);
     retain_render(b);
     return (__bridge UIHandle)b;
+}
+
+UIHandle ui_checkbox(const char *label, bool initial) {
+    NSButton *b = [NSButton checkboxWithTitle:[NSString stringWithUTF8String:label] target:nil action:nil];
+    b.state = initial ? NSControlStateValueOn : NSControlStateValueOff;
+    tsn_bool_control_set_kind(b, TSNBoolControlRuntimeKindCheckbox);
+    tsn_create_view_node(b, TSNNodeKindLeaf, 0, YES);
+    retain_render(b);
+    return (__bridge UIHandle)b;
+}
+
+UIHandle ui_radio(const char *label, bool initial) {
+    NSButton *b = [NSButton radioButtonWithTitle:[NSString stringWithUTF8String:label] target:nil action:nil];
+    b.state = initial ? NSControlStateValueOn : NSControlStateValueOff;
+    tsn_bool_control_set_kind(b, TSNBoolControlRuntimeKindRadio);
+    tsn_create_view_node(b, TSNNodeKindLeaf, 0, YES);
+    retain_render(b);
+    return (__bridge UIHandle)b;
+}
+
+UIHandle ui_switch(bool initial) {
+    NSSwitch *sw = [NSSwitch new];
+    sw.state = initial ? NSControlStateValueOn : NSControlStateValueOff;
+    tsn_bool_control_set_kind(sw, TSNBoolControlRuntimeKindSwitch);
+    tsn_create_view_node(sw, TSNNodeKindLeaf, 0, YES);
+    retain_render(sw);
+    return (__bridge UIHandle)sw;
+}
+
+void ui_on_bool_changed(UIHandle control, UIBoolChangedFn fn) {
+    if (!fn) return;
+    NSView *view = (__bridge NSView *)control;
+    UIBoolTarget *target = [UIBoolTarget new];
+    target.fn = fn;
+    if ([view isKindOfClass:[NSSwitch class]]) {
+        ((NSSwitch *)view).target = target;
+        ((NSSwitch *)view).action = @selector(changed:);
+    } else if ([view isKindOfClass:[NSButton class]]) {
+        ((NSButton *)view).target = target;
+        ((NSButton *)view).action = @selector(changed:);
+    } else {
+        return;
+    }
+    retain_persistent(target);
+}
+
+void ui_bool_control_set_value(UIHandle control, bool on) {
+    NSView *view = (__bridge NSView *)control;
+    NSControlStateValue state = on ? NSControlStateValueOn : NSControlStateValueOff;
+    if ([view isKindOfClass:[NSSwitch class]]) {
+        ((NSSwitch *)view).state = state;
+        return;
+    }
+    if ([view isKindOfClass:[NSButton class]]) {
+        ((NSButton *)view).state = state;
+    }
 }
 
 UIHandle ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, int tag) {

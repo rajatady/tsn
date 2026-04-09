@@ -51,10 +51,17 @@ export interface ConformanceActionTypeById {
   text: string
 }
 
+export interface ConformanceActionSelectById {
+  kind: string
+  id: string
+  text: string
+}
+
 export type ConformanceAction =
   | ConformanceActionClickById
   | ConformanceActionClickByLabel
   | ConformanceActionTypeById
+  | ConformanceActionSelectById
 
 export interface ConformanceCase {
   id: string

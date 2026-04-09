@@ -47,3 +47,47 @@ test('adaptNodeToAppKitPlan maps canonical sidebar/search nodes and preserves ch
   assert.equal(hostPlan.children[0]?.kind, 'search')
   assert.equal(hostPlan.children[0]?.createCall, 'ui_search_field("Search")')
 })
+
+test('adaptNodeToAppKitPlan maps textarea nodes to multiline host creation', () => {
+  const textareaPlan = buildPrimitivePlan('TextArea', '_textarea', 'w-[320] h-[120]', { placeholder: 'Write notes' }, parseTailwind('w-[320] h-[120]', '_textarea'))
+  const hostPlan = adaptNodeToAppKitPlan(textareaPlan.node)
+
+  assert.equal(hostPlan.kind, 'textarea')
+  assert.equal(hostPlan.createCall, 'ui_text_area("Write notes")')
+  assert.ok(hostPlan.styleCalls.includes('ui_set_size(_textarea, 320, 120);'))
+})
+
+test('adaptNodeToAppKitPlan maps checkbox and switch nodes to bool control creation', () => {
+  const checkboxPlan = buildPrimitivePlan('Checkbox', '_check', '', { label: 'Enable sync', checked: true }, null)
+  const switchPlan = buildPrimitivePlan('Switch', '_switch', '', { checked: false }, null)
+  const selectPlan = buildPrimitivePlan('Select', '_select', '', { value: 'Medium' }, null)
+
+  const checkboxHost = adaptNodeToAppKitPlan(checkboxPlan.node)
+  const switchHost = adaptNodeToAppKitPlan(switchPlan.node)
+  const selectHost = adaptNodeToAppKitPlan(selectPlan.node)
+
+  assert.equal(checkboxHost.kind, 'checkbox')
+  assert.equal(checkboxHost.createCall, 'ui_checkbox("Enable sync", true)')
+  assert.equal(switchHost.kind, 'switch')
+  assert.equal(switchHost.createCall, 'ui_switch(false)')
+  assert.equal(selectHost.kind, 'select')
+  assert.equal(selectHost.createCall, 'ui_select()')
+})
+
+test('adaptNodeToAppKitPlan maps view position and border styles to host calls', () => {
+  const tailwind = parseTailwind('relative border border-white/20 rounded-xl bg-zinc-900', '_view')
+  const plan = buildPrimitivePlan('View', '_view', 'relative border border-white/20 rounded-xl bg-zinc-900', {}, tailwind)
+  plan.node.layoutStyle.position = 'absolute'
+  plan.node.layoutStyle.insetTop = { unit: 'point', value: 8 }
+  plan.node.layoutStyle.insetLeft = { unit: 'percent', value: 10 }
+
+  const hostPlan = adaptNodeToAppKitPlan(plan.node)
+
+  assert.equal(hostPlan.kind, 'box')
+  assert.equal(hostPlan.createCall, 'ui_view()')
+  assert.ok(hostPlan.styleCalls.includes('ui_set_position_type(_view, 1);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_set_inset(_view, 8, -1, -1, -1);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_set_inset_pct(_view, -1, -1, -1, 10);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_set_border_width(_view, 1);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_set_border_color(_view, 1, 1, 1, 0.2);'))
+})

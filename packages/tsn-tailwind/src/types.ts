@@ -22,6 +22,8 @@ export type TailwindOp =
   | { kind: 'spacing', value: number }
   | { kind: 'padding', top: number, right: number, bottom: number, left: number }
   | { kind: 'margin', top: number, right: number, bottom: number, left: number }
+  | { kind: 'position-type', value: 'relative' | 'absolute' }
+  | { kind: 'inset', top: LengthValue | null, right: LengthValue | null, bottom: LengthValue | null, left: LengthValue | null }
   | { kind: 'size', width: LengthValue | null, height: LengthValue | null }
   | { kind: 'min-size', width: LengthValue | null, height: LengthValue | null }
   | { kind: 'max-size', width: LengthValue | null, height: LengthValue | null }
@@ -29,6 +31,8 @@ export type TailwindOp =
   | { kind: 'text-color-rgb', r: number, g: number, b: number, a: number }
   | { kind: 'text-color-system', color: number }
   | { kind: 'background-rgb', r: number, g: number, b: number, a: number }
+  | { kind: 'border-rgb', r: number, g: number, b: number, a: number }
+  | { kind: 'border-width', value: number }
   | { kind: 'corner-radius', radius: number }
   | { kind: 'align-items', value: number }
   | { kind: 'justify-content', value: number }

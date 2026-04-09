@@ -6,8 +6,16 @@ export function textCreateCall(text: string, size: number, bold: boolean): strin
   return `ui_text(${text}, ${size}, ${bold})`
 }
 
-export function inputCreateCall(tag: 'Search' | 'Input', placeholder: string): string {
-  return tag === 'Search' ? `ui_search_field(${placeholder})` : `ui_text_field(${placeholder})`
+export function inputCreateCall(tag: 'Search' | 'Input' | 'TextArea', placeholder: string): string {
+  if (tag === 'Search') return `ui_search_field(${placeholder})`
+  if (tag === 'TextArea') return `ui_text_area(${placeholder})`
+  return `ui_text_field(${placeholder})`
+}
+
+export function boolControlCreateCall(tag: 'Checkbox' | 'Radio' | 'Switch', label: string | null, checked: boolean): string {
+  if (tag === 'Checkbox') return `ui_checkbox(${label ?? '""'}, ${checked ? 'true' : 'false'})`
+  if (tag === 'Radio') return `ui_radio(${label ?? '""'}, ${checked ? 'true' : 'false'})`
+  return `ui_switch(${checked ? 'true' : 'false'})`
 }
 
 export function imageCreateCall(src: string): string {

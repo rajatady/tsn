@@ -37,6 +37,16 @@ test('mb-10 mt-0.5 emit real margins, not padding', () => {
   assert.equal(r.stylePatch.layoutStyle.paddingTop, undefined)
 })
 
+test('relative absolute and inset classes emit positioning calls', () => {
+  const r = parseTailwind('absolute top-0 right-[12px] bottom-0', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_position_type(h, 1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_inset(h, 0, 12, 0, -1)')))
+  assert.deepEqual(r.stylePatch.layoutStyle.position, 'absolute')
+  assert.deepEqual(r.stylePatch.layoutStyle.insetTop, { unit: 'point', value: 0 })
+  assert.deepEqual(r.stylePatch.layoutStyle.insetRight, { unit: 'point', value: 12 })
+  assert.deepEqual(r.stylePatch.layoutStyle.insetBottom, { unit: 'point', value: 0 })
+})
+
 /* ─── Size ─────────────────────────────────────────────────────────── */
 
 test('w-[200] h-[100] emits ui_set_size', () => {
@@ -138,6 +148,14 @@ test('bg-zinc-900 emits ui_set_background_rgb', () => {
 test('bg-black emits ui_set_background_rgb', () => {
   const r = parseTailwind('bg-black', 'h')
   assert.ok(r.calls.some(c => c.includes('ui_set_background_rgb(h, 0, 0, 0, 1)')))
+})
+
+test('border classes emit border color and width calls', () => {
+  const r = parseTailwind('border border-white/20', 'h')
+  assert.ok(r.calls.some(c => c.includes('ui_set_border_width(h, 1)')))
+  assert.ok(r.calls.some(c => c.includes('ui_set_border_color(h, 1, 1, 1, 0.2)')))
+  assert.equal(r.stylePatch.visualStyle.borderWidth, 1)
+  assert.equal(r.stylePatch.visualStyle.borderColor, 'rgba(1, 1, 1, 0.2)')
 })
 
 test('bg-[#2F2823] emits ui_set_background_rgb with hex values', () => {

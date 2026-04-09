@@ -61,7 +61,7 @@ export const appKitWindowProvider: WindowProvider = {
 export const appKitInputProvider: InputProvider = {
   name: 'appkit-input',
   supportsSearchField: true,
-  supportsMultiline: false,
+  supportsMultiline: true,
 }
 
 export const appKitAnimationProvider: AnimationProvider = {

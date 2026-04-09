@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-col w-[520px] bg-zinc-950 p-6">
+    <div data-testid="panel" class="w-[220px] h-[120px] rounded-xl border border-white/20 bg-zinc-900 p-4">
+      <div data-testid="title" class="text-sm font-semibold text-white">View Panel</div>
+      <div data-testid="body" class="text-sm text-zinc-400">Border and padding should come from low-level styles.</div>
+    </div>
+  </div>
+</body>
+</html>

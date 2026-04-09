@@ -4,11 +4,12 @@ static char kTSNShadowNodeKey;
 
 typedef NS_ENUM(int, TSNNodeKind) {
     TSNNodeKindWindow = 0,
-    TSNNodeKindVStack = 1,
-    TSNNodeKindHStack = 2,
-    TSNNodeKindZStack = 3,
-    TSNNodeKindScroll = 4,
-    TSNNodeKindLeaf = 5,
+    TSNNodeKindView = 1,
+    TSNNodeKindVStack = 2,
+    TSNNodeKindHStack = 3,
+    TSNNodeKindZStack = 4,
+    TSNNodeKindScroll = 5,
+    TSNNodeKindLeaf = 6,
 };
 
 @interface TSNShadowNode : NSObject
@@ -50,6 +51,7 @@ static NSString *tsn_kind_name(TSNShadowNode *node) {
     if (!node) return @"Unknown";
     switch (node.kind) {
         case TSNNodeKindWindow: return @"Window";
+        case TSNNodeKindView: return @"View";
         case TSNNodeKindVStack: return @"VStack";
         case TSNNodeKindHStack: return @"HStack";
         case TSNNodeKindZStack: return @"ZStack";
@@ -59,6 +61,7 @@ static NSString *tsn_kind_name(TSNShadowNode *node) {
     NSView *view = node.view;
     if ([view isKindOfClass:[TSNTextLabelView class]]) return @"Text";
     if ([view isKindOfClass:[NSTextField class]]) return @"Text";
+    if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) return @"NSTextView";
     if ([view isKindOfClass:[NSSearchField class]]) return @"Search";
     if ([view isKindOfClass:[NSButton class]]) return @"Button";
     if ([view isKindOfClass:[NSImageView class]]) return @"Image";
