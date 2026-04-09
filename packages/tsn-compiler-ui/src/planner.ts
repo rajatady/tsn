@@ -117,6 +117,17 @@ function resolveTextBehavior(
     }
   }
 
+  if (tag === 'TextArea') {
+    return {
+      kind: 'textarea',
+      role: 'body',
+      wrap: 'wrap',
+      multiline: true,
+      editable: true,
+      selectable: true,
+    }
+  }
+
   return undefined
 }
 

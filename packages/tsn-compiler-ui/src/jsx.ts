@@ -9,10 +9,12 @@ import * as ts from 'typescript'
 import { parseTailwind } from '../../tsn-tailwind/src/index.js'
 import { CallbackBridge } from './callbacks.js'
 import {
+  emitBoolControlBindings,
   emitBarChartTitleCall,
   emitButtonStyleCall,
   emitHandleCreate,
   emitRuntimeCalls,
+  emitSelectBindings,
   emitSidebarSectionCall,
   emitTableConfigCalls,
   emitTableDataBindingCalls,
@@ -24,6 +26,7 @@ import { buildPrimitivePlan } from './planner.js'
 import {
   barChartCreateCall,
   badgeCreateCall,
+  boolControlCreateCall,
   buttonCreateCall,
   imageCreateCall,
   sidebarItemCreateCall,
@@ -88,6 +91,9 @@ export class JsxEmitter {
 
   private emitPropValue(tsType: string, value: ts.Node | null): string | null {
     if (value === null) return tsType === 'boolean' ? 'true' : null
+    if (tsType === 'string[]' && ts.isJsxExpression(value) && value.expression) {
+      return this.ctx.emitExpr(value.expression)
+    }
     if (ts.isStringLiteral(value)) {
       if (tsType === 'string') return `str_lit(${JSON.stringify(value.text)})`
       return JSON.stringify(value.text)
@@ -148,7 +154,7 @@ export class JsxEmitter {
     push(`ui_on_click(${handle}, ${fnRef}, ${tagExpr});`)
   }
 
-  private liftOptionalCallback(prop: ts.Node | null | undefined, fnType: 'UIClickFn' | 'UITextChangedFn' | 'UITableCellFn'): string | null {
+  private liftOptionalCallback(prop: ts.Node | null | undefined, fnType: 'UIClickFn' | 'UITextChangedFn' | 'UIBoolChangedFn' | 'UITableCellFn'): string | null {
     if (!prop || !ts.isJsxExpression(prop) || !prop.expression) return null
     return this.callbackBridge.liftCallback(prop.expression, fnType)
   }
@@ -236,6 +242,13 @@ export class JsxEmitter {
         return handle
       }
 
+      case 'View': {
+        createFromPlan()
+        this.emitOnClick(handle, props, push)
+        this.emitChildren(children, handle)
+        return handle
+      }
+
       case 'Text': {
         const text = this.propsUtil.textArg(children)
         if (text.startsWith('"')) {
@@ -279,6 +292,63 @@ export class JsxEmitter {
         const value = this.propsUtil.propCStr(props, 'value')
         const onChangeWrap = this.liftOptionalCallback(props.get('onChange'), 'UITextChangedFn')
         emitTextInputBindings(push, handle, value, onChangeWrap)
+        return handle
+      }
+
+      case 'TextArea': {
+        createFromPlan({
+          placeholder: this.propsUtil.propStr(props, 'placeholder') ?? '',
+        })
+        const value = this.propsUtil.propCStr(props, 'value')
+        const onChangeWrap = this.liftOptionalCallback(props.get('onChange'), 'UITextChangedFn')
+        emitTextInputBindings(push, handle, value, onChangeWrap)
+        return handle
+      }
+
+      case 'Select': {
+        createFromPlan()
+        const value = this.propsUtil.propCStr(props, 'value')
+        const onChangeWrap = this.liftOptionalCallback(props.get('onChange'), 'UITextChangedFn')
+        const options = this.propsUtil.propStrArray(props, 'options')
+        if (options && options.length > 0) {
+          emitSelectBindings(push, handle, options, value, onChangeWrap)
+        } else {
+          const optionsProp = props.get('options')
+          if (!optionsProp || !ts.isJsxExpression(optionsProp) || !optionsProp.expression) {
+            throw new Error('<Select> requires a non-empty options array')
+          }
+          const exprType = this.ctx.exprType(optionsProp.expression)
+          if (exprType !== 'string[]') {
+            throw new Error('<Select> options must be a string[]')
+          }
+          const optionsExpr = this.ctx.emitExpr(optionsProp.expression)
+          const idx = `_selOpt${this.jsxCounter++}`
+          push(`for (int ${idx} = 0; ${idx} < ${optionsExpr}.len; ${idx}++) {`)
+          this.ctx.indent++
+          push(`ui_select_add_option(${handle}, ts_str_cstr(${optionsExpr}.data[${idx}]));`)
+          this.ctx.indent--
+          push('}')
+          if (value) {
+            push(`ui_select_set_value(${handle}, ${value});`)
+          }
+          if (onChangeWrap) {
+            push(`ui_on_select_changed(${handle}, ${onChangeWrap});`)
+          }
+        }
+        emitRuntimeCalls(push, plan.runtimeCalls)
+        return handle
+      }
+
+      case 'Checkbox':
+      case 'Radio':
+      case 'Switch': {
+        const label = (tag === 'Switch') ? null : (this.propsUtil.propCStr(props, 'label') ?? this.propsUtil.textArg(children))
+        const checkedStatic = staticProps.checked === true
+        create(boolControlCreateCall(tag, label, checkedStatic))
+        const checkedExpr = this.propsUtil.propBoolExpr(props, 'checked')
+        const onChangeWrap = this.liftOptionalCallback(props.get('onChange'), 'UIBoolChangedFn')
+        emitBoolControlBindings(push, handle, checkedExpr, onChangeWrap)
+        emitRuntimeCalls(push, plan.runtimeCalls)
         return handle
       }
 

@@ -100,6 +100,12 @@ async function typeInto(id: string, text: string): Promise<void> {
   await sleep(25)
 }
 
+async function selectInto(id: string, text: string): Promise<void> {
+  const result = await inspect(['selectid', id, text])
+  assert.ok(result.includes('Selected in'), `Expected selected result for ${id}, got: ${result}`)
+  await sleep(25)
+}
+
 async function runAction(action: ConformanceAction): Promise<void> {
   if (action.kind === 'click-id') {
     await clickById(action.id)
@@ -107,6 +113,10 @@ async function runAction(action: ConformanceAction): Promise<void> {
   }
   if (action.kind === 'click-label') {
     await clickByLabel(action.label)
+    return
+  }
+  if (action.kind === 'select-id') {
+    await selectInto(action.id, action.text)
     return
   }
   await typeInto(action.id, action.text)

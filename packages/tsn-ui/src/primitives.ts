@@ -15,6 +15,7 @@ export interface TSNElementSpec {
 
 export const primitiveRegistry: Record<string, TSNElementSpec> = {
   Window: { tag: 'Window', kind: 'window', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false },
+  View: { tag: 'View', kind: 'box', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false },
   VStack: { tag: 'VStack', kind: 'stack', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false, defaultAxis: 'vertical' },
   HStack: { tag: 'HStack', kind: 'stack', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false, defaultAxis: 'horizontal' },
   ZStack: { tag: 'ZStack', kind: 'overlay', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false },
@@ -23,6 +24,11 @@ export const primitiveRegistry: Record<string, TSNElementSpec> = {
   Spacer: { tag: 'Spacer', kind: 'box', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: false },
   Search: { tag: 'Search', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
   Input: { tag: 'Input', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  TextArea: { tag: 'TextArea', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Select: { tag: 'Select', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Checkbox: { tag: 'Checkbox', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Radio: { tag: 'Radio', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Switch: { tag: 'Switch', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
   Image: { tag: 'Image', kind: 'image', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
   Scroll: { tag: 'Scroll', kind: 'scroll', layer: 'primitive', category: 'composite', allowsChildren: true, measurable: false },
   Button: { tag: 'Button', kind: 'button', layer: 'primitive', category: 'leaf', allowsChildren: true, measurable: true },

@@ -53,6 +53,46 @@ function renderLengthOp(
   return [`${fn}(${handle}, ${width ? width.value : -1}, ${height ? height.value : -1});`]
 }
 
+function renderInsetOp(
+  handle: string,
+  top: LengthValue | null,
+  right: LengthValue | null,
+  bottom: LengthValue | null,
+  left: LengthValue | null,
+): string[] {
+  const entries: Array<LengthValue | null> = [top, right, bottom, left]
+  if (entries.every(value => value == null)) return []
+
+  const units = entries
+    .filter((value): value is LengthValue => value != null)
+    .map(value => value.unit)
+
+  if (units.length > 1 && !units.every(unit => unit === units[0])) {
+    const calls: string[] = []
+    const pointTop = top?.unit === 'point' ? top.value : -1
+    const pointRight = right?.unit === 'point' ? right.value : -1
+    const pointBottom = bottom?.unit === 'point' ? bottom.value : -1
+    const pointLeft = left?.unit === 'point' ? left.value : -1
+    const pctTop = top?.unit === 'percent' ? top.value : -1
+    const pctRight = right?.unit === 'percent' ? right.value : -1
+    const pctBottom = bottom?.unit === 'percent' ? bottom.value : -1
+    const pctLeft = left?.unit === 'percent' ? left.value : -1
+    if (pointTop >= 0 || pointRight >= 0 || pointBottom >= 0 || pointLeft >= 0) {
+      calls.push(`ui_set_inset(${handle}, ${pointTop}, ${pointRight}, ${pointBottom}, ${pointLeft});`)
+    }
+    if (pctTop >= 0 || pctRight >= 0 || pctBottom >= 0 || pctLeft >= 0) {
+      calls.push(`ui_set_inset_pct(${handle}, ${pctTop}, ${pctRight}, ${pctBottom}, ${pctLeft});`)
+    }
+    return calls
+  }
+
+  const usePercent = units[0] === 'percent'
+  const fn = usePercent ? 'ui_set_inset_pct' : 'ui_set_inset'
+  return [
+    `${fn}(${handle}, ${top ? top.value : -1}, ${right ? right.value : -1}, ${bottom ? bottom.value : -1}, ${left ? left.value : -1});`,
+  ]
+}
+
 function renderTailwindOp(op: TailwindOp, handle: string): string[] {
   switch (op.kind) {
     case 'flex':
@@ -63,6 +103,10 @@ function renderTailwindOp(op: TailwindOp, handle: string): string[] {
       return [`ui_set_padding(${handle}, ${op.top}, ${op.right}, ${op.bottom}, ${op.left});`]
     case 'margin':
       return [`ui_set_margin(${handle}, ${op.top}, ${op.right}, ${op.bottom}, ${op.left});`]
+    case 'position-type':
+      return [`ui_set_position_type(${handle}, ${op.value === 'absolute' ? 1 : 0});`]
+    case 'inset':
+      return renderInsetOp(handle, op.top, op.right, op.bottom, op.left)
     case 'size':
       return renderLengthOp('size', handle, op.width, op.height)
     case 'min-size':
@@ -77,6 +121,10 @@ function renderTailwindOp(op: TailwindOp, handle: string): string[] {
       return [`ui_text_set_color_system(${handle}, ${op.color});`]
     case 'background-rgb':
       return [`ui_set_background_rgb(${handle}, ${op.r}, ${op.g}, ${op.b}, ${op.a});`]
+    case 'border-rgb':
+      return [`ui_set_border_color(${handle}, ${op.r}, ${op.g}, ${op.b}, ${op.a});`]
+    case 'border-width':
+      return [`ui_set_border_width(${handle}, ${op.value});`]
     case 'corner-radius':
       return [`ui_set_corner_radius(${handle}, ${op.radius});`]
     case 'align-items':
@@ -150,6 +198,15 @@ function applyStylePatch(result: TailwindResult, op: TailwindOp): void {
       result.stylePatch.layoutStyle.marginBottom = op.bottom
       result.stylePatch.layoutStyle.marginLeft = op.left
       return
+    case 'position-type':
+      result.stylePatch.layoutStyle.position = op.value
+      return
+    case 'inset':
+      if (op.top != null) result.stylePatch.layoutStyle.insetTop = op.top
+      if (op.right != null) result.stylePatch.layoutStyle.insetRight = op.right
+      if (op.bottom != null) result.stylePatch.layoutStyle.insetBottom = op.bottom
+      if (op.left != null) result.stylePatch.layoutStyle.insetLeft = op.left
+      return
     case 'size':
       if (op.width) result.stylePatch.layoutStyle.width = op.width
       if (op.height) result.stylePatch.layoutStyle.height = op.height
@@ -173,6 +230,12 @@ function applyStylePatch(result: TailwindResult, op: TailwindOp): void {
       return
     case 'background-rgb':
       result.stylePatch.visualStyle.backgroundColor = rgbaString(op.r, op.g, op.b, op.a)
+      return
+    case 'border-rgb':
+      result.stylePatch.visualStyle.borderColor = rgbaString(op.r, op.g, op.b, op.a)
+      return
+    case 'border-width':
+      result.stylePatch.visualStyle.borderWidth = op.value
       return
     case 'corner-radius':
       result.stylePatch.visualStyle.cornerRadius = op.radius
@@ -255,12 +318,18 @@ export function parseTailwind(className: string, handle: string): TailwindResult
   let mr = -1
   let mb = -1
   let ml = -1
+  let insetTop: LengthValue | null = null
+  let insetRight: LengthValue | null = null
+  let insetBottom: LengthValue | null = null
+  let insetLeft: LengthValue | null = null
   let widthValue: LengthValue | null = null
   let heightValue: LengthValue | null = null
 
   for (const cls of classes) {
     if (cls === 'flex-1') { pushOps(result, { kind: 'flex', value: 1 }); continue }
     if (cls === 'flex-2') { pushOps(result, { kind: 'flex', value: 2 }); continue }
+    if (cls === 'relative') { pushOps(result, { kind: 'position-type', value: 'relative' }); continue }
+    if (cls === 'absolute') { pushOps(result, { kind: 'position-type', value: 'absolute' }); continue }
 
     const gapMatch = cls.match(/^gap-(\d+(?:\.\d+)?)$/)
     if (gapMatch) {
@@ -394,6 +463,31 @@ export function parseTailwind(className: string, handle: string): TailwindResult
     if (cls.startsWith('max-h-[')) {
       pushOps(result, { kind: 'max-size', width: null, height: parseArbitraryValue(cls) })
       continue
+    }
+
+    if (cls === 'inset-0') {
+      insetTop = point(0)
+      insetRight = point(0)
+      insetBottom = point(0)
+      insetLeft = point(0)
+      continue
+    }
+
+    const insetMatch = cls.match(/^(top|right|bottom|left|inset)-(.+)$/)
+    if (insetMatch) {
+      const side = insetMatch[1]
+      const raw = insetMatch[2]
+      let value: LengthValue | null = null
+      if (raw === '0') value = point(0)
+      else if (raw.startsWith('[')) value = parseArbitraryValue(`${side}-${raw}`)
+      else if (raw in px) value = point(px(parseFloat(raw)))
+      if (value) {
+        if (side === 'top' || side === 'inset') insetTop = value
+        if (side === 'right' || side === 'inset') insetRight = value
+        if (side === 'bottom' || side === 'inset') insetBottom = value
+        if (side === 'left' || side === 'inset') insetLeft = value
+        continue
+      }
     }
 
     const aspectMatch = cls.match(/^aspect-\[(\d+)\/(\d+)\]$/)
@@ -530,6 +624,48 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       }
     }
 
+    if (cls === 'border') {
+      pushOps(result, { kind: 'border-width', value: 1 })
+      continue
+    }
+
+    const borderWidthMatch = cls.match(/^border-(\d+)$/)
+    if (borderWidthMatch) {
+      pushOps(result, { kind: 'border-width', value: parseInt(borderWidthMatch[1], 10) })
+      continue
+    }
+
+    const borderArbitraryWidth = cls.match(/^border-\[(\d+(?:\.\d+)?)(?:px)?\]$/)
+    if (borderArbitraryWidth) {
+      pushOps(result, { kind: 'border-width', value: parseFloat(borderArbitraryWidth[1]) })
+      continue
+    }
+
+    const borderColorMatch = cls.match(/^border-(.+)$/)
+    if (borderColorMatch) {
+      const raw = borderColorMatch[1]
+      const hexColor = parseArbitraryColor(cls)
+      if (hexColor) {
+        const [r, g, b] = hexColor
+        pushOps(result, { kind: 'border-rgb', r: Number(r.toFixed(3)), g: Number(g.toFixed(3)), b: Number(b.toFixed(3)), a: 1.0 })
+        continue
+      }
+      const { name, alpha } = parseColorAlpha(raw)
+      if (name in BG_COLORS) {
+        const [r, g, b] = BG_COLORS[name]
+        pushOps(result, { kind: 'border-rgb', r, g, b, a: alpha })
+        continue
+      }
+      if (name === 'white') {
+        pushOps(result, { kind: 'border-rgb', r: 1, g: 1, b: 1, a: alpha })
+        continue
+      }
+      if (name === 'black') {
+        pushOps(result, { kind: 'border-rgb', r: 0, g: 0, b: 0, a: alpha })
+        continue
+      }
+    }
+
     const roundArbitrary = cls.match(/^rounded-\[(\d+)(?:px)?\]$/)
     if (roundArbitrary) {
       pushOps(result, { kind: 'corner-radius', radius: parseInt(roundArbitrary[1]) })
@@ -610,6 +746,10 @@ export function parseTailwind(className: string, handle: string): TailwindResult
 
   if (widthValue || heightValue) {
     pushOps(result, { kind: 'size', width: widthValue, height: heightValue })
+  }
+
+  if (insetTop || insetRight || insetBottom || insetLeft) {
+    pushOps(result, { kind: 'inset', top: insetTop, right: insetRight, bottom: insetBottom, left: insetLeft })
   }
 
   if (result.textSize > 0) {

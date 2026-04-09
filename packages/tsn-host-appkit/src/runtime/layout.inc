@@ -114,6 +114,11 @@ static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode 
             if (heightMode == YGMeasureModeUndefined) result.height = contentHeight;
             else if (heightMode == YGMeasureModeAtMost) result.height = MIN(contentHeight, height);
             else result.height = height;
+        } else {
+            NSSize intrinsic = view.intrinsicContentSize;
+            CGFloat fw = view.frame.size.width, fh = view.frame.size.height;
+            result.width = (fw > 0) ? fw : (intrinsic.width > 0 ? intrinsic.width : 160);
+            result.height = (fh > 0) ? fh : (intrinsic.height > 0 ? intrinsic.height : 96);
         }
     } else if ([view isKindOfClass:[NSImageView class]]) {
         CGFloat fw = view.frame.size.width, fh = view.frame.size.height;
@@ -176,6 +181,13 @@ UIHandle ui_zstack(void) {
     view.wantsLayer = YES;
     view.layer.masksToBounds = YES;
     TSNShadowNode *node = tsn_create_container_node(view, TSNNodeKindZStack, 2);
+    retain_render(view);
+    return (__bridge UIHandle)view;
+}
+
+UIHandle ui_view(void) {
+    UIStackContainer *view = [UIStackContainer new];
+    TSNShadowNode *node = tsn_create_container_node(view, TSNNodeKindView, 0);
     retain_render(view);
     return (__bridge UIHandle)view;
 }
@@ -292,6 +304,30 @@ void ui_set_max_size_pct(UIHandle v, double w, double h) {
     if (!node) return;
     if (w >= 0) YGNodeStyleSetMaxWidthPercent(node, w);
     if (h >= 0) YGNodeStyleSetMaxHeightPercent(node, h);
+}
+
+void ui_set_position_type(UIHandle v, int position) {
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    YGNodeStyleSetPositionType(node, position == 1 ? YGPositionTypeAbsolute : YGPositionTypeRelative);
+}
+
+void ui_set_inset(UIHandle v, int top, int right, int bottom, int left) {
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    if (top >= 0) YGNodeStyleSetPosition(node, YGEdgeTop, top);
+    if (right >= 0) YGNodeStyleSetPosition(node, YGEdgeRight, right);
+    if (bottom >= 0) YGNodeStyleSetPosition(node, YGEdgeBottom, bottom);
+    if (left >= 0) YGNodeStyleSetPosition(node, YGEdgeLeft, left);
+}
+
+void ui_set_inset_pct(UIHandle v, double top, double right, double bottom, double left) {
+    YGNodeRef node = yoga_node_for_handle(v);
+    if (!node) return;
+    if (top >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeTop, top);
+    if (right >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeRight, right);
+    if (bottom >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeBottom, bottom);
+    if (left >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeLeft, left);
 }
 
 void ui_set_alignment(UIHandle v, int a) {

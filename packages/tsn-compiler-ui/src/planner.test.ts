@@ -36,9 +36,36 @@ test('buildPrimitivePlan tags search as a text-bearing editable primitive', () =
   assert.equal(plan.node.behavior.text?.multiline, false)
 })
 
+test('buildPrimitivePlan tags textarea as multiline editable primitive', () => {
+  const plan = buildPrimitivePlan('TextArea', '_j2', '', { placeholder: 'Write here' }, null)
+
+  assert.equal(plan.node.ref.kind, 'input')
+  assert.equal(plan.primitive?.layer, 'primitive')
+  assert.equal(plan.node.behavior.text?.kind, 'textarea')
+  assert.equal(plan.node.behavior.text?.editable, true)
+  assert.equal(plan.node.behavior.text?.multiline, true)
+  assert.equal(plan.node.behavior.text?.wrap, 'wrap')
+})
+
+test('buildPrimitivePlan registers checkbox as a primitive control', () => {
+  const plan = buildPrimitivePlan('Checkbox', '_j3', '', { checked: true, label: 'Enable' }, null)
+
+  assert.equal(plan.node.ref.kind, 'input')
+  assert.equal(plan.primitive?.layer, 'primitive')
+  assert.equal(plan.primitive?.tag, 'Checkbox')
+})
+
+test('buildPrimitivePlan registers select as a primitive control', () => {
+  const plan = buildPrimitivePlan('Select', '_j6', '', { value: 'Medium' }, null)
+
+  assert.equal(plan.node.ref.kind, 'input')
+  assert.equal(plan.primitive?.layer, 'primitive')
+  assert.equal(plan.primitive?.tag, 'Select')
+})
+
 test('buildPrimitivePlan distinguishes host primitives from higher-level components', () => {
-  const cardPlan = buildPrimitivePlan('Card', '_j2', 'rounded-xl p-4', {}, parseTailwind('rounded-xl p-4', '_j2'))
-  const stackPlan = buildPrimitivePlan('VStack', '_j3', 'gap-4', {}, parseTailwind('gap-4', '_j3'))
+  const cardPlan = buildPrimitivePlan('Card', '_j4', 'rounded-xl p-4', {}, parseTailwind('rounded-xl p-4', '_j4'))
+  const stackPlan = buildPrimitivePlan('VStack', '_j5', 'gap-4', {}, parseTailwind('gap-4', '_j5'))
 
   assert.equal(cardPlan.primitive?.layer, 'component')
   assert.equal(cardPlan.primitive?.kind, 'card')

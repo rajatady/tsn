@@ -47,11 +47,31 @@ export class JsxProps {
     return true
   }
 
+  propBoolExpr(props: Map<string, ts.Node | null>, key: string): string | null {
+    const val = props.get(key)
+    if (!val) return null
+    if (val === null) return 'true'
+    if (ts.isJsxExpression(val) && val.expression) {
+      const expr = val.expression
+      if (expr.kind === ts.SyntaxKind.TrueKeyword) return 'true'
+      if (expr.kind === ts.SyntaxKind.FalseKeyword) return 'false'
+      return this.ctx.emitExpr(expr)
+    }
+    return null
+  }
+
   propCStr(props: Map<string, ts.Node | null>, key: string): string | null {
     const val = props.get(key)
     if (!val) return null
     if (ts.isStringLiteral(val)) return JSON.stringify(val.text)
     if (ts.isJsxExpression(val) && val.expression) return this.exprToCStr(val.expression)
+    return null
+  }
+
+  propStrArray(props: Map<string, ts.Node | null>, key: string): string[] | null {
+    const val = props.get(key)
+    if (!val) return null
+    if (ts.isJsxExpression(val) && val.expression) return this.staticStringArrayFromExpression(val.expression)
     return null
   }
 
@@ -199,6 +219,34 @@ export class JsxProps {
     }
 
     return undefined
+  }
+
+  private staticStringArrayFromExpression(expr: ts.Expression, seen: Set<ts.Node> = new Set()): string[] | null {
+    if (seen.has(expr)) return null
+    seen.add(expr)
+
+    if (ts.isParenthesizedExpression(expr)) {
+      return this.staticStringArrayFromExpression(expr.expression, seen)
+    }
+
+    if (ts.isArrayLiteralExpression(expr)) {
+      const values: string[] = []
+      for (const element of expr.elements) {
+        if (!ts.isExpression(element)) return null
+        const text = this.staticStringFromExpression(element, seen)
+        if (text === undefined) return null
+        values.push(text)
+      }
+      return values
+    }
+
+    if (ts.isIdentifier(expr)) {
+      const init = this.findConstInitializer(expr)
+      if (!init) return null
+      return this.staticStringArrayFromExpression(init, seen)
+    }
+
+    return null
   }
 
   private staticBooleanFromExpression(expr: ts.Expression): boolean | undefined {

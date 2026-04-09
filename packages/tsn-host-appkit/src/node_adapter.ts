@@ -21,6 +21,11 @@ export function adaptNodeToAppKitPlan(node: TSNNode): AppKitNodePlan {
 function resolveHostKind(node: TSNNode): string {
   if (node.sourceTag === 'Search') return 'search'
   if (node.sourceTag === 'Input') return 'input'
+  if (node.sourceTag === 'TextArea') return 'textarea'
+  if (node.sourceTag === 'Select') return 'select'
+  if (node.sourceTag === 'Checkbox') return 'checkbox'
+  if (node.sourceTag === 'Radio') return 'radio'
+  if (node.sourceTag === 'Switch') return 'switch'
   return node.ref.kind
 }
 
@@ -39,6 +44,8 @@ function resolveCreateCall(node: TSNNode): string {
       return 'ui_hstack()'
     case 'ZStack':
       return 'ui_zstack()'
+    case 'View':
+      return 'ui_view()'
     case 'Text': {
       const value = cString(node.props.value)
       const text = resolveTextPresentation(node.textStyle)
@@ -50,6 +57,16 @@ function resolveCreateCall(node: TSNNode): string {
       return `ui_search_field(${cString(node.props.placeholder)})`
     case 'Input':
       return `ui_text_field(${cString(node.props.placeholder)})`
+    case 'TextArea':
+      return `ui_text_area(${cString(node.props.placeholder)})`
+    case 'Select':
+      return 'ui_select()'
+    case 'Checkbox':
+      return `ui_checkbox(${cString(node.props.label)}, ${boolProp(node.props.checked) ? 'true' : 'false'})`
+    case 'Radio':
+      return `ui_radio(${cString(node.props.label)}, ${boolProp(node.props.checked) ? 'true' : 'false'})`
+    case 'Switch':
+      return `ui_switch(${boolProp(node.props.checked) ? 'true' : 'false'})`
     case 'Image':
       return `ui_image(${cString(node.props.src)})`
     case 'Sidebar':
@@ -77,7 +94,7 @@ function resolveCreateCall(node: TSNNode): string {
     case 'Spacer':
       return 'ui_spacer()'
     default:
-      return node.ref.kind === 'overlay' ? 'ui_zstack()' : node.ref.kind === 'stack' ? 'ui_vstack()' : 'ui_card()'
+      return node.ref.kind === 'overlay' ? 'ui_zstack()' : node.ref.kind === 'stack' ? 'ui_vstack()' : 'ui_view()'
   }
 }
 
@@ -93,6 +110,10 @@ function resolveStyleCalls(node: TSNNode): string[] {
     const aspectWidth = Math.max(1, Math.round(node.layoutStyle.aspectRatio * 1000))
     calls.push(`ui_set_aspect(${node.ref.id}, ${aspectWidth}, 1000);`)
   }
+  if (node.layoutStyle.position != null) {
+    calls.push(`ui_set_position_type(${node.ref.id}, ${node.layoutStyle.position === 'absolute' ? 1 : 0});`)
+  }
+  pushInsetCalls(calls, node.ref.id, node.layoutStyle.insetTop, node.layoutStyle.insetRight, node.layoutStyle.insetBottom, node.layoutStyle.insetLeft)
   if (node.layoutStyle.marginAuto) calls.push(`ui_set_margin_auto(${node.ref.id});`)
   if (node.layoutStyle.alignItems != null) calls.push(`ui_set_align_items(${node.ref.id}, ${layoutAlignValue(node.layoutStyle.alignItems)});`)
   if (node.layoutStyle.justifyContent != null) {
@@ -120,6 +141,7 @@ function resolveStyleCalls(node: TSNNode): string[] {
     )
   }
   emitBackgroundColorCall(calls, node.ref.id, node.visualStyle.backgroundColor)
+  emitBorderCalls(calls, node.ref.id, node.visualStyle.borderColor, node.visualStyle.borderWidth)
   if (node.visualStyle.cornerRadius != null) {
     calls.push(`ui_set_corner_radius(${node.ref.id}, ${node.visualStyle.cornerRadius});`)
   }
@@ -195,10 +217,40 @@ function pushLengthCall(
   calls.push(`${fn}(${handle}, ${resolveLengthValue(width) ?? -1}, ${resolveLengthValue(height) ?? -1});`)
 }
 
+function pushInsetCalls(
+  calls: string[],
+  handle: string,
+  top: TSNLengthResolvable | undefined,
+  right: TSNLengthResolvable | undefined,
+  bottom: TSNLengthResolvable | undefined,
+  left: TSNLengthResolvable | undefined,
+): void {
+  if (top == null && right == null && bottom == null && left == null) return
+  const values = [top, right, bottom, left]
+  const percentValues = values.some(value => typeof value === 'object' && value.unit === 'percent')
+  const pointValues = values.some(value => value != null && (typeof value === 'number' || value.unit === 'point'))
+
+  if (pointValues) {
+    calls.push(
+      `ui_set_inset(${handle}, ${resolvePointLength(top) ?? -1}, ${resolvePointLength(right) ?? -1}, ${resolvePointLength(bottom) ?? -1}, ${resolvePointLength(left) ?? -1});`,
+    )
+  }
+  if (percentValues) {
+    calls.push(
+      `ui_set_inset_pct(${handle}, ${resolvePercentLength(top) ?? -1}, ${resolvePercentLength(right) ?? -1}, ${resolvePercentLength(bottom) ?? -1}, ${resolvePercentLength(left) ?? -1});`,
+    )
+  }
+}
+
 function resolvePointLength(value: TSNLengthResolvable | undefined): number | null {
   if (value == null) return null
   if (typeof value === 'number') return value
   return value.unit === 'point' ? value.value : null
+}
+
+function resolvePercentLength(value: TSNLengthResolvable | undefined): number | null {
+  if (value == null || typeof value === 'number') return null
+  return value.unit === 'percent' ? value.value : null
 }
 
 function resolveLengthValue(value: TSNLengthResolvable | undefined): number | null {
@@ -222,6 +274,12 @@ function cString(value: unknown): string {
 function emitBackgroundColorCall(calls: string[], handle: string, color: string | undefined): void {
   const colorCall = rgbColorCall('ui_set_background_rgb', handle, color)
   if (colorCall) calls.push(colorCall)
+}
+
+function emitBorderCalls(calls: string[], handle: string, color: string | undefined, width: number | undefined): void {
+  const colorCall = rgbColorCall('ui_set_border_color', handle, color)
+  if (colorCall) calls.push(colorCall)
+  if (width != null) calls.push(`ui_set_border_width(${handle}, ${width});`)
 }
 
 function emitTextColorCall(calls: string[], handle: string, color: string | undefined): void {

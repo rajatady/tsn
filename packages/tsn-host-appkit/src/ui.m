@@ -43,6 +43,7 @@ typedef NS_ENUM(NSInteger, TSNTextRuntimeKind) {
     TSNTextRuntimeKindStatic = 0,
     TSNTextRuntimeKindInput = 1,
     TSNTextRuntimeKindSearch = 2,
+    TSNTextRuntimeKindTextArea = 3,
 };
 
 typedef NS_ENUM(NSInteger, TSNTextRuntimeWrapMode) {
@@ -51,11 +52,28 @@ typedef NS_ENUM(NSInteger, TSNTextRuntimeWrapMode) {
     TSNTextRuntimeWrapModeClip = 2,
 };
 
+typedef NS_ENUM(NSInteger, TSNBoolControlRuntimeKind) {
+    TSNBoolControlRuntimeKindNone = 0,
+    TSNBoolControlRuntimeKindCheckbox = 1,
+    TSNBoolControlRuntimeKindRadio = 2,
+    TSNBoolControlRuntimeKindSwitch = 3,
+};
+
 static char kTextRuntimeKindKey;
 static char kTextRuntimeWrapModeKey;
 static char kTextRuntimeMultilineKey;
 static char kTextRuntimeLineHeightMultiplierKey;
 static char kTextRuntimeMonospaceKey;
+static char kBoolControlRuntimeKindKey;
+
+static NSTextView *tsn_text_view_from_host(NSView *view) {
+    if ([view isKindOfClass:[NSTextView class]]) return (NSTextView *)view;
+    if ([view isKindOfClass:[NSScrollView class]]) {
+        NSView *document = ((NSScrollView *)view).documentView;
+        if ([document isKindOfClass:[NSTextView class]]) return (NSTextView *)document;
+    }
+    return nil;
+}
 
 @class TSNTextLabelView;
 static CGFloat tsn_text_resolved_line_height(NSView *view);
@@ -170,47 +188,79 @@ static BOOL tsn_text_is_monospace(NSView *view) {
     return value ? value.boolValue : NO;
 }
 
+static void tsn_bool_control_set_kind(NSView *view, TSNBoolControlRuntimeKind kind) {
+    objc_setAssociatedObject(view, &kBoolControlRuntimeKindKey, @(kind), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static TSNBoolControlRuntimeKind tsn_bool_control_kind(NSView *view) {
+    NSNumber *value = objc_getAssociatedObject(view, &kBoolControlRuntimeKindKey);
+    return value ? (TSNBoolControlRuntimeKind)value.integerValue : TSNBoolControlRuntimeKindNone;
+}
+
+static BOOL tsn_bool_control_has_state(NSView *view) {
+    return tsn_bool_control_kind(view) != TSNBoolControlRuntimeKindNone;
+}
+
 static NSFont *tsn_text_font(NSView *view) {
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) return textView.font;
     if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).font;
     if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).font;
     return nil;
 }
 
 static void tsn_text_set_font(NSView *view, NSFont *font) {
-    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).font = font;
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) textView.font = font;
+    else if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).font = font;
     else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).font = font;
 }
 
 static NSColor *tsn_text_color(NSView *view) {
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) return textView.textColor;
     if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).textColor;
     if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).textColor;
     return [NSColor colorWithWhite:0.9 alpha:1];
 }
 
 static void tsn_text_set_color(NSView *view, NSColor *color) {
-    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).textColor = color;
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) textView.textColor = color;
+    else if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).textColor = color;
     else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).textColor = color;
 }
 
 static NSString *tsn_text_string(NSView *view) {
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) return textView.string ?: @"";
     if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).stringValue ?: @"";
     if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).stringValue ?: @"";
     return @"";
 }
 
 static void tsn_text_set_string(NSView *view, NSString *string) {
-    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).stringValue = string ?: @"";
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) {
+        textView.string = string ?: @"";
+        [textView setNeedsDisplay:YES];
+    }
+    else if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).stringValue = string ?: @"";
     else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).stringValue = string ?: @"";
 }
 
 static NSTextAlignment tsn_text_alignment(NSView *view) {
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) return textView.alignment;
     if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).alignment;
     if ([view isKindOfClass:[TSNTextLabelView class]]) return ((TSNTextLabelView *)view).alignment;
     return NSTextAlignmentLeft;
 }
 
 static void tsn_text_set_alignment_value(NSView *view, NSTextAlignment alignment) {
-    if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).alignment = alignment;
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) textView.alignment = alignment;
+    else if ([view isKindOfClass:[NSTextField class]]) ((NSTextField *)view).alignment = alignment;
     else if ([view isKindOfClass:[TSNTextLabelView class]]) ((TSNTextLabelView *)view).alignment = alignment;
 }
 
@@ -494,6 +544,13 @@ typedef struct { char label[64]; double value; NSColor * __unsafe_unretained col
         if (_callback) _callback(((NSTextField *)control).stringValue.UTF8String);
     }
 }
+- (void)textDidChange:(NSNotification *)notification {
+    id object = notification.object;
+    if ([object isKindOfClass:[NSTextView class]]) {
+        NSTextView *textView = (NSTextView *)object;
+        if (_callback) _callback(textView.string.UTF8String);
+    }
+}
 @end
 
 /* ─── Global State ───────────────────────────────────────────────── */
@@ -562,8 +619,14 @@ void ui_text_set_color_system(UIHandle t, int c) {
 }
 
 void ui_text_set_selectable(UIHandle t, bool sel) {
-    if ([(__bridge NSView *)t isKindOfClass:[NSTextField class]])
-        ((NSTextField *)(__bridge NSView *)t).selectable = sel;
+    NSView *view = (__bridge NSView *)t;
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) {
+        textView.selectable = sel;
+        return;
+    }
+    if ([view isKindOfClass:[NSTextField class]])
+        ((NSTextField *)view).selectable = sel;
 }
 
 static CGFloat font_weight_value(int w) {
@@ -593,6 +656,9 @@ void ui_text_set_weight(UIHandle t, int weight) {
     if ([view isKindOfClass:[NSTextField class]]) {
         tsn_apply_text_layout_traits((NSTextField *)view);
         [(NSTextField *)view sizeToFit];
+    } else if (tsn_text_view_from_host(view)) {
+        [view setNeedsLayout:YES];
+        [view setNeedsDisplay:YES];
     } else {
         [view invalidateIntrinsicContentSize];
         [view setNeedsDisplay:YES];
@@ -605,6 +671,9 @@ void ui_text_set_line_height(UIHandle t, double mult) {
     if ([view isKindOfClass:[NSTextField class]]) {
         tsn_apply_text_layout_traits((NSTextField *)view);
         [(NSTextField *)view sizeToFit];
+    } else if (tsn_text_view_from_host(view)) {
+        [view setNeedsLayout:YES];
+        [view setNeedsDisplay:YES];
     } else {
         [view invalidateIntrinsicContentSize];
         [view setNeedsDisplay:YES];
@@ -622,6 +691,15 @@ void ui_text_set_tracking(UIHandle t, double kern) {
         [field sizeToFit];
         return;
     }
+    NSTextView *textView = tsn_text_view_from_host(view);
+    if (textView) {
+        if (textView.string.length > 0 && textView.textStorage) {
+            [textView.textStorage addAttribute:NSKernAttributeName value:@(kern) range:NSMakeRange(0, textView.string.length)];
+        }
+        [view setNeedsLayout:YES];
+        [view setNeedsDisplay:YES];
+        return;
+    }
     tsn_text_set_tracking_value(view, kern);
     [view invalidateIntrinsicContentSize];
     [view setNeedsDisplay:YES];
@@ -637,6 +715,9 @@ void ui_text_set_transform(UIHandle t, int xform) {
     if ([view isKindOfClass:[NSTextField class]]) {
         tsn_apply_text_layout_traits((NSTextField *)view);
         [(NSTextField *)view sizeToFit];
+    } else if (tsn_text_view_from_host(view)) {
+        [view setNeedsLayout:YES];
+        [view setNeedsDisplay:YES];
     } else {
         [view invalidateIntrinsicContentSize];
         [view setNeedsDisplay:YES];
@@ -650,6 +731,9 @@ void ui_text_set_align(UIHandle t, int align) {
     else if (align == 2) tsn_text_set_alignment_value(view, NSTextAlignmentRight);
     if ([view isKindOfClass:[NSTextField class]]) {
         tsn_apply_text_layout_traits((NSTextField *)view);
+    } else if (tsn_text_view_from_host(view)) {
+        [view setNeedsLayout:YES];
+        [view setNeedsDisplay:YES];
     } else {
         [view setNeedsDisplay:YES];
     }
@@ -661,6 +745,9 @@ void ui_text_set_truncate(UIHandle t) {
     if ([view isKindOfClass:[NSTextField class]]) {
         tsn_apply_text_layout_traits((NSTextField *)view);
         [(NSTextField *)view sizeToFit];
+    } else if (tsn_text_view_from_host(view)) {
+        [view setNeedsLayout:YES];
+        [view setNeedsDisplay:YES];
     } else {
         [view invalidateIntrinsicContentSize];
         [view setNeedsDisplay:YES];
@@ -691,13 +778,9 @@ void ui_segmented_on_change(UIHandle seg, UISegmentFn fn) { /* TODO */ }
 
 /* ─── Toggle ─────────────────────────────────────────────────────── */
 UIHandle ui_toggle(const char *label, bool initial) {
-    NSSwitch *sw = [NSSwitch new];
-    sw.state = initial ? NSControlStateValueOn : NSControlStateValueOff;
-    tsn_create_view_node(sw, TSNNodeKindLeaf, 0, YES);
-    retain_render(sw);
-    return (__bridge UIHandle)sw;
+    return ui_switch(initial);
 }
-void ui_toggle_on_change(UIHandle tog, UIToggleFn fn) { /* TODO */ }
+void ui_toggle_on_change(UIHandle tog, UIToggleFn fn) { ui_on_bool_changed(tog, fn); }
 
 /* ─── Progress ───────────────────────────────────────────────────── */
 UIHandle ui_progress(double value) {
@@ -901,10 +984,15 @@ void ui_set_corner_radius(UIHandle v, double r) {
     view.layer.masksToBounds = YES;
 }
 
-void ui_set_border(UIHandle v, double r, double g, double b, double w) {
+void ui_set_border_color(UIHandle v, double r, double g, double b, double a) {
     NSView *view = (__bridge NSView *)v;
     view.wantsLayer = YES;
-    view.layer.borderColor = [NSColor colorWithRed:r green:g blue:b alpha:1].CGColor;
+    view.layer.borderColor = [NSColor colorWithRed:r green:g blue:b alpha:a].CGColor;
+}
+
+void ui_set_border_width(UIHandle v, double w) {
+    NSView *view = (__bridge NSView *)v;
+    view.wantsLayer = YES;
     view.layer.borderWidth = w;
 }
 
