@@ -1,5 +1,5 @@
 /*
- * StrictTS Config Audit
+ * TSN Config Audit
  *
  * Reads deployment-style key/value config from stdin and prints a readiness
  * summary. Exercises:

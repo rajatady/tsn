@@ -1,6 +1,6 @@
-# StrictTS Language Reference
+# TSN Language Reference
 
-StrictTS is a strict subset of TypeScript that compiles to native code. If your code passes the validator, it will compile to a native binary.
+TSN is a strict subset of TypeScript that compiles to native code. If your code passes the validator, it will compile to a native binary.
 
 ## Type System
 

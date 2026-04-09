@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# Build the StrictTS Native Dashboard
+# Build the TSN Native Dashboard
 #
 # Flow:
-#   dashboard.ts  →  (StrictTS compiler)  →  dashboard.c  →  (clang)  →  ./dashboard
+#   dashboard.ts  →  (TSN compiler)  →  dashboard.c  →  (clang)  →  ./dashboard
 #
 # For now, dashboard.c is hand-maintained to match dashboard.ts.
 # Once the compiler supports ui_* bindings, this becomes:
@@ -15,7 +15,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-echo "=== StrictTS Native Dashboard Build ==="
+echo "=== TSN Native Dashboard Build ==="
 echo ""
 
 # Build
@@ -35,7 +35,7 @@ echo ""
 
 # Compare to Electron
 echo "=== Size Comparison ==="
-echo "  StrictTS Native:  $SIZE"
+echo "  TSN Native:  $SIZE"
 echo "  Electron hello:   ~180 MB"
 echo "  Tauri hello:      ~12 MB"
 echo "  Swift/SwiftUI:    ~200 KB"

@@ -37,7 +37,7 @@ fs.writeFileSync(path.join(__dirname, 'test-data/large-dataset.json'), JSON.stri
 console.log(`Generated ${people.length} person records → test-data/large-dataset.json`)
 
 // ─── 2. Markdown sample ────────────────────────────────────────────
-const markdown = `# Welcome to StrictTS
+const markdown = `# Welcome to TSN
 
 This is a **bold** statement about *compiling* TypeScript to native code.
 

@@ -1,6 +1,6 @@
 'use strict';
 
-// Harness-only shim for StrictTS stdlib methods that do not exist in plain JS.
+// Harness-only shim for TSN stdlib methods that do not exist in plain JS.
 // This keeps Node/Bun correctness and benchmark comparisons aligned with the
 // compiler surface without changing user programs.
 function defineArrayMethod(name, impl) {

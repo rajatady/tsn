@@ -1,5 +1,5 @@
 /*
- * StrictTS App Store demo
+ * TSN App Store demo
  *
  * This is the first routed native app built on the React-style hook slice.
  * It intentionally focuses on navigation, local component state, and clean

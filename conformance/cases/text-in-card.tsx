@@ -1,7 +1,7 @@
 /**
  * Text primitive: text inside padded card containers
  *
- * This is the core visual pattern in every StrictTS app:
+ * This is the core visual pattern in every TSN app:
  * eyebrow label + heading + body text inside a padded Card.
  * Tests that vertical spacing, padding, and text sizing
  * interact correctly to produce the right total card height.

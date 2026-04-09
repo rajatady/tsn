@@ -1,5 +1,5 @@
 /**
- * StrictTS Validator
+ * TSN Validator
  *
  * Walks the AST and rejects any banned features.
  * This is the "strict subset" enforcer.

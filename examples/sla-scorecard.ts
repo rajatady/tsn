@@ -1,5 +1,5 @@
 /*
- * StrictTS SLA Scorecard
+ * TSN SLA Scorecard
  *
  * Reads service SLA snapshots from stdin and prints a reliability scorecard.
  * Exercises:

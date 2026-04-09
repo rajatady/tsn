@@ -1,4 +1,4 @@
-import { buildStrictTS } from '../packages/tsn-compiler-core/src/build.js'
+import { buildTSN } from '../packages/tsn-compiler-core/src/build.js'
 
 const inputPath = process.argv[2]
 if (!inputPath) {
@@ -6,4 +6,4 @@ if (!inputPath) {
   process.exit(1)
 }
 
-buildStrictTS(inputPath, process.argv.slice(3))
+buildTSN(inputPath, process.argv.slice(3))

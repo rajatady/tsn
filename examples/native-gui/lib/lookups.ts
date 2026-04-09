@@ -1,6 +1,6 @@
 /**
  * Lookup functions for employee data generation
- * (Chains of if-statements because StrictTS doesn't support array literals)
+ * (Chains of if-statements because TSN doesn't support array literals)
  */
 
 export function firstName(i: number): string {

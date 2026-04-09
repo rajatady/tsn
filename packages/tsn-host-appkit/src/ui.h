@@ -1,13 +1,13 @@
 /*
- * StrictTS Native UI Framework — Apple-quality macOS components
+ * TSN Native UI Framework — Apple-quality macOS components
  *
  * C API over AppKit. TypeScript devs call functions, get native views.
  * Supports: vibrancy, blur, SF Symbols, dark mode, gradients,
  * split views, outline views, popovers, badges, progress, segmented controls.
  */
 
-#ifndef STRICTTS_UI_H
-#define STRICTTS_UI_H
+#ifndef TSN_UI_H
+#define TSN_UI_H
 
 #include <stdbool.h>
 
@@ -170,7 +170,7 @@ typedef void (*UITimerFn)(void);
 void        ui_set_timer(double interval_sec, UITimerFn fn);
 
 /* ─── Inspector (dev tools) ──────────────────────────────────────── */
-void        ui_inspector_start(void);  /* starts Unix socket listener on /tmp/strictts-inspect.sock */
+void        ui_inspector_start(void);  /* starts Unix socket listener on /tmp/tsn-inspect.sock */
 void        ui_set_id(UIHandle v, const char *element_id);  /* register element for inspector lookup */
 
-#endif /* STRICTTS_UI_H */
+#endif /* TSN_UI_H */

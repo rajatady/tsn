@@ -41,7 +41,7 @@ User asked: "how does a system like React Native work forget the JavaScript brid
 
 Answer: RN uses Yoga (pure math) to compute frames, then just sets view.frame. No native views do layout. There's a Fiber reconciler → Shadow Tree → Yoga → Native Views pipeline.
 
-StrictTS was the opposite — NSViews did their own layout. No reconciler. No shadow tree. _ts_rerender() rebuilds the entire view tree via ui_replace_root().
+TSN was the opposite — NSViews did their own layout. No reconciler. No shadow tree. _ts_rerender() rebuilds the entire view tree via ui_replace_root().
 
 User: "So without a reconciler, we are living in borrowed time, aren't we?" — Yes.
 
@@ -53,7 +53,7 @@ User: "So without a reconciler, we are living in borrowed time, aren't we?" — 
 
 ## Starting State (Pre-Yoga Integration)
 
-- StrictTS compiler working, 4 example apps compiling and running (dashboard, app-store, incident-tracker, ui-gallery)
+- TSN compiler working, 4 example apps compiling and running (dashboard, app-store, incident-tracker, ui-gallery)
 - 25/25 conformance tests passing
 - Hand-rolled layout engine in layout.inc (~500 lines of flexbox approximation)
 - Two disconnected layout engines: tsn-layout (TypeScript, testing only) and layout.inc (Objective-C, runtime)
@@ -65,7 +65,7 @@ Fix fundamental layout issues. The app-store looked nothing like its HTML refere
 ## Architecture Discussion
 
 - Compared to React Native: RN uses Yoga (pure math) → computes frames → sets view.frame. No native views do layout.
-- StrictTS was the opposite — NSViews did their own layout via UIStackContainer.layout
+- TSN was the opposite — NSViews did their own layout via UIStackContainer.layout
 - Identified two fundamental gaps: layout solver and reconciler
 - Chose Yoga over Taffy (C++ vs Rust, integrates with our clang toolchain)
 - Agreed: Yoga is the single source of truth. UIStackContainer stripped to direction/ygNode/children only.
@@ -179,22 +179,22 @@ User repeatedly corrected this approach:
 
 ```bash
 # Build
-./strictts build examples/native-gui/app-store.tsx
-./strictts build conformance/gallery.tsx
+./tsn build examples/native-gui/app-store.tsx
+./tsn build conformance/gallery.tsx
 
 # Run apps
 ./build/app-store &
 ./build/gallery &
 
 # Screenshot
-./strictts inspect --app app-store screenshot
-./strictts inspect --app gallery screenshot
-# Saves to /tmp/strictts-screenshot.png
+./tsn inspect --app app-store screenshot
+./tsn inspect --app gallery screenshot
+# Saves to /tmp/tsn-screenshot.png
 
 # Inspector queries
-echo "tree" | nc -U /tmp/strictts-inspect-gallery.sock
-echo "get root wframe" | nc -U /tmp/strictts-inspect-gallery.sock
-echo "clickid align-center" | nc -U /tmp/strictts-inspect-gallery.sock
+echo "tree" | nc -U /tmp/tsn-inspect-gallery.sock
+echo "get root wframe" | nc -U /tmp/tsn-inspect-gallery.sock
+echo "clickid align-center" | nc -U /tmp/tsn-inspect-gallery.sock
 
 # Conformance
 bash harness/ui-conformance.sh                    # full suite (~35s)

@@ -1,4 +1,4 @@
-# StrictTS → Native Compiler Specification
+# TSN → Native Compiler Specification
 
 ## Goal
 Compile a strict subset of TypeScript directly to C, then to native ARM64 binaries via clang.

@@ -1,6 +1,6 @@
 # JSX & Components
 
-StrictTS supports React-like TSX syntax that compiles to native macOS UI. Write familiar JSX with Tailwind classes — the compiler emits C calls to the AppKit host in [packages/tsn-host-appkit/src/ui.h](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/packages/tsn-host-appkit/src/ui.h).
+TSN supports React-like TSX syntax that compiles to native macOS UI. Write familiar JSX with Tailwind classes — the compiler emits C calls to the AppKit host in [packages/tsn-host-appkit/src/ui.h](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/packages/tsn-host-appkit/src/ui.h).
 
 ## How It Works
 
@@ -28,7 +28,7 @@ ui_add_child(_j0, _j1);
 
 ## Function Components
 
-StrictTS now supports named React-style function components that return JSX. The normal `return (...)` form is supported, including destructured props and a top-level `<App />` root.
+TSN now supports named React-style function components that return JSX. The normal `return (...)` form is supported, including destructured props and a top-level `<App />` root.
 
 ```tsx
 interface HeaderProps {
@@ -66,7 +66,7 @@ Notes:
 
 ## Hooks and App State
 
-StrictTS now supports a small React-like hook slice for native UI apps:
+TSN now supports a small React-like hook slice for native UI apps:
 
 ```tsx
 import { useRoute, useState, useStore } from '../../packages/tsn-ui/src/react'
@@ -528,4 +528,4 @@ UIHandle _j0 = ui_window("App", 800, 600, true);
 ui_set_id(_j0, "_j0");
 ```
 
-Query elements at runtime via the inspector: `strictts inspect get _j5 type`
+Query elements at runtime via the inspector: `tsn inspect get _j5 type`

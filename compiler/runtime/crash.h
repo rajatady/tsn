@@ -1,5 +1,5 @@
 /*
- * StrictTS Crash Handler — SIGSEGV/SIGABRT → TypeScript stack trace
+ * TSN Crash Handler — SIGSEGV/SIGABRT → TypeScript stack trace
  *
  * Uses macOS backtrace() + atos for symbolication.
  * The #line directives in generated C create DWARF mappings,
@@ -8,8 +8,8 @@
  * In UI apps, shows a red error overlay (like Next.js) before exiting.
  */
 
-#ifndef STRICTTS_CRASH_H
-#define STRICTTS_CRASH_H
+#ifndef TSN_CRASH_H
+#define TSN_CRASH_H
 
 #include <signal.h>
 #include <execinfo.h>
@@ -189,4 +189,4 @@ static void ts_install_crash_handler(const char *binary_path) {
     sigaction(SIGBUS,  &sa, NULL);
 }
 
-#endif /* STRICTTS_CRASH_H */
+#endif /* TSN_CRASH_H */

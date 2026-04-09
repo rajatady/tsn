@@ -1,5 +1,5 @@
 /*
- * StrictTS Log Triage
+ * TSN Log Triage
  *
  * Reads structured-ish log lines from stdin and prints an actionable summary.
  * Exercises:

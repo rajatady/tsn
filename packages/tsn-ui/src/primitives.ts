@@ -1,42 +1,66 @@
 import type { TSNAxis, TSNMediaValue, TSNNode, TSNNodeKind, TSNPropValue } from '@tsn/core'
 
-export interface TSNPrimitiveSpec {
+export type TSNElementLayer = 'primitive' | 'component'
+export type TSNElementCategory = 'container' | 'leaf' | 'composite'
+
+export interface TSNElementSpec {
   tag: string
   kind: TSNNodeKind
-  category: 'container' | 'leaf' | 'composite'
+  layer: TSNElementLayer
+  category: TSNElementCategory
   allowsChildren: boolean
   measurable: boolean
   defaultAxis?: TSNAxis
 }
 
-export const primitiveRegistry: Record<string, TSNPrimitiveSpec> = {
-  Window: { tag: 'Window', kind: 'window', category: 'container', allowsChildren: true, measurable: false },
-  VStack: { tag: 'VStack', kind: 'stack', category: 'container', allowsChildren: true, measurable: false, defaultAxis: 'vertical' },
-  HStack: { tag: 'HStack', kind: 'stack', category: 'container', allowsChildren: true, measurable: false, defaultAxis: 'horizontal' },
-  ZStack: { tag: 'ZStack', kind: 'overlay', category: 'container', allowsChildren: true, measurable: false },
-  Text: { tag: 'Text', kind: 'text', category: 'leaf', allowsChildren: true, measurable: true },
-  Symbol: { tag: 'Symbol', kind: 'text', category: 'leaf', allowsChildren: false, measurable: true },
-  Spacer: { tag: 'Spacer', kind: 'box', category: 'leaf', allowsChildren: false, measurable: false },
-  Search: { tag: 'Search', kind: 'input', category: 'leaf', allowsChildren: false, measurable: true },
-  Input: { tag: 'Input', kind: 'input', category: 'leaf', allowsChildren: false, measurable: true },
-  Image: { tag: 'Image', kind: 'image', category: 'leaf', allowsChildren: false, measurable: true },
-  Sidebar: { tag: 'Sidebar', kind: 'sidebar', category: 'container', allowsChildren: true, measurable: false },
-  Scroll: { tag: 'Scroll', kind: 'scroll', category: 'composite', allowsChildren: true, measurable: false },
-  Card: { tag: 'Card', kind: 'card', category: 'container', allowsChildren: true, measurable: false },
-  SidebarSection: { tag: 'SidebarSection', kind: 'sidebar', category: 'composite', allowsChildren: true, measurable: false },
-  SidebarItem: { tag: 'SidebarItem', kind: 'button', category: 'leaf', allowsChildren: true, measurable: true },
-  Stat: { tag: 'Stat', kind: 'box', category: 'composite', allowsChildren: false, measurable: true },
-  Badge: { tag: 'Badge', kind: 'text', category: 'leaf', allowsChildren: true, measurable: true },
-  Button: { tag: 'Button', kind: 'button', category: 'leaf', allowsChildren: true, measurable: true },
-  BarChart: { tag: 'BarChart', kind: 'box', category: 'composite', allowsChildren: false, measurable: true },
-  Table: { tag: 'Table', kind: 'box', category: 'composite', allowsChildren: false, measurable: true },
-  Progress: { tag: 'Progress', kind: 'box', category: 'leaf', allowsChildren: false, measurable: true },
-  Divider: { tag: 'Divider', kind: 'box', category: 'leaf', allowsChildren: false, measurable: true },
-  Gradient: { tag: 'Gradient', kind: 'overlay', category: 'leaf', allowsChildren: false, measurable: false },
+export const primitiveRegistry: Record<string, TSNElementSpec> = {
+  Window: { tag: 'Window', kind: 'window', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false },
+  VStack: { tag: 'VStack', kind: 'stack', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false, defaultAxis: 'vertical' },
+  HStack: { tag: 'HStack', kind: 'stack', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false, defaultAxis: 'horizontal' },
+  ZStack: { tag: 'ZStack', kind: 'overlay', layer: 'primitive', category: 'container', allowsChildren: true, measurable: false },
+  Text: { tag: 'Text', kind: 'text', layer: 'primitive', category: 'leaf', allowsChildren: true, measurable: true },
+  Symbol: { tag: 'Symbol', kind: 'text', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Spacer: { tag: 'Spacer', kind: 'box', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: false },
+  Search: { tag: 'Search', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Input: { tag: 'Input', kind: 'input', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Image: { tag: 'Image', kind: 'image', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Scroll: { tag: 'Scroll', kind: 'scroll', layer: 'primitive', category: 'composite', allowsChildren: true, measurable: false },
+  Button: { tag: 'Button', kind: 'button', layer: 'primitive', category: 'leaf', allowsChildren: true, measurable: true },
+  Progress: { tag: 'Progress', kind: 'box', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Divider: { tag: 'Divider', kind: 'box', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: true },
+  Gradient: { tag: 'Gradient', kind: 'overlay', layer: 'primitive', category: 'leaf', allowsChildren: false, measurable: false },
 }
 
-export function getPrimitiveSpec(tag: string): TSNPrimitiveSpec | null {
-  return primitiveRegistry[tag] ?? null
+export const componentRegistry: Record<string, TSNElementSpec> = {
+  Sidebar: { tag: 'Sidebar', kind: 'sidebar', layer: 'component', category: 'container', allowsChildren: true, measurable: false },
+  Card: { tag: 'Card', kind: 'card', layer: 'component', category: 'container', allowsChildren: true, measurable: false },
+  SidebarSection: { tag: 'SidebarSection', kind: 'sidebar', layer: 'component', category: 'composite', allowsChildren: true, measurable: false },
+  SidebarItem: { tag: 'SidebarItem', kind: 'button', layer: 'component', category: 'leaf', allowsChildren: true, measurable: true },
+  Stat: { tag: 'Stat', kind: 'box', layer: 'component', category: 'composite', allowsChildren: false, measurable: true },
+  Badge: { tag: 'Badge', kind: 'text', layer: 'component', category: 'leaf', allowsChildren: true, measurable: true },
+  BarChart: { tag: 'BarChart', kind: 'box', layer: 'component', category: 'composite', allowsChildren: false, measurable: true },
+  Table: { tag: 'Table', kind: 'box', layer: 'component', category: 'composite', allowsChildren: false, measurable: true },
+}
+
+export const elementRegistry: Record<string, TSNElementSpec> = {
+  ...primitiveRegistry,
+  ...componentRegistry,
+}
+
+export function getElementSpec(tag: string): TSNElementSpec | null {
+  return elementRegistry[tag] ?? null
+}
+
+export function getPrimitiveSpec(tag: string): TSNElementSpec | null {
+  return getElementSpec(tag)
+}
+
+export function isPrimitiveTag(tag: string): boolean {
+  return primitiveRegistry[tag] != null
+}
+
+export function isComponentTag(tag: string): boolean {
+  return componentRegistry[tag] != null
 }
 
 function leaf(kind: TSNNode['ref']['kind'], id: string, props: Record<string, TSNPropValue>): TSNNode {

@@ -3,10 +3,10 @@
 ## CLI
 
 ```bash
-strictts build <file.ts|.tsx>           # Optimized binary (-O2)
-strictts build <file> --debug           # Debug binary (-O0 -g, bounds checking)
-strictts dev <file.ts|.tsx>             # Watch mode, auto-recompile + relaunch
-strictts run <file.ts|.tsx>             # Compile and run once
+tsn build <file.ts|.tsx>           # Optimized binary (-O2)
+tsn build <file> --debug           # Debug binary (-O0 -g, bounds checking)
+tsn dev <file.ts|.tsx>             # Watch mode, auto-recompile + relaunch
+tsn run <file.ts|.tsx>             # Compile and run once
 npx tsx compiler/inspect.ts <command>   # Query running app
 ```
 
@@ -15,7 +15,7 @@ npx tsx compiler/inspect.ts <command>   # Query running app
 ### Release (default)
 
 ```bash
-strictts build dashboard.tsx
+tsn build dashboard.tsx
 ```
 
 - Optimization: `-O2`
@@ -27,12 +27,12 @@ strictts build dashboard.tsx
 ### Debug
 
 ```bash
-strictts build dashboard.tsx --debug
+tsn build dashboard.tsx --debug
 ```
 
 - Optimization: `-O0`
 - Full DWARF debug symbols (`-g`)
-- Bounds checking enabled (`-DSTRICTTS_DEBUG`)
+- Bounds checking enabled (`-DTSN_DEBUG`)
 - `#line` directives map C back to TypeScript source
 - Array access uses `ARRAY_GET()` / `ARRAY_SET()` macros
 - Out-of-bounds access reports: file, line, array name, index, length
@@ -41,7 +41,7 @@ strictts build dashboard.tsx --debug
 ## Dev Server (Watch Mode)
 
 ```bash
-strictts dev dashboard.tsx
+tsn dev dashboard.tsx
 ```
 
 - Watches ALL resolved source files for changes (100ms debounce)
@@ -54,7 +54,7 @@ strictts dev dashboard.tsx
 
 Output:
 ```
-  ┌─ StrictTS Dev Server ──────────────────┐
+  ┌─ TSN Dev Server ──────────────────┐
   │  Source: dashboard.tsx
   │  Binary: build/dashboard
   │  Watching for changes...               │
@@ -75,9 +75,9 @@ In debug builds, runtime errors show as a **red overlay in the app window** (lik
 - Full file path
 - Error details (array name, index, length)
 - Stack trace (if from crash handler)
-- "StrictTS Error Overlay - Debug Build" watermark
+- "TSN Error Overlay - Debug Build" watermark
 - App stays alive so you can see the error
-- Auto-saves screenshot to `/tmp/strictts-error.png`
+- Auto-saves screenshot to `/tmp/tsn-error.png`
 
 The overlay appears for:
 - **Array bounds errors**: `arr[99]` on a 3-element array
@@ -113,7 +113,7 @@ Uses macOS `atos` with ASLR load-address resolution for symbolication.
 
 ## Inspector
 
-Query running UI apps via Unix socket. When a single app is running, the inspector auto-discovers it. When multiple apps are running at once, target one explicitly with `--app <binary-name>`, which maps to sockets like `/tmp/strictts-inspect-dashboard.sock`.
+Query running UI apps via Unix socket. When a single app is running, the inspector auto-discovers it. When multiple apps are running at once, target one explicitly with `--app <binary-name>`, which maps to sockets like `/tmp/tsn-inspect-dashboard.sock`.
 
 The inspector commands are synchronous now: `click` and `type` only return after the main-thread interaction has been applied. This makes screenshot- and state-based verification reliable in automated checks.
 
@@ -124,7 +124,7 @@ The default UI verification path now includes the native gallery app at [conform
 | Command | Description |
 |---------|-------------|
 | `tree` | Dump full view hierarchy with types, frames, text |
-| `screenshot` | Save window to `/tmp/strictts-screenshot.png` |
+| `screenshot` | Save window to `/tmp/tsn-screenshot.png` |
 | `click <label>` | Click button containing label text |
 | `type <text>` | Type text into search field |
 | `find <text>` | Find all elements containing text (case-insensitive) |
@@ -146,16 +146,16 @@ The default UI verification path now includes the native gallery app at [conform
 
 ```bash
 # While dashboard is running:
-strictts inspect tree
-strictts inspect find "Engineering"
-strictts inspect get _j0 frame         # → 1200×780 at 200,100
-strictts inspect get _j1 type          # → HStack
-strictts inspect get _j1 children      # → 2 children
-strictts inspect screenshot
-strictts inspect click "Engineering"   # clicks the sidebar button
-strictts inspect type "Alice"          # types into search field
+tsn inspect tree
+tsn inspect find "Engineering"
+tsn inspect get _j0 frame         # → 1200×780 at 200,100
+tsn inspect get _j1 type          # → HStack
+tsn inspect get _j1 children      # → 2 children
+tsn inspect screenshot
+tsn inspect click "Engineering"   # clicks the sidebar button
+tsn inspect type "Alice"          # types into search field
 
-# When multiple StrictTS apps are running:
+# When multiple TSN apps are running:
 npx tsx compiler/inspect.ts --app dashboard tree
 npx tsx compiler/inspect.ts --app incident-tracker screenshot
 
@@ -173,7 +173,7 @@ Debug builds include DWARF symbols mapped to TypeScript source via `#line` direc
 
 ```bash
 # Compile with debug symbols
-strictts build dashboard.tsx --debug
+tsn build dashboard.tsx --debug
 
 # Launch in lldb
 lldb build/dashboard

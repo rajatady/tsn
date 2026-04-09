@@ -125,7 +125,7 @@ bench_case() {
 }
 
 echo "╔═══════════════════════════════════════════════════════╗"
-echo "║  StrictTS → Native: Benchmarks                       ║"
+echo "║  TSN → Native: Benchmarks                       ║"
 echo "║  ${ITERATIONS} iterations, median, nanosecond precision          ║"
 echo "╚═══════════════════════════════════════════════════════╝"
 

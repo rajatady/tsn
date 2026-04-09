@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 JS_STDLIB_SHIM="$(pwd)/harness/js-stdlib-shim.cjs"
 
 echo "╔═══════════════════════════════════════════════════════╗"
-echo "║  StrictTS CLI Workloads: End-to-End Benchmarks       ║"
+echo "║  TSN CLI Workloads: End-to-End Benchmarks       ║"
 echo "║  5 runs per case, median wall time + peak RSS        ║"
 echo "╚═══════════════════════════════════════════════════════╝"
 echo ""
