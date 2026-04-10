@@ -167,6 +167,7 @@ export function exprType(
       const callObjType = ctx.exprType(node.expression.expression)
       if (callObjType === 'Response') {
         if (method === 'text') return 'Promise<string>'
+        if (method === 'header') return 'string'
       }
       if (callObjType && ctx.classDefs.has(callObjType)) {
         const cls = ctx.classDefs.get(callObjType)
@@ -218,6 +219,7 @@ export function exprType(
       if (node.name.text === 'status') return 'number'
       if (node.name.text === 'ok') return 'boolean'
       if (node.name.text === 'body') return 'string'
+      if (node.name.text === 'statusText') return 'string'
     }
     if (objectType) {
       if (ctx.classDefs.has(objectType)) {

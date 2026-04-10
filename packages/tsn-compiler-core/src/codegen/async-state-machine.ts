@@ -361,10 +361,19 @@ export function emitAsyncFunction(ctx: AsyncStateMachineContext, node: ts.Functi
       const catchLabel = `_ts_async_catch_${id}`
       const endLabel = `_ts_async_try_end_${id}`
       const prevCatch = currentCatchLabel
+      const emitFinallyBlock = (): void => {
+        if (!stmt.finallyBlock) return
+        push('{')
+        indent++
+        emitBlock(stmt.finallyBlock)
+        indent--
+        push('}')
+      }
       currentCatchLabel = catchLabel
       push('{')
       indent++
       emitBlock(stmt.tryBlock)
+      emitFinallyBlock()
       push(`goto ${endLabel};`)
       indent--
       body.push(`${catchLabel}: ;`)
@@ -375,6 +384,7 @@ export function emitAsyncFunction(ctx: AsyncStateMachineContext, node: ts.Functi
         body.push(`${pad()}Str ${binding.text} = frame->${errorField};`)
       }
       emitBlock(stmt.catchClause.block)
+      emitFinallyBlock()
       indent--
       push('}')
       body.push(`${endLabel}: ;`)

@@ -49,6 +49,9 @@ export function emitPropAccess(ctx: ExprEmitterContext, node: ts.PropertyAccessE
     if (prop === 'error') return `${promiseCType}_error(${obj})`
     if (prop === 'value') return `${promiseCType}_value(${obj})`
   }
+  if (objType === 'Response' && prop === 'statusText') {
+    return `ts_response_status_text(${ctx.emitExpr(node.expression)})`
+  }
   if (objType && ctx.classDefs.has(objType)) {
     if (node.expression.kind === ts.SyntaxKind.ThisKeyword) {
       return `self->${prop}`
@@ -118,6 +121,9 @@ export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): stri
       if (method === 'text') {
         ctx.registerPromiseType('Str')
         return `ts_response_text(${objExpr})`
+      }
+      if (method === 'header') {
+        return `ts_response_header(${objExpr}, ${ctx.emitExpr(node.arguments[0])})`
       }
     }
 

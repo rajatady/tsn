@@ -217,8 +217,8 @@ What is now implemented beyond the foundation:
   - zero-argument function identifiers
   - zero-argument arrow callbacks with no captures
 - `fetch(url)` now works in the hosted runtime
-- `fetch(url, { method, body })` now works in the current narrow init shape
-- `Response.status`, `Response.ok`, `Response.body`, and `await response.text()` now work
+- `fetch(url, { method, body, headers })` now works in the current narrow init shape
+- `Response.status`, `Response.statusText`, `Response.ok`, `Response.body`, `response.header(name)`, and `await response.text()` now work
 - async file/directory/fetch operations now reject on real OS, libuv, and transport failures instead of silently fabricating success
 - promise `.value` misuse now fails loudly instead of drifting into undefined memory reads
 - debug and conformance harnesses still pass with hosted async enabled
@@ -226,7 +226,6 @@ What is now implemented beyond the foundation:
 
 What is intentionally not implemented yet:
 
-- `finally`
 - richer typed error values beyond the current string-shaped model
 - async arrows, async function expressions, and async methods
 - `new Promise(...)`
@@ -239,9 +238,12 @@ What is intentionally supported but still narrow:
 - async I/O now covers file/process/timers/fetch in the narrow hosted model
 - timers now work in the hosted runtime, but callback forms are intentionally narrow
 - fetch now works in a narrow hosted shape:
-  - only `method` and `body` are supported in the init object
-  - `Response.text()` is supported
-  - headers, cancellation, and streaming are not supported yet
+  - only `method`, `body`, and `headers` are supported in the init object
+  - `Response.statusText`, `response.header(name)`, and `Response.text()` are supported
+  - cancellation and streaming are not supported yet
+- `finally` now works in the straight-line try/catch path:
+  - no `return`, `break`, or `continue` inside try/catch/finally when finally is present
+  - no `throw` inside catch/finally when finally is present
 - `execAsync` preserves child stderr as plain stderr output and rejects only true launcher/runtime failures
 
 So the async situation is:
@@ -251,8 +253,7 @@ The first narrow async language pass is also real and working.
 The first hosted libuv runtime pass is also real and working.
 The first narrow exception path is also real and working.
 
-That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, async rejection can be caught, hosted timers are real, and hosted `fetch` exists in a narrow useful form. It still does not yet support resumable state machines, `finally`, or richer exception semantics.
-That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, async rejection can be caught, hosted timers are real, hosted `fetch` exists in a narrow useful form, and async suspension/resumption is real. It still does not yet support `finally`, richer exception semantics, or the broader Promise/async surface.
+That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, async rejection can be caught, hosted timers are real, hosted `fetch` exists in a narrow useful form, `finally` exists in a narrow useful form, and async suspension/resumption is real. It still does not yet support richer exception semantics or the broader Promise/async surface.
 
 ### 2. `try/catch` and `throw`
 
@@ -265,14 +266,15 @@ Release bar:
 
 - basic `throw`
 - basic `try/catch`
-- clear unsupported edge cases if `finally` is not ready yet
+- a straight-line `finally` path with clear restrictions on unsupported control-transfer corners
 
 Current status:
 
 - basic `throw` now works
 - basic `try/catch` now works
 - rejected async operations can now be caught through `await`
-- `finally` is still not supported
+- `finally` now works in the straight-line try/catch path
+- `finally` still rejects `return`/`break`/`continue` in protected blocks and `throw` inside catch/finally
 - the error model is still intentionally narrow and string-shaped for now
 
 ### 3. Better closure support

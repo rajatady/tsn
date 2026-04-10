@@ -222,15 +222,17 @@ Current model:
 - transport failures reject the promise
 - HTTP status codes still resolve a `Response` value, with `ok` derived from the 2xx range
 - `Response.text()` is a narrow helper that resolves the already-buffered body as `Promise<string>`
+- request headers can be passed through the narrow init object
+- response headers are buffered and can be read back through `response.header(name)`
+- `Response.statusText` is synthesized from the numeric status code for the common HTTP cases
 - libuv-side scheduler failures also reject instead of leaving the promise pending
 
 Current limitation:
 
-- only `method` and `body` are supported in the init object
-- headers are not supported
+- only `method`, `body`, and `headers` are supported in the init object
 - body streaming is not supported
 - cancellation and `AbortController` are not supported
-- `Response.json()`, `statusText`, and richer metadata are not implemented yet
+- `Response.json()` and richer metadata are not implemented yet
 
 ## Hosted Timers
 
@@ -249,12 +251,12 @@ Current timer model:
 - callbacks run as plain `void(void)` native functions
 - timer IDs are numeric handles managed by the TSN runtime
 - `setInterval(..., 0)` is normalized to a real repeating tick instead of a non-repeating zero-delay handle
+- timers share the same hosted loop as async I/O and wake resumable async work correctly
 
 Current limitation:
 
 - captured closures are not supported for timer callbacks
 - timer promises / delay helpers are not implemented
-- timers share the same hosted loop as async I/O, but there is no resumable async state-machine integration yet
 
 ## Output Functions
 

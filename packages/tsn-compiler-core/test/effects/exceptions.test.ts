@@ -17,8 +17,8 @@ function main(): void {
   assert.equal(messages.length, 0)
 })
 
-test('validator rejects finally for now', () => {
-  const messages = validateMessages(`
+test('validator allows straight-line finally and rejects unsupported control-flow corners', () => {
+  const okMessages = validateMessages(`
 function main(): void {
   try {
     console.log("x")
@@ -30,7 +30,21 @@ function main(): void {
 }
 `)
 
-  assert.ok(messages.some(msg => msg.includes('finally is not supported yet')))
+  assert.equal(okMessages.length, 0)
+
+  const messages = validateMessages(`
+function main(): void {
+  try {
+    return
+  } catch (err) {
+    console.log(err)
+  } finally {
+    console.log("y")
+  }
+}
+`)
+
+  assert.ok(messages.some(msg => msg.includes('finally currently does not support return inside try blocks when finally is present')))
 })
 
 test('codegen lowers throw/catch with runtime exception frames', () => {
@@ -113,4 +127,77 @@ async function main(): Promise<void> {
 `)
 
   assert.equal(output.trim(), 'boom async')
+})
+
+test('sync finally runs after straight-line success and after catch', () => {
+  const output = compileAndRunFromText(`
+function syncPass(): void {
+  try {
+    console.log("try")
+  } catch (err) {
+    console.log(err)
+  } finally {
+    console.log("finally-pass")
+  }
+}
+
+function syncFail(): void {
+  try {
+    throw "boom"
+  } catch (err) {
+    console.log(err)
+  } finally {
+    console.log("finally-fail")
+  }
+}
+
+function main(): void {
+  syncPass()
+  syncFail()
+}
+`)
+
+  assertIncludesAll(output, [
+    'try',
+    'finally-pass',
+    'boom',
+    'finally-fail',
+  ])
+})
+
+test('async finally runs after awaited success and after catch', () => {
+  const output = compileAndRunFromText(`
+async function pass(): Promise<void> {
+  try {
+    const value: string = await readFileAsync("compiler/runtime/runtime.h")
+    console.log(value.length > 0)
+  } catch (err) {
+    console.log(err)
+  } finally {
+    console.log("finally-pass")
+  }
+}
+
+async function fail(): Promise<void> {
+  try {
+    await readFileAsync("compiler/runtime/does-not-exist.h")
+  } catch (err) {
+    console.log("caught")
+  } finally {
+    console.log("finally-fail")
+  }
+}
+
+async function main(): Promise<void> {
+  await pass()
+  await fail()
+}
+`)
+
+  assertIncludesAll(output, [
+    'true',
+    'finally-pass',
+    'caught',
+    'finally-fail',
+  ])
 })

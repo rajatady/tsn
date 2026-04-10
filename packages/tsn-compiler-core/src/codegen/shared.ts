@@ -13,6 +13,7 @@ export type StdlibEmitterContext = BuiltinEmitterContext
 
 export interface HostedBuiltinEmitterContext {
   emitExpr(node: ts.Node): string
+  exprType(node: ts.Node): string | undefined
   registerPromiseType(valueCType: string): string
   nextTempId(): number
   lambdas: string[]

@@ -92,13 +92,12 @@ Current limitation:
   - arrow callbacks must be zero-argument and capture-free
 - `fetch` currently supports only:
   - `fetch(url)`
-  - `fetch(url, { method, body })`
-  - `Response.status`, `Response.ok`, `Response.body`, and `await response.text()`
+  - `fetch(url, { method, body, headers })`
+  - `Response.status`, `Response.statusText`, `Response.ok`, `Response.body`, `response.header(name)`, and `await response.text()`
 - hosted async file/fetch operations reject on real OS or transport failures:
   - missing files and directories reject instead of silently fabricating values
   - invalid fetch transports reject and can be caught through `try/catch`
 - headers, cancellation, streaming response bodies, `new Promise(...)`, async arrows, and async methods are not supported yet
-- `finally` is not supported yet
 
 ### Exceptions
 
@@ -116,11 +115,14 @@ TSN now supports a narrow exception model:
 
 - `throw` is supported
 - `try/catch` is supported
+- `finally` is supported in straight-line try/catch flows
 - async rejection can be caught through `await`
 
 Current limitation:
 
-- `finally` is not supported yet
+- `finally` currently does not support control-transfer statements in protected blocks:
+  - no `return`, `break`, or `continue` inside try/catch/finally when finally is present
+  - no `throw` inside catch/finally when finally is present
 - thrown values are intentionally narrow today; string-shaped errors are the supported path
 
 ### Interfaces (Structs)
@@ -241,7 +243,6 @@ These features are rejected at validation time with clear error messages:
 | `var` | Use `let` or `const` |
 | `Proxy` / `Reflect` | No metaprogramming |
 | `with` | Dynamic scoping |
-| `finally` | Future work |
 | Generators / `yield` | Future work |
 | Bare imports (`'lodash'`) | Only relative imports (`./path`) supported |
 

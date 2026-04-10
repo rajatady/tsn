@@ -15,6 +15,49 @@ export interface ValidationError {
 export function validate(sourceFile: ts.SourceFile): ValidationError[] {
   const errors: ValidationError[] = []
 
+  function visitWithoutNestedFunctions(node: ts.Node, fn: (child: ts.Node) => void): void {
+    const visit = (child: ts.Node): void => {
+      if (
+        ts.isFunctionDeclaration(child) ||
+        ts.isFunctionExpression(child) ||
+        ts.isArrowFunction(child) ||
+        ts.isMethodDeclaration(child)
+      ) {
+        return
+      }
+      fn(child)
+      ts.forEachChild(child, visit)
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  function reportFinallyControlFlow(block: ts.Block | undefined, label: string, allowThrow = false): void {
+    if (!block) return
+    visitWithoutNestedFunctions(block, child => {
+      if (ts.isReturnStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support return inside ${label}`,
+        })
+      } else if (ts.isBreakStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support break inside ${label}`,
+        })
+      } else if (ts.isContinueStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support continue inside ${label}`,
+        })
+      } else if (!allowThrow && ts.isThrowStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support throw inside ${label}`,
+        })
+      }
+    })
+  }
+
   function isInsideAsyncFunction(node: ts.Node): boolean {
     let current: ts.Node | undefined = node.parent
     while (current) {
@@ -96,7 +139,7 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
 
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'fetch') {
       if (node.arguments.length < 1 || node.arguments.length > 2) {
-        errors.push({ pos: node.getStart(), message: 'fetch currently supports fetch(url) or fetch(url, { method, body })' })
+        errors.push({ pos: node.getStart(), message: 'fetch currently supports fetch(url) or fetch(url, { method, body, headers })' })
       }
       const init = node.arguments[1]
       if (init && !ts.isObjectLiteralExpression(init)) {
@@ -105,7 +148,25 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       if (init && ts.isObjectLiteralExpression(init)) {
         for (const prop of init.properties) {
           if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) {
-            errors.push({ pos: prop.getStart(), message: 'fetch init only supports plain method/body properties' })
+            errors.push({ pos: prop.getStart(), message: 'fetch init only supports plain method/body/headers properties' })
+            continue
+          }
+          if (prop.name.text === 'headers') {
+            if (!ts.isObjectLiteralExpression(prop.initializer)) {
+              errors.push({ pos: prop.initializer.getStart(), message: 'fetch init headers must be an object literal for now' })
+              continue
+            }
+            for (const headerProp of prop.initializer.properties) {
+              if (
+                !ts.isPropertyAssignment(headerProp) ||
+                (!ts.isIdentifier(headerProp.name) && !ts.isStringLiteral(headerProp.name))
+              ) {
+                errors.push({
+                  pos: headerProp.getStart(),
+                  message: 'fetch init headers only support plain string-valued properties',
+                })
+              }
+            }
             continue
           }
           if (prop.name.text !== 'method' && prop.name.text !== 'body') {
@@ -203,7 +264,9 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
         errors.push({ pos: node.getStart(), message: 'try statements must include a catch block' })
       }
       if (node.finallyBlock) {
-        errors.push({ pos: node.finallyBlock.getStart(), message: 'finally is not supported yet' })
+        reportFinallyControlFlow(node.tryBlock, 'try blocks when finally is present', true)
+        reportFinallyControlFlow(node.catchClause?.block, 'catch blocks when finally is present', false)
+        reportFinallyControlFlow(node.finallyBlock, 'finally blocks', false)
       }
     }
 

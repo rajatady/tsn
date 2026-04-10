@@ -188,7 +188,10 @@ The current hosted fetch forms are:
 
 ```typescript
 declare function fetch(url: string): Promise<Response>
-declare function fetch(url: string, init: { method?: string, body?: string }): Promise<Response>
+declare function fetch(
+  url: string,
+  init: { method?: string, body?: string, headers?: { [name: string]: string } }
+): Promise<Response>
 ```
 
 The current narrow `Response` surface is:
@@ -196,8 +199,10 @@ The current narrow `Response` surface is:
 ```typescript
 interface Response {
   status: number
+  statusText: string
   ok: boolean
   body: string
+  header(name: string): string
   text(): Promise<string>
 }
 ```
@@ -220,13 +225,14 @@ Important limitation:
   - function identifiers must take no parameters
   - arrow callbacks must be zero-argument and capture-free
 - fetch is intentionally narrow today:
-  - only `method` and `body` are supported in the init object
+  - only `method`, `body`, and `headers` are supported in the init object
   - transport failures reject
   - HTTP 4xx/5xx responses resolve with `ok = false`
+  - `Response.statusText` and `response.header(name)` are supported
   - `Response.text()` is supported
-  - headers, cancellation, and streaming bodies are not supported
+  - cancellation and streaming bodies are not supported
 
-Rejections from async functions can now be caught with `try/catch` around `await`, but the current error model is still narrow and string-shaped.
+Rejections from async functions can now be caught with `try/catch` around `await`, and straight-line `finally` now works too. The current error model is still narrow and string-shaped, and `finally` still rejects return/break/continue corners for now.
 
 ## Math
 

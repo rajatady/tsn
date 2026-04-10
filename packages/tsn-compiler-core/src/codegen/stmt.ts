@@ -240,6 +240,14 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     const tryId = ctx.nextTempId()
     const endLabel = `_ts_try_end_${tryId}`
     const frameVar = `_ts_try_${tryId}`
+    const emitFinallyBlock = (): void => {
+      if (!node.finallyBlock) return
+      out.push(ctx.pad() + `{`)
+      ctx.indent++
+      emitBlock(ctx, node.finallyBlock, out)
+      ctx.indent--
+      out.push(ctx.pad() + `}`)
+    }
     out.push(ctx.pad() + `TSExceptionFrame ${frameVar};`)
     out.push(ctx.pad() + `ts_exception_push(&${frameVar});`)
 
@@ -250,6 +258,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     ctx.indent++
     emitBlock(ctx, node.tryBlock, out)
     out.push(ctx.pad() + `ts_exception_pop(&${frameVar});`)
+    emitFinallyBlock()
     out.push(ctx.pad() + `goto ${endLabel};`)
     ctx.indent--
     out.push(ctx.pad() + `}`)
@@ -273,6 +282,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
       }
       ctx.indent--
       out.push(ctx.pad() + `}`)
+      emitFinallyBlock()
       ctx.indent--
       out.push(ctx.pad() + `}`)
     }

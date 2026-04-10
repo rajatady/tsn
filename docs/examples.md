@@ -227,6 +227,26 @@ tsn build examples/native-gui/dashboard.tsx --debug
 tsn dev examples/native-gui/dashboard.tsx
 ```
 
+## Native GUI Example: Ops Brief
+
+Located in [examples/native-gui/ops-brief.tsx](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/examples/native-gui/ops-brief.tsx). This is the clearest current async showcase because it uses the new hosted stack for something TSN is uniquely good at: native desktop software written in TypeScript syntax.
+
+It does four real things together:
+
+- fetches a remote JSON brief with explicit request headers
+- reads response headers like `etag`
+- writes the latest payload to a local cache file
+- keeps the whole workflow inside a native AppKit window with polling controls
+
+That makes it a better async example than a Node-style benchmark script. The point is not that TSN makes Node faster. The point is that TSN lets normal TypeScript-looking code own a native desktop workflow directly.
+
+Build it with:
+
+```bash
+tsn build examples/native-gui/ops-brief.tsx
+tsn build examples/native-gui/ops-brief.tsx --debug
+```
+
 ### Binary Size
 
 | Mode | Size |

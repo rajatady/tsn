@@ -39,32 +39,55 @@ async function withHttpServerScript(
   }
 }
 
-test('validator rejects unsupported fetch init shapes', () => {
-  const messages = validateMessages(`
+test('validator allows fetch headers object literals and rejects unsupported header shapes', () => {
+  const okMessages = validateMessages(`
 function main(): void {
-  fetch("http://example.com", { headers: "x" })
+  fetch("http://example.com", {
+    method: "POST",
+    body: "ping",
+    headers: {
+      Accept: "application/json",
+      "X-Trace": "demo"
+    }
+  })
 }
 `)
 
-  assert.ok(messages.some(msg => msg.includes('fetch init property "headers" is not supported yet')))
+  assert.equal(okMessages.length, 0)
+
+  const messages = validateMessages(`
+function main(): void {
+  fetch("http://example.com", { headers: { [String(1)]: "x" } })
+}
+`)
+
+  assert.ok(messages.some(msg => msg.includes('fetch init headers only support plain string-valued properties')))
 })
 
 test('codegen lowers fetch and response.text through resumable async frames', () => {
   const cCode = generateCFromText(`
 async function load(): Promise<string> {
-  const res: Response = await fetch("http://example.com")
-  return await res.text()
+  const res: Response = await fetch("http://example.com", {
+    headers: {
+      Accept: "application/json",
+      "X-Trace": "demo"
+    }
+  })
+  return res.statusText + " " + res.header("content-type") + " " + await res.text()
 }
 `)
 
   assertIncludesAll(cCode, [
     'DEFINE_PROMISE(Promise_TSFetchResponse, TSFetchResponse)',
-    'static inline Promise_TSFetchResponse ts_fetch(Str url, Str method, Str body) { Promise_TSFetchResponse _p = Promise_TSFetchResponse_pending(); ts_schedule_fetch(_p.state, url, method, body); return _p; }',
+    'static inline Promise_TSFetchResponse ts_fetch(Str url, Str method, Str body, Str headers) { Promise_TSFetchResponse _p = Promise_TSFetchResponse_pending(); ts_schedule_fetch(_p.state, url, method, body, headers); return _p; }',
     'static inline Promise_Str ts_response_text(TSFetchResponse response) { return Promise_Str_resolved(str_retain(response.body)); }',
-    'frame->__await0 = ts_fetch(str_lit("http://example.com"), str_lit("GET"), str_lit(""));',
+    'static inline Str ts_response_status_text(TSFetchResponse response) { return ts_fetch_status_text(response.status); }',
+    'static inline Str ts_response_header(TSFetchResponse response, Str name) { return ts_fetch_header(response, name); }',
+    'frame->__await0 = ts_fetch(str_lit("http://example.com"), str_lit("GET"), str_lit(""), ({ STRBUF(_fetch_headers_',
     'frame->res = Promise_TSFetchResponse_value(frame->__await0);',
-    'frame->__await1 = ts_response_text(frame->res);',
-    'Promise_Str_resolve(frame->__promise, Promise_Str_value(frame->__await1));',
+    'ts_response_status_text(frame->res)',
+    'ts_response_header(frame->res, str_lit("content-type"))',
+    'TS_AWAIT(Promise_Str, ts_response_text(frame->res))',
   ])
 })
 
@@ -153,6 +176,48 @@ async function main(): Promise<void> {
       '201',
       'true',
       'echo:ping',
+    ])
+  })
+})
+
+test('fetch supports request headers plus response statusText and response.header()', async () => {
+  await withHttpServerScript(`
+    const http = require('node:http');
+    const server = http.createServer((req, res) => {
+      const trace = req.headers['x-trace'] || '';
+      const accept = req.headers['accept'] || '';
+      res.writeHead(202, {
+        'Content-Type': 'application/json',
+        'ETag': 'etag-42',
+        'X-Echo-Trace': String(trace),
+        'X-Echo-Accept': String(accept)
+      });
+      res.end('{"ok":true}');
+    });
+    server.listen(0, '127.0.0.1', () => {
+      console.log(server.address().port);
+    });
+  `, async (baseUrl) => {
+    const output = compileAndRunFromText(`
+async function main(): Promise<void> {
+  const res: Response = await fetch(${JSON.stringify(baseUrl + '/headers')}, {
+    headers: {
+      Accept: "application/json",
+      "X-Trace": "demo-trace"
+    }
+  })
+  const body: string = await res.text()
+  console.log(res.status, res.statusText, res.header("etag"), res.header("x-echo-trace"), res.header("x-echo-accept"), body)
+}
+`)
+
+    assertIncludesAll(output, [
+      '202',
+      'Accepted',
+      'etag-42',
+      'demo-trace',
+      'application/json',
+      '{"ok":true}',
     ])
   })
 })

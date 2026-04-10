@@ -165,8 +165,8 @@ function main(): void {
   assert.equal(messages.length, 0)
 })
 
-test('validator rejects finally for now', () => {
-  const messages = validateMessages(`
+test('validator allows straight-line finally and rejects unsupported finally control-flow corners', () => {
+  const okMessages = validateMessages(`
 function main(): void {
   try {
     console.log("x")
@@ -177,7 +177,20 @@ function main(): void {
   }
 }
 `)
-  assert.ok(messages.some(msg => msg.includes('finally is not supported yet')))
+  assert.equal(okMessages.length, 0)
+
+  const messages = validateMessages(`
+function main(): void {
+  try {
+    continue
+  } catch (err) {
+    console.log("y")
+  } finally {
+    console.log("z")
+  }
+}
+`)
+  assert.ok(messages.some(msg => msg.includes('finally currently does not support continue')))
 })
 
 test('validator bans generators for now', () => {

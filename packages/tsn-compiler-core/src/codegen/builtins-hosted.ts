@@ -6,18 +6,50 @@ import { emitTimerBuiltinCall } from './builtins-timers.js'
 function parseFetchInit(
   ctx: HostedBuiltinEmitterContext,
   initArg: ts.Expression | undefined,
-): { methodExpr: string; bodyExpr: string } {
-  if (!initArg) return { methodExpr: 'str_lit("GET")', bodyExpr: 'str_lit("")' }
+): { methodExpr: string; bodyExpr: string; headersExpr: string } {
+  if (!initArg) return { methodExpr: 'str_lit("GET")', bodyExpr: 'str_lit("")', headersExpr: 'str_lit("")' }
   if (!ts.isObjectLiteralExpression(initArg)) {
     throw new Error('fetch(url, init) currently requires init to be an object literal')
   }
 
   let methodExpr = 'str_lit("GET")'
   let bodyExpr = 'str_lit("")'
+  let headersExpr = 'str_lit("")'
+
+  const emitHeaderBlob = (headersInit: ts.ObjectLiteralExpression): string => {
+    const bufId = ctx.nextTempId()
+    const bufName = `_fetch_headers_${bufId}`
+    const resultName = `_fetch_headers_result_${bufId}`
+    const lines: string[] = [`STRBUF(${bufName}, 256)`]
+    for (const headerProp of headersInit.properties) {
+      if (
+        !ts.isPropertyAssignment(headerProp) ||
+        (!ts.isIdentifier(headerProp.name) && !ts.isStringLiteral(headerProp.name))
+      ) {
+        throw new Error('fetch init headers only support plain string-valued properties')
+      }
+      const headerName = ts.isIdentifier(headerProp.name) ? headerProp.name.text : headerProp.name.text
+      const valueExpr = ctx.emitExpr(headerProp.initializer)
+      const valueType = ctx.exprType(headerProp.initializer)
+      lines.push(`strbuf_add_str(&${bufName}, str_lit(${JSON.stringify(`${headerName}: `)}))`)
+      if (valueType === 'number') {
+        lines.push(`strbuf_add_double(&${bufName}, ${valueExpr})`)
+      } else if (valueType === 'boolean') {
+        lines.push(`strbuf_add_str(&${bufName}, ${valueExpr} ? str_lit("true") : str_lit("false"))`)
+      } else {
+        lines.push(`strbuf_add_str(&${bufName}, ${valueExpr})`)
+      }
+      lines.push(`strbuf_add_str(&${bufName}, str_lit("\\n"))`)
+    }
+    lines.push(`Str ${resultName} = strbuf_to_heap_str(&${bufName})`)
+    lines.push(`strbuf_free(&${bufName})`)
+    lines.push(resultName)
+    return `({ ${lines.join('; ')}; })`
+  }
 
   for (const prop of initArg.properties) {
     if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) {
-      throw new Error('fetch init only supports plain method/body properties')
+      throw new Error('fetch init only supports plain method/body/headers properties')
     }
     if (prop.name.text === 'method') {
       methodExpr = ctx.emitExpr(prop.initializer)
@@ -27,10 +59,17 @@ function parseFetchInit(
       bodyExpr = ctx.emitExpr(prop.initializer)
       continue
     }
+    if (prop.name.text === 'headers') {
+      if (!ts.isObjectLiteralExpression(prop.initializer)) {
+        throw new Error('fetch init headers must be an object literal for now')
+      }
+      headersExpr = emitHeaderBlob(prop.initializer)
+      continue
+    }
     throw new Error(`fetch init property "${prop.name.text}" is not supported yet`)
   }
 
-  return { methodExpr, bodyExpr }
+  return { methodExpr, bodyExpr, headersExpr }
 }
 
 // Hosted async builtins are intentionally a narrow bridge right now.
@@ -84,8 +123,8 @@ export function emitHostedBuiltinCall(
       return `ts_appendFileAsync(${ctx.emitExpr(node.arguments[0])}, ${ctx.emitExpr(node.arguments[1])})`
     case 'fetch': {
       ctx.registerPromiseType('TSFetchResponse')
-      const { methodExpr, bodyExpr } = parseFetchInit(ctx, node.arguments[1])
-      return `ts_fetch(${ctx.emitExpr(node.arguments[0])}, ${methodExpr}, ${bodyExpr})`
+      const { methodExpr, bodyExpr, headersExpr } = parseFetchInit(ctx, node.arguments[1])
+      return `ts_fetch(${ctx.emitExpr(node.arguments[0])}, ${methodExpr}, ${bodyExpr}, ${headersExpr})`
     }
     case 'fileExistsAsync':
       ctx.registerPromiseType('bool')
@@ -122,6 +161,8 @@ export function appendHostedAsyncHelpers(
   if (promiseTypes.has('Promise_Str')) {
     wrappers.push('static inline Promise_Str ts_readFileAsync(Str path) { Promise_Str _p = Promise_Str_pending(); ts_schedule_read_file(_p.state, path); return _p; }')
     wrappers.push('static inline Promise_Str ts_response_text(TSFetchResponse response) { return Promise_Str_resolved(str_retain(response.body)); }')
+    wrappers.push('static inline Str ts_response_status_text(TSFetchResponse response) { return ts_fetch_status_text(response.status); }')
+    wrappers.push('static inline Str ts_response_header(TSFetchResponse response, Str name) { return ts_fetch_header(response, name); }')
   }
   if (promiseTypes.has('Promise_void')) {
     wrappers.push('static inline Promise_void ts_writeFileAsync(Str path, Str content) { Promise_void _p = Promise_void_pending(); ts_schedule_write_file(_p.state, path, content, false); return _p; }')
@@ -138,7 +179,7 @@ export function appendHostedAsyncHelpers(
     wrappers.push('static inline Promise_StrArr ts_listDirAsync(Str path) { Promise_StrArr _p = Promise_StrArr_pending(); ts_schedule_list_dir(_p.state, path); return _p; }')
   }
   if (promiseTypes.has('Promise_TSFetchResponse')) {
-    wrappers.push('static inline Promise_TSFetchResponse ts_fetch(Str url, Str method, Str body) { Promise_TSFetchResponse _p = Promise_TSFetchResponse_pending(); ts_schedule_fetch(_p.state, url, method, body); return _p; }')
+    wrappers.push('static inline Promise_TSFetchResponse ts_fetch(Str url, Str method, Str body, Str headers) { Promise_TSFetchResponse _p = Promise_TSFetchResponse_pending(); ts_schedule_fetch(_p.state, url, method, body, headers); return _p; }')
   }
 
   if (wrappers.length > 0) {
