@@ -1,6 +1,7 @@
 import * as ts from 'typescript'
 
 import { emitArrayMethod } from './builtins-arrays.js'
+import { emitHostedBuiltinCall } from './builtins-hosted.js'
 import { emitStringMethod } from './builtins-strings.js'
 import type { ClassDef, StructDef } from './types.js'
 
@@ -21,6 +22,7 @@ export interface ExprEmitterContext {
   emitPredicateCallback(fnExpr: ts.Expression, paramType: string): { paramName: string; body: string } | null
   tsTypeNameToC(tsType: string, fallback?: string): string
   nextTempId(): number
+  registerPromiseType(valueCType: string): string
   varTypes: Map<string, string>
   arrayTypes: Set<string>
   structs: StructDef[]
@@ -155,33 +157,8 @@ export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): stri
     return `ts_parse_int(${ctx.emitExpr(node.arguments[0])})`
   }
 
-  if (ts.isIdentifier(node.expression) && node.expression.text === 'readFile') {
-    return `ts_readFile(${ctx.emitExpr(node.arguments[0])})`
-  }
-
-  if (ts.isIdentifier(node.expression) && node.expression.text === 'writeFile') {
-    return `ts_writeFile(${ctx.emitExpr(node.arguments[0])}, ${ctx.emitExpr(node.arguments[1])})`
-  }
-
-  if (ts.isIdentifier(node.expression) && node.expression.text === 'appendFile') {
-    return `ts_appendFile(${ctx.emitExpr(node.arguments[0])}, ${ctx.emitExpr(node.arguments[1])})`
-  }
-
-  if (ts.isIdentifier(node.expression) && node.expression.text === 'fileExists') {
-    return `ts_fileExists(${ctx.emitExpr(node.arguments[0])})`
-  }
-
-  if (ts.isIdentifier(node.expression) && node.expression.text === 'fileSize') {
-    return `ts_fileSize(${ctx.emitExpr(node.arguments[0])})`
-  }
-
-  if (ts.isIdentifier(node.expression) && node.expression.text === 'listDir') {
-    return `ts_listDir(${ctx.emitExpr(node.arguments[0])})`
-  }
-
-  if (ts.isIdentifier(node.expression) && node.expression.text === 'exec') {
-    return `ts_exec(${ctx.emitExpr(node.arguments[0])})`
-  }
+  const hostedBuiltin = emitHostedBuiltinCall(ctx, node)
+  if (hostedBuiltin) return hostedBuiltin
 
   const name = ctx.emitExpr(node.expression)
   const args = node.arguments.map(a => {

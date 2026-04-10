@@ -1,6 +1,7 @@
 import * as ts from 'typescript'
 
 import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
+import { appendHostedAsyncHelpers } from './builtins-hosted.js'
 import type { ClassDef, StructDef } from './types.js'
 
 export interface HookProgramAdapter {
@@ -14,6 +15,7 @@ export interface ProgramAssemblyContext {
   classDefs: Map<string, ClassDef>
   structs: StructDef[]
   arrayTypes: Set<string>
+  promiseTypes: Map<string, string>
   needsJsonParser: boolean
   jsxGlobals: string[]
   hooks: HookProgramAdapter
@@ -78,6 +80,20 @@ export function assembleProgram(
     if (t === 'Str' || t === 'double') continue
     lines.push(`DEFINE_ARRAY(${t}Arr, ${t})`)
   }
+
+  for (const [name, valueCType] of ctx.promiseTypes) {
+    if (valueCType === 'void') lines.push(`DEFINE_PROMISE_VOID(${name})`)
+    else lines.push(`DEFINE_PROMISE(${name}, ${valueCType})`)
+  }
+
+  // Promise helpers are emitted before function bodies so any promise-returning
+  // declarations can refer to them uniformly.
+  //
+  // Edge cases for later:
+  // - ordering once async lowering emits extra state-machine structs/functions
+  // - duplicate helper families for timers, fetch, and eventual stream bodies
+  // - hosted-only async helper emission vs target-specific runtimes
+  appendHostedAsyncHelpers(lines, ctx.promiseTypes)
 
   for (const s of complexStructs) {
     if (ctx.classDefs.has(s.name)) {

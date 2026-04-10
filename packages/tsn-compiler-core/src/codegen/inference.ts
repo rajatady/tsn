@@ -127,15 +127,28 @@ export function exprType(
 
   if (ts.isCallExpression(node)) {
     if (ts.isIdentifier(node.expression)) {
+      // Async builtin inference is intentionally explicit here for now.
+      // Edge cases to revisit once real async lowering exists:
+      // - Promise<Response> for fetch-like APIs
+      // - Promise<void> propagation through async function return inference
+      // - flattening/normalizing nested Promise types if source code produces
+      //   them indirectly through wrappers
       const sig = ctx.funcSigs.get(node.expression.text)
       if (sig) return sig.returnType
       if (node.expression.text === 'String') return 'string'
       if (node.expression.text === 'parseFloat' || node.expression.text === 'parseInt') return 'number'
       if (node.expression.text === 'readFile') return 'string'
+      if (node.expression.text === 'readFileAsync') return 'Promise<string>'
+      if (node.expression.text === 'writeFileAsync') return 'Promise<void>'
+      if (node.expression.text === 'appendFileAsync') return 'Promise<void>'
       if (node.expression.text === 'listDir') return 'string[]'
+      if (node.expression.text === 'listDirAsync') return 'Promise<string[]>'
       if (node.expression.text === 'fileExists') return 'boolean'
+      if (node.expression.text === 'fileExistsAsync') return 'Promise<boolean>'
       if (node.expression.text === 'fileSize') return 'number'
+      if (node.expression.text === 'fileSizeAsync') return 'Promise<number>'
       if (node.expression.text === 'exec') return 'number'
+      if (node.expression.text === 'execAsync') return 'Promise<number>'
     }
 
     if (ts.isPropertyAccessExpression(node.expression)) {

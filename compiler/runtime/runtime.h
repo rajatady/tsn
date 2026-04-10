@@ -302,6 +302,13 @@ static inline Str num_to_str(double n) {
     return (Str){ buf, NULL, len, 0 };
 }
 
+static inline Str str_from_charcode(int code) {
+    static char buf[2];
+    buf[0] = (char)code;
+    buf[1] = '\0';
+    return (Str){ buf, NULL, 1, 0 };
+}
+
 /* ─── Str → Number ──────────────────────────────────────────────── */
 
 static inline double ts_parse_float(Str s) {
@@ -368,6 +375,8 @@ static inline double ts_parse_int(Str s) {
 
 DEFINE_ARRAY(StrArr, Str)
 DEFINE_ARRAY(DoubleArr, double)
+
+#include "runtime_async.h"
 
 static inline StrArr str_split(Str s, Str sep) {
     StrArr out = StrArr_new();
@@ -449,6 +458,8 @@ static inline OwnedStr read_stdin(void) {
     buf[len] = '\0';
     return (OwnedStr){ buf, len };
 }
+
+#include "runtime_hosted_io.h"
 
 /* ─── Math ───────────────────────────────────────────────────────── */
 

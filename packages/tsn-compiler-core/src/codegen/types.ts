@@ -1,5 +1,10 @@
 import * as ts from 'typescript'
 
+import {
+  promiseInnerType,
+  registerPromiseType,
+} from './async-types.js'
+
 export interface StructField {
   name: string
   tsType: string
@@ -47,6 +52,7 @@ export interface ParamInfo {
 
 export interface TypeResolutionContext {
   arrayTypes: Set<string>
+  promiseTypes: Map<string, string>
   hasClassType(name: string): boolean
 }
 
@@ -56,6 +62,9 @@ export function tsTypeName(typeNode: ts.TypeNode | undefined): string {
     const name = typeNode.typeName.getText()
     if (name === 'Array' && typeNode.typeArguments?.length) {
       return tsTypeName(typeNode.typeArguments[0]) + '[]'
+    }
+    if (name === 'Promise' && typeNode.typeArguments?.length) {
+      return `Promise<${tsTypeName(typeNode.typeArguments[0])}>`
     }
     return name
   }
@@ -102,6 +111,11 @@ export function arrayCElemType(tsType: string): string {
 }
 
 export function tsTypeNameToC(tsType: string, ctx: TypeResolutionContext, fallback = 'double'): string {
+  const promisedInner = promiseInnerType(tsType)
+  if (promisedInner) {
+    const valueCType = tsTypeNameToC(promisedInner, ctx)
+    return registerPromiseType(ctx, valueCType)
+  }
   if (tsType.endsWith('[]')) {
     const inner = tsType.slice(0, -2)
     return arrayTypeName(inner, ctx.arrayTypes)

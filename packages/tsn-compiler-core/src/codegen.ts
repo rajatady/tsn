@@ -82,6 +82,7 @@ import {
   type ParamInfo,
   type StructDef,
 } from './codegen/types.js'
+import { registerPromiseType as registerPromiseTypeFor } from './codegen/async-types.js'
 
 class CodeGen {
   // TODO: Collapse this coordinator into a smaller driver/context surface once the
@@ -96,6 +97,7 @@ class CodeGen {
   private needsJsonParser = false
   private jsonParseTargetType = ''
   private arrayTypes: Set<string> = new Set()  // track which array types we need
+  private promiseTypes: Map<string, string> = new Map()
   // Track variables that are being built with StrBuf in current scope
   private builderVars: Set<string> = new Set()
   private funcLocalVars: Map<string, string> = new Map()
@@ -138,6 +140,7 @@ class CodeGen {
       tsType,
       {
         arrayTypes: this.arrayTypes,
+        promiseTypes: this.promiseTypes,
         hasClassType: (name: string) => this.classDefs.has(name),
       },
       fallback,
@@ -149,6 +152,7 @@ class CodeGen {
       typeNode,
       {
         arrayTypes: this.arrayTypes,
+        promiseTypes: this.promiseTypes,
         hasClassType: (name: string) => this.classDefs.has(name),
       },
       fallback,
@@ -181,6 +185,10 @@ class CodeGen {
 
   nextTempId(): number {
     return nextTempIdFor(this)
+  }
+
+  registerPromiseType(valueCType: string): string {
+    return registerPromiseTypeFor({ promiseTypes: this.promiseTypes }, valueCType)
   }
 
   emitPredicateCallback(fnExpr: ts.Expression, paramType: string): { paramName: string; body: string } | null {

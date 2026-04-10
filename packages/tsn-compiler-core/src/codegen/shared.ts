@@ -10,3 +10,8 @@ export interface BuiltinEmitterContext {
 }
 
 export type StdlibEmitterContext = BuiltinEmitterContext
+
+export interface HostedBuiltinEmitterContext {
+  emitExpr(node: ts.Node): string
+  registerPromiseType(valueCType: string): string
+}
