@@ -4,6 +4,7 @@ import { execSync } from 'node:child_process'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
+import { getLibcurlShellFlags } from './libcurl.js'
 import { ensureLibuvStaticLibrary } from './libuv.js'
 import { ensureYogaStaticLibrary } from './yoga.js'
 import { appKitHostRoot, appKitSourcePath } from '../../tsn-host-appkit/src/index.js'
@@ -50,6 +51,7 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
   const hasUi = cCode.includes('#include "ui.h"')
   const libuvLib = ensureLibuvStaticLibrary()
   const libuvInclude = path.join('vendor', 'libuv', 'include')
+  const libcurlFlags = getLibcurlShellFlags()
 
   try {
     if (hasUi) {
@@ -58,13 +60,13 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
       const yogaInclude = 'vendor'
       execSync(
         `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
+        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
         `-lc++ -o ${binaryPath}`,
         { stdio: 'inherit' }
       )
     } else {
       execSync(
-        `clang ${optFlag} -o ${binaryPath} ${cPath} ${libuvLib} -lm -I compiler/runtime -I ${libuvInclude}`,
+        `clang ${optFlag} -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
         { stdio: 'inherit' },
       )
     }

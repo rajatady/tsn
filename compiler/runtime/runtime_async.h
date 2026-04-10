@@ -29,24 +29,101 @@ typedef enum {
     TS_PROMISE_REJECTED = 2,
 } TSPromiseStateTag;
 
+#define TS_PROMISE_MAGIC 0x54534e50u
+
 typedef struct {
+    unsigned int magic;
     int state;
-    int _pad;
+    size_t payload_size;
     Str error;
+    const char *type_name;
     unsigned char payload[];
 } TSPromiseState;
 
-static inline TSPromiseState *ts_promise_alloc(size_t payload_size) {
+static inline void ts_promise_reject_raw(TSPromiseState *state, Str error);
+
+static inline TSPromiseState *ts_promise_alloc(size_t payload_size, const char *type_name) {
     TSPromiseState *state = (TSPromiseState *)malloc(sizeof(TSPromiseState) + payload_size);
+    if (state == NULL) {
+        ts_runtime_fatal("failed to allocate promise state for %s", type_name ? type_name : "<unknown>");
+    }
     memset(state, 0, sizeof(TSPromiseState) + payload_size);
+    state->magic = TS_PROMISE_MAGIC;
     state->state = TS_PROMISE_PENDING;
+    state->payload_size = payload_size;
     state->error = str_lit("");
+    state->type_name = type_name;
     return state;
+}
+
+static inline void ts_promise_reject_cstr(TSPromiseState *state, const char *message) {
+    ts_promise_reject_raw(state, str_rc_new(message, (int)strlen(message)));
+}
+
+static inline void ts_promise_rejectf(TSPromiseState *state, const char *fmt, ...) {
+    char buffer[512];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+    ts_promise_reject_cstr(state, buffer);
+}
+
+static inline void ts_promise_validate_state(TSPromiseState *state, const char *access) {
+    if (state == NULL) {
+        ts_runtime_fatal("%s used an uninitialized promise value", access);
+    }
+    if (state->magic != TS_PROMISE_MAGIC) {
+        ts_runtime_fatal("%s touched corrupted promise state", access);
+    }
+}
+
+static inline void ts_promise_validate_payload(
+    TSPromiseState *state,
+    size_t expected_size,
+    const char *expected_type,
+    const char *access
+) {
+    ts_promise_validate_state(state, access);
+    if (state->payload_size != expected_size) {
+        ts_runtime_fatal(
+            "%s expected payload %s (%zu bytes) but got %s (%zu bytes)",
+            access,
+            expected_type,
+            expected_size,
+            state->type_name ? state->type_name : "<unknown>",
+            state->payload_size
+        );
+    }
+}
+
+static inline void ts_promise_expect_value(
+    TSPromiseState *state,
+    size_t expected_size,
+    const char *expected_type,
+    const char *access
+) {
+    ts_promise_validate_payload(state, expected_size, expected_type, access);
+    if (state->state == TS_PROMISE_PENDING) {
+        ts_runtime_fatal("%s accessed a pending promise; await it or check .state first", access);
+    }
+    if (state->state == TS_PROMISE_REJECTED) {
+        ts_runtime_fatal("%s accessed a rejected promise; catch the error or inspect .error first", access);
+    }
 }
 
 static inline void ts_promise_resolve_raw(TSPromiseState *state, const void *value, size_t value_size) {
     if (state == NULL || state->state != TS_PROMISE_PENDING)
         return;
+    ts_promise_validate_state(state, "promise resolve");
+    if (state->payload_size != value_size) {
+        ts_runtime_fatal(
+            "promise resolve expected %s payload size %zu but received %zu bytes",
+            state->type_name ? state->type_name : "<unknown>",
+            state->payload_size,
+            value_size
+        );
+    }
     if (value != NULL && value_size > 0)
         memcpy(state->payload, value, value_size);
     state->state = TS_PROMISE_FULFILLED;
@@ -55,6 +132,7 @@ static inline void ts_promise_resolve_raw(TSPromiseState *state, const void *val
 static inline void ts_promise_reject_raw(TSPromiseState *state, Str error) {
     if (state == NULL || state->state != TS_PROMISE_PENDING)
         return;
+    ts_promise_validate_state(state, "promise reject");
     state->error = error;
     state->state = TS_PROMISE_REJECTED;
 }
@@ -66,6 +144,7 @@ static inline void ts_promise_panic(Str error) {
 }
 
 static inline void ts_promise_wait(TSPromiseState *state) {
+    ts_promise_validate_state(state, "await");
     while (state != NULL && state->state == TS_PROMISE_PENDING) {
         if (!ts_uv_step()) {
             ts_promise_panic(str_lit("awaited promise stayed pending with no active libuv work"));
@@ -79,7 +158,7 @@ static inline void ts_promise_wait(TSPromiseState *state) {
     } Name;                                                             \
     static inline Name Name##_pending(void) {                           \
         Name promise;                                                   \
-        promise.state = ts_promise_alloc(sizeof(Type));                 \
+        promise.state = ts_promise_alloc(sizeof(Type), #Type);          \
         return promise;                                                 \
     }                                                                   \
     static inline Name Name##_resolved(Type value) {                    \
@@ -96,6 +175,7 @@ static inline void ts_promise_wait(TSPromiseState *state) {
         return promise.state ? promise.state->state : TS_PROMISE_PENDING; \
     }                                                                   \
     static inline Type Name##_value(Name promise) {                     \
+        ts_promise_expect_value(promise.state, sizeof(Type), #Type, #Name ".value"); \
         return *(Type *)(void *)promise.state->payload;                 \
     }                                                                   \
     static inline Str Name##_error(Name promise) {                      \
@@ -114,7 +194,7 @@ static inline void ts_promise_wait(TSPromiseState *state) {
     } Name;                                                             \
     static inline Name Name##_pending(void) {                           \
         Name promise;                                                   \
-        promise.state = ts_promise_alloc(0);                            \
+        promise.state = ts_promise_alloc(0, "void");                    \
         return promise;                                                 \
     }                                                                   \
     static inline Name Name##_resolved(void) {                          \

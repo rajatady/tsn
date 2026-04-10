@@ -114,6 +114,13 @@ export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): stri
       return args ? `${objType}_${method}(${objExpr}, ${args})` : `${objType}_${method}(${objExpr})`
     }
 
+    if (objType === 'Response') {
+      if (method === 'text') {
+        ctx.registerPromiseType('Str')
+        return `ts_response_text(${objExpr})`
+      }
+    }
+
     if (objType === 'string') {
       const emitted = emitStringMethod(ctx, objExpr, method, node.arguments)
       if (emitted) return emitted

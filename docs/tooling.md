@@ -40,6 +40,8 @@ tsn build dashboard.tsx --debug
 - Works with `lldb`: `breakpoint set --file dashboard.tsx --line 160`
 - Hosted async code uses the same debug path: the current `await` implementation stays on the same native thread and pumps the hosted libuv loop until settlement, so file/line mapping and crash traces remain predictable
 - Hosted timers use the same libuv loop and stay in the same native process/debugger session, so timer callbacks are debuggable with the same `lldb` and crash-trace workflow
+- Hosted fetch follows the same model too: libcurl runs inside libuv worker jobs, but the current `await` path still stays synchronous from the caller's point of view, which keeps debug traces understandable
+- Promise misuse now fails loudly instead of drifting into undefined behavior: pending/rejected `.value` access and promise payload mismatches raise a runtime fatal error, which keeps crash traces actionable in debug sessions
 
 ## Dev Server (Watch Mode)
 
@@ -204,7 +206,9 @@ For hosted async code, this still works cleanly in the current model because `aw
 
 The same is true for the current narrow `try/catch` model: exceptions use lightweight runtime frames, but they still stay close to direct native control flow. That keeps the debugger story much simpler than it would be after full async state-machine suspension lands.
 
-Hosted timers fit the same story right now. Their callbacks run through the shared libuv loop inside the same binary and can still be debugged through normal native breakpoints and crash traces, rather than through a separate inspector-only path. The same is true for the current async edge cases we now support, like immediate `await` on plain values and repeated waits on already-settled promises: they stay in direct native control flow today.
+Hosted timers fit the same story right now. Their callbacks run through the shared libuv loop inside the same binary and can still be debugged through normal native breakpoints and crash traces, rather than through a separate inspector-only path. The same is true for the current async edge cases we now support, like immediate `await` on plain values, repeated waits on already-settled promises, and narrow hosted `fetch`: they stay in direct native control flow today.
+
+The newer async failure guards fit that same model too. When a hosted async helper rejects because of an OS/libuv/transport failure, you can catch it in TSN code. When code misuses a promise value directly, the runtime aborts with an explicit fatal message instead of segfaulting from a stray payload read, so the crash handler and debugger still point at a meaningful failure site.
 
 ## Source Maps
 

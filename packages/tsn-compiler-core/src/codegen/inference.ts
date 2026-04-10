@@ -143,6 +143,7 @@ export function exprType(
       if (node.expression.text === 'readFileAsync') return 'Promise<string>'
       if (node.expression.text === 'writeFileAsync') return 'Promise<void>'
       if (node.expression.text === 'appendFileAsync') return 'Promise<void>'
+      if (node.expression.text === 'fetch') return 'Promise<Response>'
       if (node.expression.text === 'listDir') return 'string[]'
       if (node.expression.text === 'listDirAsync') return 'Promise<string[]>'
       if (node.expression.text === 'fileExists') return 'boolean'
@@ -164,6 +165,9 @@ export function exprType(
       if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Mem') return 'number'
 
       const callObjType = ctx.exprType(node.expression.expression)
+      if (callObjType === 'Response') {
+        if (method === 'text') return 'Promise<string>'
+      }
       if (callObjType && ctx.classDefs.has(callObjType)) {
         const cls = ctx.classDefs.get(callObjType)
         const classMethod = cls?.methods.find(x => x.name === method)
@@ -209,6 +213,11 @@ export function exprType(
       if (node.name.text === 'state') return 'number'
       if (node.name.text === 'error') return 'string'
       if (node.name.text === 'value') return unwrapAwaitType(objectType)
+    }
+    if (objectType === 'Response') {
+      if (node.name.text === 'status') return 'number'
+      if (node.name.text === 'ok') return 'boolean'
+      if (node.name.text === 'body') return 'string'
     }
     if (objectType) {
       if (ctx.classDefs.has(objectType)) {

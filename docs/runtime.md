@@ -5,6 +5,7 @@ The TSN runtime is rooted at [compiler/runtime/runtime.h](/Users/kumardivyarajat
 - [runtime_loop.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_loop.h) for hosted libuv loop ownership
 - [runtime_async.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_async.h) for promise/await scaffolding
 - [runtime_hosted_io.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_hosted_io.h) for hosted file/process I/O
+- [runtime_fetch.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_fetch.h) for hosted fetch and `Response`
 - [runtime_timers.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_timers.h) for hosted timer handles and callbacks
 - [runtime_exception.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_exception.h) for narrow exception frames
 - [debug.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/debug.h) for bounds checks
@@ -149,7 +150,11 @@ Important current limitation:
 - `await` blocks the current frame by pumping the hosted libuv loop
 - awaiting a plain non-promise value is an immediate pass-through in the current lowering
 - the same settled promise can be awaited repeatedly because the state is shared
-- rejected promises abort the process for now
+- rejected promises can be caught through `try/catch` around `await`
+- promise `.value` access is guarded:
+  - pending promise reads fail loudly
+  - rejected promise reads fail loudly
+  - payload-size mismatches fail loudly instead of reading arbitrary memory
 - continuation queues and resumable state-machine lowering are still future work
 
 So the runtime promise layer is real now, but it is still the narrow hosted async v1 rather than the final resumable async runtime.
@@ -196,6 +201,34 @@ The compiler currently emits async hosted wrappers on top of these helpers for:
 - `execAsync`
 
 Those async wrappers now schedule work on libuv's worker pool and settle shared promise state in the after-work callback. They are real hosted async operations now, even though `await` still blocks the current frame instead of suspending a resumable state machine.
+
+Current failure behavior:
+
+- `readFileAsync`, `writeFileAsync`, `appendFileAsync`, `fileSizeAsync`, and `listDirAsync` reject on real OS failures
+- `fileExistsAsync` still resolves `false` instead of rejecting
+- `execAsync` resolves the process exit status, but rejects true launcher/runtime failures
+- libuv submission or after-work failures reject with runtime-generated error strings
+
+## Hosted Fetch
+
+Hosted fetch now lives in [runtime_fetch.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_fetch.h).
+
+Current model:
+
+- fetch work is scheduled on libuv's worker pool
+- libcurl performs the actual HTTP request inside the worker job
+- transport failures reject the promise
+- HTTP status codes still resolve a `Response` value, with `ok` derived from the 2xx range
+- `Response.text()` is a narrow helper that resolves the already-buffered body as `Promise<string>`
+- libuv-side scheduler failures also reject instead of leaving the promise pending
+
+Current limitation:
+
+- only `method` and `body` are supported in the init object
+- headers are not supported
+- body streaming is not supported
+- cancellation and `AbortController` are not supported
+- `Response.json()`, `statusText`, and richer metadata are not implemented yet
 
 ## Hosted Timers
 

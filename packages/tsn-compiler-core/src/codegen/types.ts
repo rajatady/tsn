@@ -129,6 +129,8 @@ export function tsTypeNameToC(tsType: string, ctx: TypeResolutionContext, fallba
       return 'bool'
     case 'void':
       return 'void'
+    case 'Response':
+      return 'TSFetchResponse'
     case 'JSX.Element':
       return 'UIHandle'
     default:

@@ -94,6 +94,27 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       }
     }
 
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'fetch') {
+      if (node.arguments.length < 1 || node.arguments.length > 2) {
+        errors.push({ pos: node.getStart(), message: 'fetch currently supports fetch(url) or fetch(url, { method, body })' })
+      }
+      const init = node.arguments[1]
+      if (init && !ts.isObjectLiteralExpression(init)) {
+        errors.push({ pos: init.getStart(), message: 'fetch init must be an object literal for now' })
+      }
+      if (init && ts.isObjectLiteralExpression(init)) {
+        for (const prop of init.properties) {
+          if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) {
+            errors.push({ pos: prop.getStart(), message: 'fetch init only supports plain method/body properties' })
+            continue
+          }
+          if (prop.name.text !== 'method' && prop.name.text !== 'body') {
+            errors.push({ pos: prop.name.getStart(), message: `fetch init property "${prop.name.text}" is not supported yet` })
+          }
+        }
+      }
+    }
+
     // Ban: delete operator
     if (ts.isDeleteExpression(node)) {
       errors.push({ pos: node.getStart(), message: '"delete" is banned — objects cannot change shape' })

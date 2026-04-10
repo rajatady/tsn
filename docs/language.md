@@ -77,7 +77,11 @@ TSN now supports a narrow async/await model for hosted code:
 - already-settled promises can be awaited repeatedly
 - hosted async file/process APIs are supported
 - hosted timer APIs are supported through `setTimeout` / `setInterval`
+- hosted `fetch` is supported in a narrow form
 - hosted async I/O is backed by the TSN hosted runtime on top of libuv
+- promise misuse is guarded at runtime:
+  - reading `.value` from a pending or rejected promise is a runtime error
+  - promise payload mismatches fail loudly instead of becoming undefined memory reads
 
 Current limitation:
 
@@ -86,7 +90,14 @@ Current limitation:
 - timer callbacks are intentionally narrow today:
   - function identifiers must be zero-argument callbacks
   - arrow callbacks must be zero-argument and capture-free
-- `fetch`, `new Promise(...)`, async arrows, and async methods are not supported yet
+- `fetch` currently supports only:
+  - `fetch(url)`
+  - `fetch(url, { method, body })`
+  - `Response.status`, `Response.ok`, `Response.body`, and `await response.text()`
+- hosted async file/fetch operations reject on real OS or transport failures:
+  - missing files and directories reject instead of silently fabricating values
+  - invalid fetch transports reject and can be caught through `try/catch`
+- headers, cancellation, streaming response bodies, `new Promise(...)`, async arrows, and async methods are not supported yet
 - `finally` is not supported yet
 
 ### Exceptions

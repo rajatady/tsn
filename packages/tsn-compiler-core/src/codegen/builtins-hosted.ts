@@ -3,6 +3,36 @@ import * as ts from 'typescript'
 import type { HostedBuiltinEmitterContext } from './shared.js'
 import { emitTimerBuiltinCall } from './builtins-timers.js'
 
+function parseFetchInit(
+  ctx: HostedBuiltinEmitterContext,
+  initArg: ts.Expression | undefined,
+): { methodExpr: string; bodyExpr: string } {
+  if (!initArg) return { methodExpr: 'str_lit("GET")', bodyExpr: 'str_lit("")' }
+  if (!ts.isObjectLiteralExpression(initArg)) {
+    throw new Error('fetch(url, init) currently requires init to be an object literal')
+  }
+
+  let methodExpr = 'str_lit("GET")'
+  let bodyExpr = 'str_lit("")'
+
+  for (const prop of initArg.properties) {
+    if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) {
+      throw new Error('fetch init only supports plain method/body properties')
+    }
+    if (prop.name.text === 'method') {
+      methodExpr = ctx.emitExpr(prop.initializer)
+      continue
+    }
+    if (prop.name.text === 'body') {
+      bodyExpr = ctx.emitExpr(prop.initializer)
+      continue
+    }
+    throw new Error(`fetch init property "${prop.name.text}" is not supported yet`)
+  }
+
+  return { methodExpr, bodyExpr }
+}
+
 // Hosted async builtins are intentionally a narrow bridge right now.
 // They make Promise<T>-returning I/O callable from TSN source without
 // pretending that async/await lowering already exists.
@@ -16,7 +46,7 @@ import { emitTimerBuiltinCall } from './builtins-timers.js'
 // - rejection/error propagation instead of current "best effort" success semantics
 // - retain/release rules for resolved Str / StrArr / future class payloads
 // - richer timer semantics like captured closures and delay-style promise helpers
-// - network I/O (fetch/Response)
+// - richer fetch semantics like headers, streaming, cancellation, and Response.json()
 // - Promise<void> specialization, already-resolved awaits, and multi-await
 // - ensuring bare-metal/hosted targets do not accidentally share async APIs
 export function emitHostedBuiltinCall(
@@ -52,6 +82,11 @@ export function emitHostedBuiltinCall(
     case 'appendFileAsync':
       ctx.registerPromiseType('void')
       return `ts_appendFileAsync(${ctx.emitExpr(node.arguments[0])}, ${ctx.emitExpr(node.arguments[1])})`
+    case 'fetch': {
+      ctx.registerPromiseType('TSFetchResponse')
+      const { methodExpr, bodyExpr } = parseFetchInit(ctx, node.arguments[1])
+      return `ts_fetch(${ctx.emitExpr(node.arguments[0])}, ${methodExpr}, ${bodyExpr})`
+    }
     case 'fileExistsAsync':
       ctx.registerPromiseType('bool')
       return `ts_fileExistsAsync(${ctx.emitExpr(node.arguments[0])})`
@@ -86,6 +121,7 @@ export function appendHostedAsyncHelpers(
 
   if (promiseTypes.has('Promise_Str')) {
     wrappers.push('static inline Promise_Str ts_readFileAsync(Str path) { Promise_Str _p = Promise_Str_pending(); ts_schedule_read_file(_p.state, path); return _p; }')
+    wrappers.push('static inline Promise_Str ts_response_text(TSFetchResponse response) { return Promise_Str_resolved(str_retain(response.body)); }')
   }
   if (promiseTypes.has('Promise_void')) {
     wrappers.push('static inline Promise_void ts_writeFileAsync(Str path, Str content) { Promise_void _p = Promise_void_pending(); ts_schedule_write_file(_p.state, path, content, false); return _p; }')
@@ -100,6 +136,9 @@ export function appendHostedAsyncHelpers(
   }
   if (promiseTypes.has('Promise_StrArr')) {
     wrappers.push('static inline Promise_StrArr ts_listDirAsync(Str path) { Promise_StrArr _p = Promise_StrArr_pending(); ts_schedule_list_dir(_p.state, path); return _p; }')
+  }
+  if (promiseTypes.has('Promise_TSFetchResponse')) {
+    wrappers.push('static inline Promise_TSFetchResponse ts_fetch(Str url, Str method, Str body) { Promise_TSFetchResponse _p = Promise_TSFetchResponse_pending(); ts_schedule_fetch(_p.state, url, method, body); return _p; }')
   }
 
   if (wrappers.length > 0) {

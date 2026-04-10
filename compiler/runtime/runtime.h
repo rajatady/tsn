@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <math.h>
 #include <stdbool.h>
 #include <limits.h>
@@ -52,6 +53,16 @@ static inline bool rc_release(const void *data) {
     RcHeader *h = rc_header(data);
     if (--h->rc <= 0) { free(h); return true; }
     return false;
+}
+
+static inline void ts_runtime_fatal(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stderr, "TSN runtime fatal: ");
+    vfprintf(stderr, fmt, args);
+    fputc('\n', stderr);
+    va_end(args);
+    abort();
 }
 
 /* ─── Str: 16 bytes, by value ────────────────────────────────────
@@ -459,6 +470,7 @@ static inline OwnedStr read_stdin(void) {
 
 #include "runtime_async.h"
 #include "runtime_hosted_io.h"
+#include "runtime_fetch.h"
 #include "runtime_timers.h"
 
 /* ─── Math ───────────────────────────────────────────────────────── */

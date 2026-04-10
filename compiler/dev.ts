@@ -13,6 +13,7 @@ import { execSync, spawn, type ChildProcess } from 'node:child_process'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
+import { getLibcurlShellFlags } from '../packages/tsn-compiler-core/src/libcurl.js'
 import { ensureLibuvStaticLibrary } from '../packages/tsn-compiler-core/src/libuv.js'
 import { ensureYogaStaticLibrary } from '../packages/tsn-compiler-core/src/yoga.js'
 import { appKitHostRoot, appKitSourcePath } from '../packages/tsn-host-appkit/src/index.js'
@@ -66,6 +67,7 @@ function compile(): boolean {
     const hasUi = cCode.includes('#include "ui.h"')
     const libuvLib = ensureLibuvStaticLibrary()
     const libuvInclude = path.join('vendor', 'libuv', 'include')
+    const libcurlFlags = getLibcurlShellFlags()
 
     if (hasUi) {
       const runtimeDir = path.join('compiler', 'runtime')
@@ -74,13 +76,13 @@ function compile(): boolean {
 
       execSync(
         `clang -O0 -g -DTSN_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
+        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
         `-lc++ -o ${binaryPath}`,
         { stdio: 'pipe' }
       )
     } else {
       execSync(
-        `clang -O0 -g -DTSN_DEBUG -o ${binaryPath} ${cPath} ${libuvLib} -lm -I compiler/runtime -I ${libuvInclude}`,
+        `clang -O0 -g -DTSN_DEBUG -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
         { stdio: 'pipe' }
       )
     }
