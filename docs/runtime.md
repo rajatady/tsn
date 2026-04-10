@@ -147,7 +147,8 @@ Current runtime helpers include:
 Important current limitation:
 
 - these are now event-loop-backed hosted promises
-- `await` blocks the current frame by pumping the hosted libuv loop
+- async functions resume through heap-backed frame/state machines instead of blocking their caller
+- the native entrypoint still uses a blocking top-level wait for `main`
 - awaiting a plain non-promise value is an immediate pass-through in the current lowering
 - the same settled promise can be awaited repeatedly because the state is shared
 - rejected promises can be caught through `try/catch` around `await`
@@ -155,9 +156,10 @@ Important current limitation:
   - pending promise reads fail loudly
   - rejected promise reads fail loudly
   - payload-size mismatches fail loudly instead of reading arbitrary memory
-- continuation queues and resumable state-machine lowering are still future work
+- promise continuations now resume suspended async frames when awaited work settles
+- cancellation and richer scheduler policies are still future work
 
-So the runtime promise layer is real now, but it is still the narrow hosted async v1 rather than the final resumable async runtime.
+So the runtime promise layer is real now, and async suspension is real in the narrow hosted model. What is still missing is the broader tier: cancellation, richer scheduling, and the larger async surface area.
 
 ## Exception Runtime
 
@@ -200,7 +202,7 @@ The compiler currently emits async hosted wrappers on top of these helpers for:
 - `listDirAsync`
 - `execAsync`
 
-Those async wrappers now schedule work on libuv's worker pool and settle shared promise state in the after-work callback. They are real hosted async operations now, even though `await` still blocks the current frame instead of suspending a resumable state machine.
+Those async wrappers now schedule work on libuv's worker pool and settle shared promise state in the after-work callback. Suspended async frames subscribe to those promise settlements and resume when the work completes.
 
 Current failure behavior:
 

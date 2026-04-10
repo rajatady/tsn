@@ -200,14 +200,15 @@ What is now implemented:
   - runtime async scaffolding and hosted I/O live in dedicated runtime headers instead of expanding `runtime.h` into a second god file
 - there is now an integration-style test proving current behavior:
   - async builtins return pending promises before `await`
-  - `await` drives them to completion by pumping the hosted libuv loop
+  - settled hosted async work resumes suspended async functions correctly
 
 What is now implemented beyond the foundation:
 
 - `async function` now compiles in the current narrow hosted model
 - `await` now compiles in the current narrow hosted model
 - async functions return `Promise<T>` and wrap final values correctly
-- `await` blocks the current frame until the hosted promise settles
+- async functions now lower into resumable frame/state-machine code
+- suspended async frames resume from promise continuations when hosted work settles
 - `await` on non-promise values works as an immediate value path
 - already-resolved and repeatedly awaited promises work through shared state
 - async `main` is awaited by the generated native entrypoint
@@ -225,8 +226,6 @@ What is now implemented beyond the foundation:
 
 What is intentionally not implemented yet:
 
-- resumable state-machine lowering
-- continuation queues
 - `finally`
 - richer typed error values beyond the current string-shaped model
 - async arrows, async function expressions, and async methods
@@ -235,9 +234,8 @@ What is intentionally not implemented yet:
 What is intentionally supported but still narrow:
 
 - only async function declarations are supported today
-- `await` currently blocks by pumping the hosted libuv loop instead of suspending the frame
 - promise rejection can now be caught through `await` inside `try/catch`
-- repeated awaits on the same settled promise work today, but true concurrent continuation fan-out is not implemented
+- repeated awaits on the same settled promise work today, and promise continuations now resume suspended async frames
 - async I/O now covers file/process/timers/fetch in the narrow hosted model
 - timers now work in the hosted runtime, but callback forms are intentionally narrow
 - fetch now works in a narrow hosted shape:
@@ -254,6 +252,7 @@ The first hosted libuv runtime pass is also real and working.
 The first narrow exception path is also real and working.
 
 That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, async rejection can be caught, hosted timers are real, and hosted `fetch` exists in a narrow useful form. It still does not yet support resumable state machines, `finally`, or richer exception semantics.
+That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, async rejection can be caught, hosted timers are real, hosted `fetch` exists in a narrow useful form, and async suspension/resumption is real. It still does not yet support `finally`, richer exception semantics, or the broader Promise/async surface.
 
 ### 2. `try/catch` and `throw`
 

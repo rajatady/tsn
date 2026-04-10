@@ -205,10 +205,11 @@ interface Response {
 Important limitation:
 
 - the async forms now return pending promises backed by the hosted libuv runtime
-- `await` drives them to completion by pumping the hosted event loop
+- async functions suspend and resume around them through frame/state-machine lowering
+- the native entrypoint still performs a blocking top-level wait for async `main`
 - `await` on a plain value is immediate in the current narrowing
 - already-settled promises can be awaited again
-- they are real hosted async I/O, but not yet resumable state-machine async
+- they are real hosted async I/O on the resumable hosted async path
 - promise misuse is guarded at runtime:
   - pending or rejected `.value` reads fail loudly
   - promise payload mismatches fail loudly instead of reading garbage memory

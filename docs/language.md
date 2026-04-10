@@ -85,8 +85,8 @@ TSN now supports a narrow async/await model for hosted code:
 
 Current limitation:
 
-- `await` currently blocks the current frame by pumping the hosted event loop until the promise settles
-- resumable state-machine lowering is not implemented yet
+- async functions now lower through resumable frame/state-machine code
+- top-level waiting still blocks the native entrypoint while the hosted loop drives pending work
 - timer callbacks are intentionally narrow today:
   - function identifiers must be zero-argument callbacks
   - arrow callbacks must be zero-argument and capture-free

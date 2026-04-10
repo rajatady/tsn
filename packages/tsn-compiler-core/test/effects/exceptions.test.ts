@@ -71,7 +71,7 @@ function main(): void {
   assert.equal(output.trim(), 'boom')
 })
 
-test('await inside try/catch lowers rejected async flow through the exception runtime', () => {
+test('await inside try/catch lowers rejected async flow through resumable catch labels', () => {
   const cCode = generateCFromText(`
 async function fail(): Promise<string> {
   throw "boom"
@@ -88,8 +88,11 @@ async function main(): Promise<void> {
 `)
 
   assertIncludesAll(cCode, [
-    'return Promise_Str_rejected(str_lit("boom"));',
-    'Promise_Str _ts_promise = fail(); ts_promise_wait(_ts_promise.state); if (Promise_Str_state(_ts_promise) == TS_PROMISE_REJECTED) { ts_exception_throw(Promise_Str_error(_ts_promise)); }',
+    'Promise_Str_reject(frame->__promise, str_lit("boom"));',
+    'frame->__await0 = fail();',
+    'if (Promise_Str_state(frame->__await0) == TS_PROMISE_REJECTED) {',
+    'frame->__error = Promise_Str_error(frame->__await0);',
+    'goto _ts_async_catch_',
   ])
 })
 

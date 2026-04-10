@@ -124,7 +124,7 @@ function main(): void {
   }
 })
 
-test('codegen lowers async functions and await into hosted-loop waits', () => {
+test('codegen lowers async functions into resumable state-machine frames', () => {
   const cCode = generateCFromText(`
 declare function readFileAsync(path: string): Promise<string>
 
@@ -136,12 +136,16 @@ async function load(path: string): Promise<string> {
 
   assertIncludesAll(cCode, [
     'Promise_Str load(Str path)',
-    'Str text = TS_AWAIT(Promise_Str, ts_readFileAsync(path));',
-    'return Promise_Str_resolved(text);',
+    'typedef struct load__frame {',
+    'static void load__resume(void *__userdata) {',
+    'frame->__await0 = ts_readFileAsync(frame->path);',
+    'ts_promise_subscribe(frame->__await0.state, load__resume, frame);',
+    'frame->text = Promise_Str_value(frame->__await0);',
+    'Promise_Str_resolve(frame->__promise, frame->text);',
   ])
 })
 
-test('codegen adds an implicit resolved return for async Promise<void> functions', () => {
+test('codegen adds an implicit resolved completion path for async Promise<void> functions', () => {
   const cCode = generateCFromText(`
 declare function writeFileAsync(path: string, content: string): Promise<void>
 
@@ -152,8 +156,9 @@ async function save(path: string): Promise<void> {
 
   assertIncludesAll(cCode, [
     'Promise_void save(Str path)',
-    'TS_AWAIT_VOID(Promise_void, ts_writeFileAsync(path, str_lit("done")));',
-    'return Promise_void_resolved();',
+    'frame->__await0 = ts_writeFileAsync(frame->path, str_lit("done"));',
+    'ts_promise_subscribe(frame->__await0.state, save__resume, frame);',
+    'Promise_void_resolve(frame->__promise);',
   ])
 })
 
@@ -166,8 +171,8 @@ async function one(): Promise<number> {
 `)
 
   assertIncludesAll(cCode, [
-    'double value = 1;',
-    'return Promise_double_resolved(value);',
+    'frame->value = 1;',
+    'Promise_double_resolve(frame->__promise, frame->value);',
   ])
 })
 
@@ -182,7 +187,9 @@ async function load(path: string): Promise<string> {
 
   assertIncludesAll(cCode, [
     'Promise_Str load(Str path)',
-    'return ts_readFileAsync(path);',
+    'frame->__await0 = ts_readFileAsync(frame->path);',
+    'ts_promise_subscribe(frame->__await0.state, load__resume, frame);',
+    'Promise_Str_resolve(frame->__promise, Promise_Str_value(frame->__await0));',
   ])
 })
 
@@ -200,14 +207,15 @@ async function load(path: string): Promise<string> {
   return text
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const result: Promise<string> = load(${JSON.stringify(filePath)})
-  console.log(String(result.state), result.value)
+  console.log(String(result.state))
+  console.log(await result)
 }
 `)
 
     assertIncludesAll(output, [
-      '1',
+      '0',
       'hello async',
     ])
   } finally {

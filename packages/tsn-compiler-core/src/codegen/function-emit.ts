@@ -1,6 +1,7 @@
 import * as ts from 'typescript'
 
 import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
+import { emitAsyncFunction } from './async-state-machine.js'
 import { isAsyncFunction } from './async-lowering.js'
 import type { ParamInfo } from './types.js'
 
@@ -19,6 +20,14 @@ export interface FunctionEmitContext {
   currentCatchTarget: { label: string; errorVar: string } | null
   inferFunctionReturnType(node: ts.FunctionDeclaration): { tsType: string; cType: string }
   describeParameter(p: ts.ParameterDeclaration, index: number): ParamInfo
+  tsTypeName(typeNode: ts.TypeNode | undefined): string
+  tsTypeNameToC(tsType: string, fallback?: string): string
+  tsTypeToC(typeNode: ts.TypeNode | undefined, fallback?: string): string
+  inferVarType(decl: ts.VariableDeclaration): string
+  inferVarTsType(decl: ts.VariableDeclaration): string
+  emitExpr(node: ts.Node): string
+  exprType(node: ts.Node): string | undefined
+  arrayCElemType(tsType: string): string
   withStmtSink<T>(sink: string[], fn: () => T): T
   pad(): string
   emitStmt(node: ts.Node, out: string[]): void
@@ -28,6 +37,7 @@ export interface FunctionEmitContext {
 export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclaration): void {
   if (!node.name) return
   if (!node.body) return
+  if (emitAsyncFunction(ctx, node)) return
   const name = node.name.text
 
   if (name === 'readStdin') {

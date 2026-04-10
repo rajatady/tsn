@@ -31,12 +31,21 @@ typedef enum {
 
 #define TS_PROMISE_MAGIC 0x54534e50u
 
+typedef void (*TSPromiseContinuationFn)(void *userdata);
+
+typedef struct TSPromiseContinuation {
+    TSPromiseContinuationFn resume;
+    void *userdata;
+    struct TSPromiseContinuation *next;
+} TSPromiseContinuation;
+
 typedef struct {
     unsigned int magic;
     int state;
     size_t payload_size;
     Str error;
     const char *type_name;
+    TSPromiseContinuation *continuations;
     unsigned char payload[];
 } TSPromiseState;
 
@@ -112,6 +121,43 @@ static inline void ts_promise_expect_value(
     }
 }
 
+static inline void ts_promise_resume_continuations(TSPromiseState *state) {
+    TSPromiseContinuation *cont = state->continuations;
+    state->continuations = NULL;
+    while (cont != NULL) {
+        TSPromiseContinuation *next = cont->next;
+        cont->resume(cont->userdata);
+        free(cont);
+        cont = next;
+    }
+}
+
+static inline void ts_promise_subscribe(
+    TSPromiseState *state,
+    TSPromiseContinuationFn resume,
+    void *userdata
+) {
+    ts_promise_validate_state(state, "promise subscribe");
+    if (state->state != TS_PROMISE_PENDING) {
+        resume(userdata);
+        return;
+    }
+    TSPromiseContinuation *cont = (TSPromiseContinuation *)malloc(sizeof(TSPromiseContinuation));
+    if (cont == NULL) {
+        ts_runtime_fatal("failed to allocate promise continuation for %s", state->type_name ? state->type_name : "<unknown>");
+    }
+    cont->resume = resume;
+    cont->userdata = userdata;
+    cont->next = NULL;
+    if (state->continuations == NULL) {
+        state->continuations = cont;
+        return;
+    }
+    TSPromiseContinuation *tail = state->continuations;
+    while (tail->next != NULL) tail = tail->next;
+    tail->next = cont;
+}
+
 static inline void ts_promise_resolve_raw(TSPromiseState *state, const void *value, size_t value_size) {
     if (state == NULL || state->state != TS_PROMISE_PENDING)
         return;
@@ -127,6 +173,7 @@ static inline void ts_promise_resolve_raw(TSPromiseState *state, const void *val
     if (value != NULL && value_size > 0)
         memcpy(state->payload, value, value_size);
     state->state = TS_PROMISE_FULFILLED;
+    ts_promise_resume_continuations(state);
 }
 
 static inline void ts_promise_reject_raw(TSPromiseState *state, Str error) {
@@ -135,6 +182,7 @@ static inline void ts_promise_reject_raw(TSPromiseState *state, Str error) {
     ts_promise_validate_state(state, "promise reject");
     state->error = error;
     state->state = TS_PROMISE_REJECTED;
+    ts_promise_resume_continuations(state);
 }
 
 static inline void ts_promise_panic(Str error) {

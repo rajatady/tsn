@@ -49,7 +49,7 @@ function main(): void {
   assert.ok(messages.some(msg => msg.includes('fetch init property "headers" is not supported yet')))
 })
 
-test('codegen lowers fetch and response.text through hosted runtime helpers', () => {
+test('codegen lowers fetch and response.text through resumable async frames', () => {
   const cCode = generateCFromText(`
 async function load(): Promise<string> {
   const res: Response = await fetch("http://example.com")
@@ -61,8 +61,10 @@ async function load(): Promise<string> {
     'DEFINE_PROMISE(Promise_TSFetchResponse, TSFetchResponse)',
     'static inline Promise_TSFetchResponse ts_fetch(Str url, Str method, Str body) { Promise_TSFetchResponse _p = Promise_TSFetchResponse_pending(); ts_schedule_fetch(_p.state, url, method, body); return _p; }',
     'static inline Promise_Str ts_response_text(TSFetchResponse response) { return Promise_Str_resolved(str_retain(response.body)); }',
-    'TSFetchResponse res = TS_AWAIT(Promise_TSFetchResponse, ts_fetch(str_lit("http://example.com"), str_lit("GET"), str_lit("")));',
-    'return Promise_Str_resolved(TS_AWAIT(Promise_Str, ts_response_text(res)));',
+    'frame->__await0 = ts_fetch(str_lit("http://example.com"), str_lit("GET"), str_lit(""));',
+    'frame->res = Promise_TSFetchResponse_value(frame->__await0);',
+    'frame->__await1 = ts_response_text(frame->res);',
+    'Promise_Str_resolve(frame->__promise, Promise_Str_value(frame->__await1));',
   ])
 })
 

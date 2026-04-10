@@ -38,9 +38,9 @@ tsn build dashboard.tsx --debug
 - Array access uses `ARRAY_GET()` / `ARRAY_SET()` macros
 - Out-of-bounds access reports: file, line, array name, index, length
 - Works with `lldb`: `breakpoint set --file dashboard.tsx --line 160`
-- Hosted async code uses the same debug path: the current `await` implementation stays on the same native thread and pumps the hosted libuv loop until settlement, so file/line mapping and crash traces remain predictable
+- Hosted async code still uses the same debug path, but it now resumes through generated frame/state-machine functions instead of blocking inside each caller frame
 - Hosted timers use the same libuv loop and stay in the same native process/debugger session, so timer callbacks are debuggable with the same `lldb` and crash-trace workflow
-- Hosted fetch follows the same model too: libcurl runs inside libuv worker jobs, but the current `await` path still stays synchronous from the caller's point of view, which keeps debug traces understandable
+- Hosted fetch follows the same model too: libcurl runs inside libuv worker jobs, and suspended async frames resume when the result settles
 - Promise misuse now fails loudly instead of drifting into undefined behavior: pending/rejected `.value` access and promise payload mismatches raise a runtime fatal error, which keeps crash traces actionable in debug sessions
 
 ## Dev Server (Watch Mode)
@@ -202,7 +202,7 @@ lldb build/dashboard
 (lldb) run
 ```
 
-For hosted async code, this still works cleanly in the current model because `await` does not yet split execution into resumable heap state machines. It blocks the current frame while driving the hosted libuv loop, so stack traces and source mapping are still direct and readable.
+For hosted async code, this still works cleanly in the current model because the compiler now emits explicit resumable frame/state-machine functions. The top-level wait still drives the hosted libuv loop in one native process, so stack traces and source mapping stay readable even though resumed async work no longer blocks each caller frame.
 
 The same is true for the current narrow `try/catch` model: exceptions use lightweight runtime frames, but they still stay close to direct native control flow. That keeps the debugger story much simpler than it would be after full async state-machine suspension lands.
 
