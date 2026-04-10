@@ -1,5 +1,6 @@
 import * as ts from 'typescript'
 
+import { unwrapAwaitType } from './async-lowering.js'
 import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
 import type { ClassDef, StructDef, StructField } from './types.js'
 
@@ -113,6 +114,7 @@ export function exprType(
   if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword) return 'boolean'
   if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return 'JSX.Element'
   if (ts.isIdentifier(node)) return ctx.varTypes.get(node.text)
+  if (ts.isAwaitExpression(node)) return unwrapAwaitType(ctx.exprType(node.expression))
 
   if (node.kind === ts.SyntaxKind.ThisKeyword && ctx.currentClass) return ctx.currentClass
 
@@ -199,6 +201,11 @@ export function exprType(
   if (ts.isPropertyAccessExpression(node)) {
     if (node.name.text === 'length') return 'number'
     const objectType = ctx.exprType(node.expression)
+    if (objectType?.startsWith('Promise<')) {
+      if (node.name.text === 'state') return 'number'
+      if (node.name.text === 'error') return 'string'
+      if (node.name.text === 'value') return unwrapAwaitType(objectType)
+    }
     if (objectType) {
       if (ctx.classDefs.has(objectType)) {
         const cls = ctx.classDefs.get(objectType)

@@ -27,6 +27,12 @@ typedef enum {
     TS_PROMISE_REJECTED = 2,
 } TSPromiseState;
 
+static inline void ts_promise_panic(Str error) {
+    fwrite(error.data, 1, error.len, stderr);
+    fputc('\n', stderr);
+    exit(1);
+}
+
 #define DEFINE_PROMISE(Name, Type)                                      \
     typedef struct {                                                    \
         int state;                                                      \
@@ -76,5 +82,22 @@ typedef enum {
         p.error = error;                                                \
         return p;                                                       \
     }
+
+#define TS_AWAIT(Name, Expr)                                            \
+    ({                                                                  \
+        Name _ts_promise = (Expr);                                      \
+        if (_ts_promise.state == TS_PROMISE_REJECTED) {                 \
+            ts_promise_panic(_ts_promise.error);                        \
+        }                                                               \
+        _ts_promise.value;                                              \
+    })
+
+#define TS_AWAIT_VOID(Name, Expr)                                       \
+    ({                                                                  \
+        Name _ts_promise = (Expr);                                      \
+        if (_ts_promise.state == TS_PROMISE_REJECTED) {                 \
+            ts_promise_panic(_ts_promise.error);                        \
+        }                                                               \
+    })
 
 #endif /* STRICTTS_RUNTIME_ASYNC_H */

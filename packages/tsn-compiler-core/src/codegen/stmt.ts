@@ -15,6 +15,8 @@ export interface StatementEmitterContext {
   funcDeclaredSoFar: Set<string>
   classDefs: Map<string, ClassDef>
   currentClass: string | null
+  currentFunctionReturnTsType: string | null
+  currentFunctionIsAsync: boolean
   needsJsonParser: boolean
   jsonParseTargetType: string
   indent: number
@@ -36,6 +38,7 @@ export interface StatementEmitterContext {
   arrayTypeName(innerTsType: string): string
   arrayCElemType(tsType: string): string
   nextTempId(): number
+  wrapAsyncReturn(expr: ts.Expression | null): string
 }
 
 export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: string[]): void {
@@ -197,7 +200,9 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
 
   if (ts.isReturnStatement(node)) {
     const returnedVar = node.expression && ts.isIdentifier(node.expression) ? node.expression.text : null
-    const returnedExpr = node.expression ? ctx.emitExpr(node.expression) : null
+    const returnedExpr = ctx.currentFunctionIsAsync
+      ? ctx.wrapAsyncReturn(node.expression ?? null)
+      : (node.expression ? ctx.emitExpr(node.expression) : null)
     for (const vn of ctx.funcDeclaredSoFar) {
       if (vn === returnedVar) continue
       if (ctx.builderVars.has(vn)) continue

@@ -47,6 +47,10 @@ import {
   extractCharSlice as extractCharSliceFor,
 } from './codegen/expr.js'
 import {
+  emitAwait as emitAwaitFor,
+  wrapAsyncReturn as wrapAsyncReturnFor,
+} from './codegen/async-lowering.js'
+import {
   describeParameter as describeParameterFor,
   inferFunctionReturnType as inferFunctionReturnTypeFor,
 } from './codegen/functions.js'
@@ -103,6 +107,8 @@ class CodeGen {
   private funcLocalVars: Map<string, string> = new Map()
   private funcTopLevelVars: Set<string> = new Set()
   private funcDeclaredSoFar: Set<string> = new Set()  // tracks declaration order for return cleanup
+  currentFunctionReturnTsType: string | null = null
+  currentFunctionIsAsync = false
   private identifierAliases: Map<string, string> = new Map()
   private hooks: HookRegistry
   private jsxBootStmts: string[] = []
@@ -266,6 +272,9 @@ class CodeGen {
     if (ts.isCallExpression(node))
       return emitCallFor(this, node)
 
+    if (ts.isAwaitExpression(node))
+      return emitAwaitFor(this, node)
+
     if (ts.isBinaryExpression(node))
       return emitBinaryFor(this, node)
 
@@ -338,6 +347,10 @@ class CodeGen {
 
   exprType(node: ts.Node): string | undefined {
     return exprTypeFor(this, node)
+  }
+
+  wrapAsyncReturn(expr: ts.Expression | null): string {
+    return wrapAsyncReturnFor(this, this.currentFunctionReturnTsType ?? 'Promise<void>', expr)
   }
 
   // ─── Statement Generation ───────────────────────────────────────
