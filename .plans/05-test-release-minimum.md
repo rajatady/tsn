@@ -74,6 +74,8 @@ The current shape is:
 - hosted async I/O returns pending promise carriers backed by shared heap state
 - runtime schedules file/process work on libuv's worker pool
 - `await` blocks the current TSN frame by pumping the hosted libuv loop until the promise settles
+- `await` on non-promise values continues immediately with the plain value
+- already-settled promises can be awaited repeatedly through shared runtime state
 - completion settles the shared promise state and the waiting frame continues
 
 This is intentionally an intermediate step. It gives TSN real hosted async behavior now, while deferring the larger compiler work for resumable state machines.
@@ -147,7 +149,7 @@ These are the async edge cases that matter immediately:
 - locals that live across `await`
 - rejection flow into `try/catch`
 - already-resolved awaited values
-- multiple awaiters on the same promise/task
+- repeated awaits on the same promise/task
 - `await` inside loops
 - cleanup on rejection paths
 - UI thread affinity for AppKit-hosted async work
@@ -166,15 +168,15 @@ These are the async edge cases that matter immediately:
 - [x] Implement runtime promise/task object
 - [x] Implement event-loop integration for hosted async runtime
 - [x] Vendor libuv and add it to the build pipeline
-- [ ] Wire timer support around `setTimeout` / `setInterval`
+- [x] Wire timer support around `setTimeout` / `setInterval`
 - [x] Add async file I/O APIs
 - [ ] Add `fetch`-style network I/O API
-- [ ] Add `try/catch` integration for async rejection flow
+- [x] Add narrow `try/catch` integration for async rejection flow
 - [x] Add module-owned tests for async lowering
-- [ ] Add module-owned tests for timer behavior
+- [x] Add module-owned tests for timer behavior
 - [x] Add module-owned tests for file async I/O
 - [ ] Add module-owned tests for `fetch`
-- [ ] Add explicit validator errors for unsupported async patterns that remain out of scope
+- [x] Add explicit validator errors for unsupported async patterns that remain out of scope
 
 #### Async foundation status right now
 
@@ -206,7 +208,13 @@ What is now implemented beyond the foundation:
 - `await` now compiles in the current narrow hosted model
 - async functions return `Promise<T>` and wrap final values correctly
 - `await` blocks the current frame until the hosted promise settles
+- `await` on non-promise values works as an immediate value path
+- already-resolved and repeatedly awaited promises work through shared state
 - async `main` is awaited by the generated native entrypoint
+- `setTimeout`, `setInterval`, `clearTimeout`, and `clearInterval` now work in the hosted libuv runtime
+- timer callbacks are supported in the current narrow forms:
+  - zero-argument function identifiers
+  - zero-argument arrow callbacks with no captures
 - debug and conformance harnesses still pass with hosted async enabled
 - integration-style tests now prove real end-to-end async function behavior
 
@@ -216,7 +224,8 @@ What is intentionally not implemented yet:
 - continuation queues
 - timer APIs
 - `fetch`
-- async rejection flow into `try/catch`
+- `finally`
+- richer typed error values beyond the current string-shaped model
 - async arrows, async function expressions, and async methods
 - `new Promise(...)`
 
@@ -224,24 +233,26 @@ What is intentionally supported but still narrow:
 
 - only async function declarations are supported today
 - `await` currently blocks by pumping the hosted libuv loop instead of suspending the frame
-- promise rejection currently aborts, because `try/catch` is still missing
+- promise rejection can now be caught through `await` inside `try/catch`
+- repeated awaits on the same settled promise work today, but true concurrent continuation fan-out is not implemented
 - async I/O is currently file/process-only
-- timer and `fetch` APIs are still pending
+- timers now work in the hosted runtime, but callback forms are intentionally narrow
+- `fetch` is still pending
 
 So the async situation is:
 
 The foundation is real and working.
 The first narrow async language pass is also real and working.
 The first hosted libuv runtime pass is also real and working.
+The first narrow exception path is also real and working.
 
-That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, but it does not yet support resumable state machines, timer/fetch APIs, or async error handling through `try/catch`.
+That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, async rejection can be caught, and hosted timers are real. It still does not yet support resumable state machines, `fetch`, `finally`, or richer exception semantics.
 
 ### 2. `try/catch` and `throw`
 
 Why it matters:
 
 - this is standard TypeScript control flow for failure
-- it is currently banned in the validator
 - without it, normal app-level code feels unnatural very quickly
 
 Release bar:
@@ -249,6 +260,14 @@ Release bar:
 - basic `throw`
 - basic `try/catch`
 - clear unsupported edge cases if `finally` is not ready yet
+
+Current status:
+
+- basic `throw` now works
+- basic `try/catch` now works
+- rejected async operations can now be caught through `await`
+- `finally` is still not supported
+- the error model is still intentionally narrow and string-shaped for now
 
 ### 3. Better closure support
 

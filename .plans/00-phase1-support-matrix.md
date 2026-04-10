@@ -56,9 +56,10 @@ This file is the Phase 1 language catalogue. It records what a normal profession
 | `JSON.parse` to typed data | Effect | Yes | Partial | `codegen/json.ts` | `test/effects/json.test.ts` | Add object/array/string/unknown-field cases. |
 | File builtins (`readFile`, `writeFile`, etc.) | Effect | Yes | Partial | `codegen/builtins-hosted.ts` | `test/effects/fs-builtins.test.ts` | Freeze current lowering before redesign. |
 | Process builtin (`exec`) | Effect | Nice | Done | `codegen/builtins-hosted.ts` | `test/effects/process.test.ts` | Keep tested, but not central to Phase 1 ergonomics. |
-| `try` / `catch` / `finally` | Effect | Yes | Not done | validator + later lowering/runtime | `test/effects/exceptions.test.ts` | Important missing Phase 1 feature. |
-| `throw` | Effect | Yes | Not done | validator + later lowering/runtime | `test/effects/exceptions.test.ts` | Missing. |
-| `async` / `await` / `Promise` | Effect | Yes | Not done | later runtime + lowering | `test/effects/async.test.ts` | Important missing Phase 1 feature. |
+| `try` / `catch` / `finally` | Effect | Yes | Partial | `codegen/stmt.ts` + `runtime_exception.h` | `test/effects/exceptions.test.ts` | `try/catch` works in the narrow model; `finally` is still unsupported. |
+| `throw` | Effect | Yes | Partial | `codegen/stmt.ts` + `runtime_exception.h` | `test/effects/exceptions.test.ts` | Sync throw works and async throw can reject promises; typed error model is still narrow. |
+| `async` / `await` / `Promise` | Effect | Yes | Partial | `async-lowering.ts` + hosted runtime | `test/effects/async.test.ts` | Real hosted async works now, including direct-value await and repeated awaits on shared promise state, but `await` still blocks the current frame and state-machine lowering is still pending. |
+| Timer APIs (`setTimeout` / `setInterval`) | Effect | Yes | Partial | `builtins-timers.ts` + `runtime_timers.h` | `test/effects/timers.test.ts` | Hosted timers are libuv-backed now, but callback forms are intentionally narrow and timer promises are not implemented yet. |
 | Bare package imports | Effect | Yes | Not done | resolver + validator | `test/effects/modules.test.ts` | Current validator bug should be fixed after behavior freeze. |
 
 ## Validator Never-Allow Policy

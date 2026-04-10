@@ -73,14 +73,44 @@ TSN now supports a narrow async/await model for hosted code:
 - `async function` declarations are supported
 - `await` is supported inside async functions
 - async functions return `Promise<T>`
+- `await` on plain values works as an immediate value path
+- already-settled promises can be awaited repeatedly
 - hosted async file/process APIs are supported
+- hosted timer APIs are supported through `setTimeout` / `setInterval`
 - hosted async I/O is backed by the TSN hosted runtime on top of libuv
 
 Current limitation:
 
 - `await` currently blocks the current frame by pumping the hosted event loop until the promise settles
 - resumable state-machine lowering is not implemented yet
-- `try/catch`, timers, `fetch`, `new Promise(...)`, async arrows, and async methods are not supported yet
+- timer callbacks are intentionally narrow today:
+  - function identifiers must be zero-argument callbacks
+  - arrow callbacks must be zero-argument and capture-free
+- `fetch`, `new Promise(...)`, async arrows, and async methods are not supported yet
+- `finally` is not supported yet
+
+### Exceptions
+
+```typescript
+function main(): void {
+  try {
+    throw "boom"
+  } catch (err) {
+    console.log(err)
+  }
+}
+```
+
+TSN now supports a narrow exception model:
+
+- `throw` is supported
+- `try/catch` is supported
+- async rejection can be caught through `await`
+
+Current limitation:
+
+- `finally` is not supported yet
+- thrown values are intentionally narrow today; string-shaped errors are the supported path
 
 ### Interfaces (Structs)
 
@@ -200,7 +230,7 @@ These features are rejected at validation time with clear error messages:
 | `var` | Use `let` or `const` |
 | `Proxy` / `Reflect` | No metaprogramming |
 | `with` | Dynamic scoping |
-| `try` / `catch` | Future work |
+| `finally` | Future work |
 | Generators / `yield` | Future work |
 | Bare imports (`'lodash'`) | Only relative imports (`./path`) supported |
 

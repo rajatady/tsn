@@ -11,14 +11,15 @@
  * - Promise values share heap-backed state across copies
  * - hosted async I/O schedules libuv work and resolves that shared state later
  * - await pumps the hosted loop until the promise settles
+ * - awaited non-promise values flow through immediately
+ * - the same settled promise can be awaited repeatedly through shared state
  *
  * This gives TSN real hosted async I/O now, while the later state-machine
  * lowering work can replace the current blocking await semantics.
  *
  * Still pending:
  * - non-blocking suspension/resumption across function frames
- * - continuation queues and multi-waiter fan-out
- * - rejection flow into try/catch
+ * - full continuation queues and true concurrent multi-waiter fan-out
  * - cancellation and timers/fetch
  */
 
@@ -44,12 +45,16 @@ static inline TSPromiseState *ts_promise_alloc(size_t payload_size) {
 }
 
 static inline void ts_promise_resolve_raw(TSPromiseState *state, const void *value, size_t value_size) {
+    if (state == NULL || state->state != TS_PROMISE_PENDING)
+        return;
     if (value != NULL && value_size > 0)
         memcpy(state->payload, value, value_size);
     state->state = TS_PROMISE_FULFILLED;
 }
 
 static inline void ts_promise_reject_raw(TSPromiseState *state, Str error) {
+    if (state == NULL || state->state != TS_PROMISE_PENDING)
+        return;
     state->error = error;
     state->state = TS_PROMISE_REJECTED;
 }

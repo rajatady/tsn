@@ -48,8 +48,10 @@ import {
 } from './codegen/expr.js'
 import {
   emitAwait as emitAwaitFor,
+  wrapAsyncThrow as wrapAsyncThrowFor,
   wrapAsyncReturn as wrapAsyncReturnFor,
 } from './codegen/async-lowering.js'
+import type { CatchTarget } from './codegen/exceptions.js'
 import {
   describeParameter as describeParameterFor,
   inferFunctionReturnType as inferFunctionReturnTypeFor,
@@ -107,8 +109,10 @@ class CodeGen {
   private funcLocalVars: Map<string, string> = new Map()
   private funcTopLevelVars: Set<string> = new Set()
   private funcDeclaredSoFar: Set<string> = new Set()  // tracks declaration order for return cleanup
+  activeTryFrames: string[] = []
   currentFunctionReturnTsType: string | null = null
   currentFunctionIsAsync = false
+  currentCatchTarget: CatchTarget | null = null
   private identifierAliases: Map<string, string> = new Map()
   private hooks: HookRegistry
   private jsxBootStmts: string[] = []
@@ -351,6 +355,10 @@ class CodeGen {
 
   wrapAsyncReturn(expr: ts.Expression | null): string {
     return wrapAsyncReturnFor(this, this.currentFunctionReturnTsType ?? 'Promise<void>', expr)
+  }
+
+  wrapAsyncThrow(errorExpr: string): string {
+    return wrapAsyncThrowFor(this, this.currentFunctionReturnTsType ?? 'Promise<void>', errorExpr)
   }
 
   // ─── Statement Generation ───────────────────────────────────────

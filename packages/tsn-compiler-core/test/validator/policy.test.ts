@@ -152,7 +152,7 @@ function main(): void {
   assert.ok(messages.some(msg => msg.includes('"new Promise(...)" is not supported yet')))
 })
 
-test('validator bans try/catch for now', () => {
+test('validator allows try/catch now', () => {
   const messages = validateMessages(`
 function main(): void {
   try {
@@ -162,7 +162,22 @@ function main(): void {
   }
 }
 `)
-  assert.ok(messages.some(msg => msg.includes('try/catch is banned')))
+  assert.equal(messages.length, 0)
+})
+
+test('validator rejects finally for now', () => {
+  const messages = validateMessages(`
+function main(): void {
+  try {
+    console.log("x")
+  } catch (err) {
+    console.log("y")
+  } finally {
+    console.log("z")
+  }
+}
+`)
+  assert.ok(messages.some(msg => msg.includes('finally is not supported yet')))
 })
 
 test('validator bans generators for now', () => {

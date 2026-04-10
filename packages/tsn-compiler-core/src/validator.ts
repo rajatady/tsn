@@ -74,6 +74,26 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: '"new Promise(...)" is not supported yet — use async functions and hosted async APIs' })
     }
 
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      (node.expression.text === 'setTimeout' || node.expression.text === 'setInterval')
+    ) {
+      const callback = node.arguments[0]
+      if (!callback) {
+        errors.push({ pos: node.getStart(), message: `${node.expression.text} requires a callback` })
+      } else if (ts.isArrowFunction(callback)) {
+        if (callback.parameters.length > 0) {
+          errors.push({ pos: callback.getStart(), message: `${node.expression.text} arrow callbacks must not declare parameters` })
+        }
+      } else if (!ts.isIdentifier(callback)) {
+        errors.push({
+          pos: callback.getStart(),
+          message: `${node.expression.text} callbacks must be function identifiers or zero-argument arrow functions`,
+        })
+      }
+    }
+
     // Ban: delete operator
     if (ts.isDeleteExpression(node)) {
       errors.push({ pos: node.getStart(), message: '"delete" is banned — objects cannot change shape' })
@@ -157,9 +177,13 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       }
     }
 
-    // Ban: try/catch
-    if (node.kind === ts.SyntaxKind.TryStatement) {
-      errors.push({ pos: node.getStart(), message: 'try/catch is banned (future work)' })
+    if (ts.isTryStatement(node)) {
+      if (!node.catchClause) {
+        errors.push({ pos: node.getStart(), message: 'try statements must include a catch block' })
+      }
+      if (node.finallyBlock) {
+        errors.push({ pos: node.finallyBlock.getStart(), message: 'finally is not supported yet' })
+      }
     }
 
     // Classes: now supported via codegen

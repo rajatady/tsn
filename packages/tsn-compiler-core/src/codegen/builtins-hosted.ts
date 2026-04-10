@@ -1,6 +1,7 @@
 import * as ts from 'typescript'
 
 import type { HostedBuiltinEmitterContext } from './shared.js'
+import { emitTimerBuiltinCall } from './builtins-timers.js'
 
 // Hosted async builtins are intentionally a narrow bridge right now.
 // They make Promise<T>-returning I/O callable from TSN source without
@@ -14,13 +15,17 @@ import type { HostedBuiltinEmitterContext } from './shared.js'
 // Edge cases to tackle in later async passes:
 // - rejection/error propagation instead of current "best effort" success semantics
 // - retain/release rules for resolved Str / StrArr / future class payloads
-// - timer APIs (setTimeout/setInterval) and network I/O (fetch/Response)
+// - richer timer semantics like captured closures and delay-style promise helpers
+// - network I/O (fetch/Response)
 // - Promise<void> specialization, already-resolved awaits, and multi-await
 // - ensuring bare-metal/hosted targets do not accidentally share async APIs
 export function emitHostedBuiltinCall(
   ctx: HostedBuiltinEmitterContext,
   node: ts.CallExpression,
 ): string | null {
+  const timerBuiltin = emitTimerBuiltinCall(ctx, node)
+  if (timerBuiltin) return timerBuiltin
+
   if (!ts.isIdentifier(node.expression)) return null
 
   switch (node.expression.text) {

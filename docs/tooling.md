@@ -39,6 +39,7 @@ tsn build dashboard.tsx --debug
 - Out-of-bounds access reports: file, line, array name, index, length
 - Works with `lldb`: `breakpoint set --file dashboard.tsx --line 160`
 - Hosted async code uses the same debug path: the current `await` implementation stays on the same native thread and pumps the hosted libuv loop until settlement, so file/line mapping and crash traces remain predictable
+- Hosted timers use the same libuv loop and stay in the same native process/debugger session, so timer callbacks are debuggable with the same `lldb` and crash-trace workflow
 
 ## Dev Server (Watch Mode)
 
@@ -200,6 +201,10 @@ lldb build/dashboard
 ```
 
 For hosted async code, this still works cleanly in the current model because `await` does not yet split execution into resumable heap state machines. It blocks the current frame while driving the hosted libuv loop, so stack traces and source mapping are still direct and readable.
+
+The same is true for the current narrow `try/catch` model: exceptions use lightweight runtime frames, but they still stay close to direct native control flow. That keeps the debugger story much simpler than it would be after full async state-machine suspension lands.
+
+Hosted timers fit the same story right now. Their callbacks run through the shared libuv loop inside the same binary and can still be debugged through normal native breakpoints and crash traces, rather than through a separate inspector-only path. The same is true for the current async edge cases we now support, like immediate `await` on plain values and repeated waits on already-settled promises: they stay in direct native control flow today.
 
 ## Source Maps
 

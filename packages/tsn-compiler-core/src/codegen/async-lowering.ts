@@ -1,6 +1,7 @@
 import * as ts from 'typescript'
 
-import { promiseInnerType } from './async-types.js'
+import { isPromiseTypeName, promiseInnerType } from './async-types.js'
+import type { CatchTarget } from './exceptions.js'
 
 // Narrow async lowering v1:
 // - async functions compile to Promise<T>-returning functions immediately
@@ -17,6 +18,7 @@ export interface AsyncLoweringContext {
   exprType(node: ts.Node): string | undefined
   emitExpr(node: ts.Node): string
   tsTypeNameToC(tsType: string, fallback?: string): string
+  currentCatchTarget: CatchTarget | null
 }
 
 export function isAsyncFunction(node: ts.FunctionLikeDeclarationBase): boolean {
@@ -33,8 +35,23 @@ export function emitAwait(
   node: ts.AwaitExpression,
 ): string {
   const promiseTsType = ctx.exprType(node.expression)
+  if (!promiseTsType || !isPromiseTypeName(promiseTsType)) {
+    // Match the TypeScript/JavaScript mental model for the common value case:
+    // awaiting a non-promise is just an immediate value in the current narrow
+    // hosted async model.
+    return ctx.emitExpr(node.expression)
+  }
+
   const promiseCType = ctx.tsTypeNameToC(promiseTsType ?? 'Promise<void>')
   const innerTsType = unwrapAwaitType(promiseTsType) ?? 'void'
+
+  if (ctx.currentCatchTarget) {
+    const awaitedExpr = ctx.emitExpr(node.expression)
+    if (innerTsType === 'void') {
+      return `({ ${promiseCType} _ts_promise = ${awaitedExpr}; ts_promise_wait(_ts_promise.state); if (${promiseCType}_state(_ts_promise) == TS_PROMISE_REJECTED) { ts_exception_throw(${promiseCType}_error(_ts_promise)); } })`
+    }
+    return `({ ${promiseCType} _ts_promise = ${awaitedExpr}; ts_promise_wait(_ts_promise.state); if (${promiseCType}_state(_ts_promise) == TS_PROMISE_REJECTED) { ts_exception_throw(${promiseCType}_error(_ts_promise)); } ${promiseCType}_value(_ts_promise); })`
+  }
 
   if (innerTsType === 'void') {
     return `({ TS_AWAIT_VOID(${promiseCType}, ${ctx.emitExpr(node.expression)}); })`
@@ -65,4 +82,13 @@ export function wrapAsyncReturn(
   }
 
   return `${returnPromiseCType}_resolved(${ctx.emitExpr(expr)})`
+}
+
+export function wrapAsyncThrow(
+  ctx: AsyncLoweringContext,
+  functionReturnTsType: string,
+  errorExpr: string,
+): string {
+  const returnPromiseCType = ctx.tsTypeNameToC(functionReturnTsType, 'Promise_void')
+  return `${returnPromiseCType}_rejected(${errorExpr})`
 }

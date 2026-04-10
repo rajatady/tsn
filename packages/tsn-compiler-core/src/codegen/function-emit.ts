@@ -10,11 +10,13 @@ export interface FunctionEmitContext {
   funcLocalVars: Map<string, string>
   funcTopLevelVars: Set<string>
   funcDeclaredSoFar: Set<string>
+  activeTryFrames: string[]
   identifierAliases: Map<string, string>
   varTypes: Map<string, string>
   indent: number
   currentFunctionReturnTsType: string | null
   currentFunctionIsAsync: boolean
+  currentCatchTarget: { label: string; errorVar: string } | null
   inferFunctionReturnType(node: ts.FunctionDeclaration): { tsType: string; cType: string }
   describeParameter(p: ts.ParameterDeclaration, index: number): ParamInfo
   withStmtSink<T>(sink: string[], fn: () => T): T
@@ -66,6 +68,8 @@ export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclarat
   ctx.withStmtSink(body, () => {
     ctx.currentFunctionReturnTsType = retType
     ctx.currentFunctionIsAsync = asyncFn
+    ctx.currentCatchTarget = null
+    ctx.activeTryFrames.length = 0
     ctx.indent = 1
     for (const info of paramInfos) {
       for (const alias of info.aliases) {
@@ -77,6 +81,8 @@ export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclarat
       body.push(ctx.pad() + `return ${retCType}_resolved();`)
     }
     ctx.indent = 0
+    ctx.currentCatchTarget = null
+    ctx.activeTryFrames.length = 0
     ctx.currentFunctionReturnTsType = null
     ctx.currentFunctionIsAsync = false
   })

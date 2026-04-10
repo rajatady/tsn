@@ -151,6 +151,10 @@ export function exprType(
       if (node.expression.text === 'fileSizeAsync') return 'Promise<number>'
       if (node.expression.text === 'exec') return 'number'
       if (node.expression.text === 'execAsync') return 'Promise<number>'
+      if (node.expression.text === 'setTimeout') return 'number'
+      if (node.expression.text === 'setInterval') return 'number'
+      if (node.expression.text === 'clearTimeout') return 'void'
+      if (node.expression.text === 'clearInterval') return 'void'
     }
 
     if (ts.isPropertyAccessExpression(node.expression)) {

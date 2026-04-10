@@ -459,6 +459,7 @@ static inline OwnedStr read_stdin(void) {
 
 #include "runtime_async.h"
 #include "runtime_hosted_io.h"
+#include "runtime_timers.h"
 
 /* ─── Math ───────────────────────────────────────────────────────── */
 
@@ -467,6 +468,7 @@ static inline double ts_math_floor(double x) { return floor(x); }
 
 /* ─── Debug & Crash Handling ─────────────────────────────────────── */
 
+#include "runtime_exception.h"
 #include "debug.h"
 #include "crash.h"
 

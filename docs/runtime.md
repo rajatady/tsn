@@ -5,6 +5,8 @@ The TSN runtime is rooted at [compiler/runtime/runtime.h](/Users/kumardivyarajat
 - [runtime_loop.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_loop.h) for hosted libuv loop ownership
 - [runtime_async.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_async.h) for promise/await scaffolding
 - [runtime_hosted_io.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_hosted_io.h) for hosted file/process I/O
+- [runtime_timers.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_timers.h) for hosted timer handles and callbacks
+- [runtime_exception.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_exception.h) for narrow exception frames
 - [debug.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/debug.h) for bounds checks
 - [crash.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/crash.h) for crash traces
 
@@ -145,10 +147,29 @@ Important current limitation:
 
 - these are now event-loop-backed hosted promises
 - `await` blocks the current frame by pumping the hosted libuv loop
+- awaiting a plain non-promise value is an immediate pass-through in the current lowering
+- the same settled promise can be awaited repeatedly because the state is shared
 - rejected promises abort the process for now
 - continuation queues and resumable state-machine lowering are still future work
 
 So the runtime promise layer is real now, but it is still the narrow hosted async v1 rather than the final resumable async runtime.
+
+## Exception Runtime
+
+Narrow `throw` / `try/catch` support now uses lightweight exception frames from [runtime_exception.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_exception.h).
+
+Current model:
+
+- generated `try/catch` pushes a `TSExceptionFrame`
+- `throw` in sync code raises through `ts_exception_throw(...)`
+- `await` inside `try` raises rejected promise errors through the same path
+- uncaught errors still terminate the process
+
+Current limitation:
+
+- `finally` is not implemented
+- exception-path cleanup is still intentionally narrow
+- richer typed error objects are not implemented; string-shaped errors are the supported path
 
 ## Hosted File / Process I/O
 
@@ -175,6 +196,30 @@ The compiler currently emits async hosted wrappers on top of these helpers for:
 - `execAsync`
 
 Those async wrappers now schedule work on libuv's worker pool and settle shared promise state in the after-work callback. They are real hosted async operations now, even though `await` still blocks the current frame instead of suspending a resumable state machine.
+
+## Hosted Timers
+
+Hosted timers now live in [runtime_timers.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_timers.h).
+
+Available runtime helpers:
+
+- `ts_setTimeout`
+- `ts_setInterval`
+- `ts_clearTimeout`
+- `ts_clearInterval`
+
+Current timer model:
+
+- timers are backed by libuv `uv_timer_t` handles
+- callbacks run as plain `void(void)` native functions
+- timer IDs are numeric handles managed by the TSN runtime
+- `setInterval(..., 0)` is normalized to a real repeating tick instead of a non-repeating zero-delay handle
+
+Current limitation:
+
+- captured closures are not supported for timer callbacks
+- timer promises / delay helpers are not implemented
+- timers share the same hosted loop as async I/O, but there is no resumable async state-machine integration yet
 
 ## Output Functions
 

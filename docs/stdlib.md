@@ -175,12 +175,28 @@ declare function listDirAsync(path: string): Promise<string[]>
 declare function execAsync(cmd: string): Promise<number>
 ```
 
+The current hosted timer forms are:
+
+```typescript
+declare function setTimeout(fn: () => void, ms: number): number
+declare function setInterval(fn: () => void, ms: number): number
+declare function clearTimeout(id: number): void
+declare function clearInterval(id: number): void
+```
+
 Important limitation:
 
 - the async forms now return pending promises backed by the hosted libuv runtime
 - `await` drives them to completion by pumping the hosted event loop
+- `await` on a plain value is immediate in the current narrowing
+- already-settled promises can be awaited again
 - they are real hosted async I/O, but not yet resumable state-machine async
-- timers and `fetch` are still not available yet
+- timer callbacks are intentionally narrow today:
+  - function identifiers must take no parameters
+  - arrow callbacks must be zero-argument and capture-free
+- `fetch` is still not available yet
+
+Rejections from async functions can now be caught with `try/catch` around `await`, but the current error model is still narrow and string-shaped.
 
 ## Math
 

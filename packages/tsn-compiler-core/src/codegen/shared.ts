@@ -14,4 +14,8 @@ export type StdlibEmitterContext = BuiltinEmitterContext
 export interface HostedBuiltinEmitterContext {
   emitExpr(node: ts.Node): string
   registerPromiseType(valueCType: string): string
+  nextTempId(): number
+  lambdas: string[]
+  varTypes: Map<string, string>
+  funcSigs: Map<string, import('../../tsn-compiler-ui/src/types.js').FuncSig>
 }

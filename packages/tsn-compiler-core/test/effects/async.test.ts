@@ -10,10 +10,10 @@ import { assertIncludesAll, compileAndRunFromText, generateCFromText, validateMe
 // 2. Hosted async builtin lowering to promise-returning wrappers
 // 3. Narrow async/await lowering over hosted-loop-backed pending promises
 //
-// As async lowering lands, add cases for:
-// - repeated awaits on the same promise
-// - error/rejection propagation into try/catch
-// - future fetch/timer APIs once those surfaces exist
+// The remaining gaps to add here later are:
+// - fetch/network async once that surface exists
+// - state-machine async once blocking await is replaced
+// - broader Promise APIs if TSN ever exposes them directly
 test('codegen emits promise runtime types for promise-typed function signatures', () => {
   const cCode = generateCFromText(`
 function later(): Promise<number> {
@@ -157,6 +157,35 @@ async function save(path: string): Promise<void> {
   ])
 })
 
+test('codegen treats await on non-promises as an immediate value', () => {
+  const cCode = generateCFromText(`
+async function one(): Promise<number> {
+  const value: number = await 1
+  return value
+}
+`)
+
+  assertIncludesAll(cCode, [
+    'double value = 1;',
+    'return Promise_double_resolved(value);',
+  ])
+})
+
+test('async functions can return a promise directly without double-wrapping', () => {
+  const cCode = generateCFromText(`
+declare function readFileAsync(path: string): Promise<string>
+
+async function load(path: string): Promise<string> {
+  return readFileAsync(path)
+}
+`)
+
+  assertIncludesAll(cCode, [
+    'Promise_Str load(Str path)',
+    'return ts_readFileAsync(path);',
+  ])
+})
+
 test('async functions await hosted async I/O end to end in compiled binaries', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tsn-async-await-'))
   const filePath = join(tempDir, 'await-demo.txt')
@@ -184,6 +213,56 @@ function main(): void {
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
+})
+
+test('await on plain values, already-resolved promises, and repeated awaits all work end to end', () => {
+  const output = compileAndRunFromText(`
+async function immediateValue(): Promise<number> {
+  const value: number = await 7
+  return value
+}
+
+async function immediatePromise(): Promise<string> {
+  return "ready"
+}
+
+async function main(): Promise<void> {
+  const direct: number = await 7
+  const promise: Promise<string> = immediatePromise()
+  const first: string = await promise
+  const second: string = await promise
+  const nested: number = await immediateValue()
+  console.log(String(direct), first, second, String(nested))
+}
+`)
+
+  assertIncludesAll(output, [
+    '7',
+    'ready',
+    'ready',
+    '7',
+  ])
+})
+
+test('async functions can adopt and await the same promise multiple times in loops', () => {
+  const output = compileAndRunFromText(`
+async function ready(n: number): Promise<number> {
+  return n
+}
+
+async function main(): Promise<void> {
+  const shared: Promise<number> = ready(3)
+  let total: number = 0
+  for (let i: number = 0; i < 2; i += 1) {
+    total += await shared
+  }
+  console.log(String(total))
+}
+`)
+
+  assertIncludesAll(output, [
+    '6',
+  ])
 })
 
 test('async main is awaited by the generated entrypoint', () => {

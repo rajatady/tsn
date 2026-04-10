@@ -1,5 +1,6 @@
 import * as ts from 'typescript'
 
+import { emitThrownValue, type CatchTarget } from './exceptions.js'
 import type { ClassDef } from './types.js'
 
 export interface HookBindingEmitter {
@@ -13,10 +14,12 @@ export interface StatementEmitterContext {
   funcLocalVars: Map<string, string>
   funcTopLevelVars: Set<string>
   funcDeclaredSoFar: Set<string>
+  activeTryFrames: string[]
   classDefs: Map<string, ClassDef>
   currentClass: string | null
   currentFunctionReturnTsType: string | null
   currentFunctionIsAsync: boolean
+  currentCatchTarget: CatchTarget | null
   needsJsonParser: boolean
   jsonParseTargetType: string
   indent: number
@@ -39,6 +42,7 @@ export interface StatementEmitterContext {
   arrayCElemType(tsType: string): string
   nextTempId(): number
   wrapAsyncReturn(expr: ts.Expression | null): string
+  wrapAsyncThrow(errorExpr: string): string
 }
 
 export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: string[]): void {
@@ -203,6 +207,9 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     const returnedExpr = ctx.currentFunctionIsAsync
       ? ctx.wrapAsyncReturn(node.expression ?? null)
       : (node.expression ? ctx.emitExpr(node.expression) : null)
+    for (let i = ctx.activeTryFrames.length - 1; i >= 0; i--) {
+      out.push(ctx.pad() + `ts_exception_pop(&${ctx.activeTryFrames[i]});`)
+    }
     for (const vn of ctx.funcDeclaredSoFar) {
       if (vn === returnedVar) continue
       if (ctx.builderVars.has(vn)) continue
@@ -212,6 +219,65 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
       for (const r of releases) out.push(ctx.pad() + r)
     }
     out.push(ctx.pad() + (returnedExpr ? `return ${returnedExpr};` : 'return;'))
+    return
+  }
+
+  if (ts.isThrowStatement(node) && node.expression) {
+    const thrownExpr = emitThrownValue(ctx, node.expression)
+    if (ctx.currentCatchTarget) {
+      out.push(ctx.pad() + `ts_exception_throw(${thrownExpr});`)
+      return
+    }
+    if (ctx.currentFunctionIsAsync) {
+      out.push(ctx.pad() + `return ${ctx.wrapAsyncThrow(thrownExpr)};`)
+      return
+    }
+    out.push(ctx.pad() + `ts_exception_throw(${thrownExpr});`)
+    return
+  }
+
+  if (ts.isTryStatement(node)) {
+    const tryId = ctx.nextTempId()
+    const endLabel = `_ts_try_end_${tryId}`
+    const frameVar = `_ts_try_${tryId}`
+    out.push(ctx.pad() + `TSExceptionFrame ${frameVar};`)
+    out.push(ctx.pad() + `ts_exception_push(&${frameVar});`)
+
+    const prevCatch = ctx.currentCatchTarget
+    ctx.currentCatchTarget = { frameVar }
+    ctx.activeTryFrames.push(frameVar)
+    out.push(ctx.pad() + `if (setjmp(${frameVar}.env) == 0) {`)
+    ctx.indent++
+    emitBlock(ctx, node.tryBlock, out)
+    out.push(ctx.pad() + `ts_exception_pop(&${frameVar});`)
+    out.push(ctx.pad() + `goto ${endLabel};`)
+    ctx.indent--
+    out.push(ctx.pad() + `}`)
+    ctx.currentCatchTarget = prevCatch
+    ctx.activeTryFrames.pop()
+
+    if (node.catchClause) {
+      out.push(ctx.pad() + `else {`)
+      ctx.indent++
+      out.push(ctx.pad() + `ts_exception_pop(&${frameVar});`)
+      out.push(ctx.pad() + `{`)
+      ctx.indent++
+      const binding = node.catchClause.variableDeclaration?.name
+      if (binding && ts.isIdentifier(binding)) {
+        ctx.varTypes.set(binding.text, 'string')
+        out.push(ctx.pad() + `Str ${binding.text} = ${frameVar}.error;`)
+      }
+      emitBlock(ctx, node.catchClause.block, out)
+      if (binding && ts.isIdentifier(binding)) {
+        ctx.varTypes.delete(binding.text)
+      }
+      ctx.indent--
+      out.push(ctx.pad() + `}`)
+      ctx.indent--
+      out.push(ctx.pad() + `}`)
+    }
+
+    out.push(`${endLabel}: ;`)
     return
   }
 
