@@ -9,11 +9,10 @@ import type { HostedBuiltinEmitterContext } from './shared.js'
 // Current behavior:
 // - sync builtins lower directly to ts_* runtime helpers
 // - async builtins lower to ts_*Async helpers emitted in generated C
-// - those helpers currently resolve immediately from the sync runtime call
+// - those helpers now schedule libuv worker-pool jobs and return pending promises
 //
 // Edge cases to tackle in later async passes:
-// - actual event-loop-backed completion instead of immediate resolution
-// - rejection/error propagation instead of silent "best effort" sync wrappers
+// - rejection/error propagation instead of current "best effort" success semantics
 // - retain/release rules for resolved Str / StrArr / future class payloads
 // - timer APIs (setTimeout/setInterval) and network I/O (fetch/Response)
 // - Promise<void> specialization, already-resolved awaits, and multi-await
@@ -69,29 +68,33 @@ export function appendHostedAsyncHelpers(
   lines: string[],
   promiseTypes: Map<string, string>,
 ): void {
-  // These generated wrappers are a staging step, not the final runtime model.
-  // They exist so Promise-returning hosted APIs can be compiled and tested
-  // before await/state-machine lowering lands. Once libuv/event-loop support
-  // arrives, the helper bodies can switch from "resolve immediately" to
-  // "schedule work and resolve later" without changing the TS-facing names.
+  // These generated wrappers are the stable TS-facing bridge for hosted async I/O.
+  // The current runtime model is:
+  // - create a pending promise
+  // - schedule work onto libuv's worker pool
+  // - settle the shared promise state in the after-work callback
+  //
+  // Await still blocks the current TSN frame by pumping the hosted event loop
+  // until the promise settles. Later passes can replace that blocking wait with
+  // real state-machine suspension without changing the source-level APIs.
   const wrappers: string[] = []
 
   if (promiseTypes.has('Promise_Str')) {
-    wrappers.push('static inline Promise_Str ts_readFileAsync(Str path) { return Promise_Str_resolved(ts_readFile(path)); }')
+    wrappers.push('static inline Promise_Str ts_readFileAsync(Str path) { Promise_Str _p = Promise_Str_pending(); ts_schedule_read_file(_p.state, path); return _p; }')
   }
   if (promiseTypes.has('Promise_void')) {
-    wrappers.push('static inline Promise_void ts_writeFileAsync(Str path, Str content) { ts_writeFile(path, content); return Promise_void_resolved(); }')
-    wrappers.push('static inline Promise_void ts_appendFileAsync(Str path, Str content) { ts_appendFile(path, content); return Promise_void_resolved(); }')
+    wrappers.push('static inline Promise_void ts_writeFileAsync(Str path, Str content) { Promise_void _p = Promise_void_pending(); ts_schedule_write_file(_p.state, path, content, false); return _p; }')
+    wrappers.push('static inline Promise_void ts_appendFileAsync(Str path, Str content) { Promise_void _p = Promise_void_pending(); ts_schedule_write_file(_p.state, path, content, true); return _p; }')
   }
   if (promiseTypes.has('Promise_bool')) {
-    wrappers.push('static inline Promise_bool ts_fileExistsAsync(Str path) { return Promise_bool_resolved(ts_fileExists(path)); }')
+    wrappers.push('static inline Promise_bool ts_fileExistsAsync(Str path) { Promise_bool _p = Promise_bool_pending(); ts_schedule_file_exists(_p.state, path); return _p; }')
   }
   if (promiseTypes.has('Promise_double')) {
-    wrappers.push('static inline Promise_double ts_fileSizeAsync(Str path) { return Promise_double_resolved(ts_fileSize(path)); }')
-    wrappers.push('static inline Promise_double ts_execAsync(Str cmd) { return Promise_double_resolved(ts_exec(cmd)); }')
+    wrappers.push('static inline Promise_double ts_fileSizeAsync(Str path) { Promise_double _p = Promise_double_pending(); ts_schedule_file_size(_p.state, path); return _p; }')
+    wrappers.push('static inline Promise_double ts_execAsync(Str cmd) { Promise_double _p = Promise_double_pending(); ts_schedule_exec(_p.state, cmd); return _p; }')
   }
   if (promiseTypes.has('Promise_StrArr')) {
-    wrappers.push('static inline Promise_StrArr ts_listDirAsync(Str path) { return Promise_StrArr_resolved(ts_listDir(path)); }')
+    wrappers.push('static inline Promise_StrArr ts_listDirAsync(Str path) { Promise_StrArr _p = Promise_StrArr_pending(); ts_schedule_list_dir(_p.state, path); return _p; }')
   }
 
   if (wrappers.length > 0) {

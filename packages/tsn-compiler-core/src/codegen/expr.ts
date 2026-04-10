@@ -42,6 +42,13 @@ export function emitPropAccess(ctx: ExprEmitterContext, node: ts.PropertyAccessE
   }
 
   const objType = ctx.exprType(node.expression)
+  if (objType?.startsWith('Promise<')) {
+    const promiseCType = ctx.tsTypeNameToC(objType, 'Promise_void')
+    const obj = ctx.emitExpr(node.expression)
+    if (prop === 'state') return `${promiseCType}_state(${obj})`
+    if (prop === 'error') return `${promiseCType}_error(${obj})`
+    if (prop === 'value') return `${promiseCType}_value(${obj})`
+  }
   if (objType && ctx.classDefs.has(objType)) {
     if (node.expression.kind === ts.SyntaxKind.ThisKeyword) {
       return `self->${prop}`

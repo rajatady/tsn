@@ -73,6 +73,9 @@ export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclarat
       }
     }
     for (const s of node.body!.statements) ctx.emitStmt(s, body)
+    if (asyncFn && retType === 'Promise<void>') {
+      body.push(ctx.pad() + `return ${retCType}_resolved();`)
+    }
     ctx.indent = 0
     ctx.currentFunctionReturnTsType = null
     ctx.currentFunctionIsAsync = false

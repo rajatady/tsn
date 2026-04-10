@@ -122,6 +122,36 @@ async function main(): number {
   assert.ok(messages.some(msg => msg.includes('async functions must return Promise<T>')))
 })
 
+test('validator rejects async arrow functions for now', () => {
+  const messages = validateMessages(`
+const run = async (): Promise<number> => {
+  return 1
+}
+`)
+  assert.ok(messages.some(msg => msg.includes('async arrow functions are not supported yet')))
+})
+
+test('validator rejects async methods for now', () => {
+  const messages = validateMessages(`
+class Worker {
+  async run(): Promise<number> {
+    return 1
+  }
+}
+`)
+  assert.ok(messages.some(msg => msg.includes('async class/object methods are not supported yet')))
+})
+
+test('validator rejects new Promise for now', () => {
+  const messages = validateMessages(`
+function main(): void {
+  const p = new Promise((resolve) => resolve(1))
+  console.log(String(p))
+}
+`)
+  assert.ok(messages.some(msg => msg.includes('"new Promise(...)" is not supported yet')))
+})
+
 test('validator bans try/catch for now', () => {
   const messages = validateMessages(`
 function main(): void {

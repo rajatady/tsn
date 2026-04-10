@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import * as ts from 'typescript'
 
 import { generateCSingle } from '../src/codegen.js'
+import { ensureLibuvStaticLibrary } from '../src/libuv.js'
 import { validate } from '../src/validator.js'
 
 export function sourceFromText(
@@ -38,12 +39,17 @@ export function compileAndRunFromText(text: string, fileName = '/virtual/test.ts
   const tempDir = mkdtempSync(join(tmpdir(), 'tsn-compiler-core-'))
   const cPath = join(tempDir, 'program.c')
   const binPath = join(tempDir, 'program')
+  const libuvLib = ensureLibuvStaticLibrary(resolve('.'))
   writeFileSync(cPath, cCode)
   try {
-    execFileSync('clang', ['-O0', '-o', binPath, cPath, '-lm', '-I', resolve('compiler/runtime')], {
-      cwd: resolve('.'),
-      stdio: 'pipe',
-    })
+    execFileSync(
+      'clang',
+      ['-O0', '-o', binPath, cPath, libuvLib, '-lm', '-I', resolve('compiler/runtime'), '-I', resolve('vendor/libuv/include')],
+      {
+        cwd: resolve('.'),
+        stdio: 'pipe',
+      },
+    )
     return execFileSync(binPath, { cwd: resolve('.'), stdio: 'pipe', encoding: 'utf8' })
   } finally {
     rmSync(tempDir, { recursive: true, force: true })

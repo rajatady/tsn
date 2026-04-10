@@ -66,18 +66,26 @@ TSN should support TypeScript async syntax first, without taking on the full sem
 
 #### Runtime model
 
-Hosted TSN async needs a real event loop.
+Hosted TSN async now has a real event-loop-backed foundation.
 
-The clean shape is:
+The current shape is:
+
+- compiler lowers `async function` declarations to `Promise<T>`-returning native functions
+- hosted async I/O returns pending promise carriers backed by shared heap state
+- runtime schedules file/process work on libuv's worker pool
+- `await` blocks the current TSN frame by pumping the hosted libuv loop until the promise settles
+- completion settles the shared promise state and the waiting frame continues
+
+This is intentionally an intermediate step. It gives TSN real hosted async behavior now, while deferring the larger compiler work for resumable state machines.
+
+The next runtime shape is still:
 
 - compiler lowers each `async function` into a resumable state machine
-- runtime owns promise/task objects
 - runtime owns continuation queues
-- runtime owns timer, file, network, and process completion callbacks
-- `await` suspends the current state machine and registers a continuation
+- `await` suspends instead of blocking the current frame
 - completion resumes the state machine
 
-This should be built on a hosted event-loop runtime. libuv is the most sensible default for the hosted target because it gives TSN:
+libuv is now the hosted runtime substrate because it gives TSN:
 
 - timers
 - async file I/O
@@ -150,13 +158,14 @@ These are the async edge cases that matter immediately:
 - [x] Unban `async` / `await` in the validator behind real support, not optimism
 - [x] Decide the exact TSN `Promise<T>` runtime contract
 - [x] Decide whether `Promise<T>` is opaque and minimal in v1
-- [ ] Specify the exact unsupported Promise features for v1
+- [x] Specify the exact unsupported Promise features for v1
 - [x] Add an async design doc for lowering and runtime behavior
 - [x] Split compiler async work into dedicated files instead of one blob
-- [ ] Implement compiler lowering of `async function` into state machines
-- [ ] Implement `await` suspension and resumption semantics
+- [ ] Implement compiler lowering of `async function` into resumable state machines
+- [x] Implement blocking hosted `await` semantics over the runtime event loop
 - [x] Implement runtime promise/task object
-- [ ] Implement event-loop integration for hosted async runtime
+- [x] Implement event-loop integration for hosted async runtime
+- [x] Vendor libuv and add it to the build pipeline
 - [ ] Wire timer support around `setTimeout` / `setInterval`
 - [x] Add async file I/O APIs
 - [ ] Add `fetch`-style network I/O API
@@ -182,35 +191,50 @@ What is now implemented:
   - `fileSizeAsync(path): Promise<number>`
   - `listDirAsync(path): Promise<string[]>`
   - `execAsync(cmd): Promise<number>`
+- hosted async I/O is now libuv-backed instead of immediate-resolution wrappers
+- vendored libuv is now built as part of the normal TSN toolchain
 - the compiler/runtime split is preserved:
   - compiler-side promise typing and hosted async lowering live in dedicated split files
   - runtime async scaffolding and hosted I/O live in dedicated runtime headers instead of expanding `runtime.h` into a second god file
 - there is now an integration-style test proving current behavior:
-  - the hosted async builtins resolve immediately today because they are wrappers over the existing synchronous hosted runtime
+  - async builtins return pending promises before `await`
+  - `await` drives them to completion by pumping the hosted libuv loop
 
 What is now implemented beyond the foundation:
 
 - `async function` now compiles in the current narrow hosted model
 - `await` now compiles in the current narrow hosted model
 - async functions return `Promise<T>` and wrap final values correctly
-- `await` unwraps the current promise carrier immediately
+- `await` blocks the current frame until the hosted promise settles
+- async `main` is awaited by the generated native entrypoint
+- debug and conformance harnesses still pass with hosted async enabled
 - integration-style tests now prove real end-to-end async function behavior
 
 What is intentionally not implemented yet:
 
-- real suspension / resumption
+- resumable state-machine lowering
 - continuation queues
-- event loop integration
 - timer APIs
 - `fetch`
 - async rejection flow into `try/catch`
+- async arrows, async function expressions, and async methods
+- `new Promise(...)`
+
+What is intentionally supported but still narrow:
+
+- only async function declarations are supported today
+- `await` currently blocks by pumping the hosted libuv loop instead of suspending the frame
+- promise rejection currently aborts, because `try/catch` is still missing
+- async I/O is currently file/process-only
+- timer and `fetch` APIs are still pending
 
 So the async situation is:
 
 The foundation is real and working.
 The first narrow async language pass is also real and working.
+The first hosted libuv runtime pass is also real and working.
 
-That means TSN now supports user-facing TypeScript async syntax in the synchronous-hosted path, but it does not yet support true event-loop-backed async semantics.
+That means TSN now supports user-facing TypeScript async syntax in a real hosted async path, but it does not yet support resumable state machines, timer/fetch APIs, or async error handling through `try/catch`.
 
 ### 2. `try/catch` and `throw`
 

@@ -376,8 +376,6 @@ static inline double ts_parse_int(Str s) {
 DEFINE_ARRAY(StrArr, Str)
 DEFINE_ARRAY(DoubleArr, double)
 
-#include "runtime_async.h"
-
 static inline StrArr str_split(Str s, Str sep) {
     StrArr out = StrArr_new();
     if (sep.len == 0) {
@@ -459,6 +457,7 @@ static inline OwnedStr read_stdin(void) {
     return (OwnedStr){ buf, len };
 }
 
+#include "runtime_async.h"
 #include "runtime_hosted_io.h"
 
 /* ─── Math ───────────────────────────────────────────────────────── */

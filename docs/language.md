@@ -15,6 +15,7 @@ Every value has a known type at compile time. No `any`, no `unknown`, no type as
 | `void` | `void` | 0 | Return type only |
 | `T[]` | `TArr` | 12 bytes | Refcounted dynamic array |
 | `interface T` | `struct T` | Sum of fields | Passed by value |
+| `Promise<T>` | `Promise_*` | runtime struct | Narrow hosted async carrier |
 
 ### Array Type Names
 
@@ -55,6 +56,32 @@ Arrays and structs are passed by value. If a helper may grow an array with
 `push()`, return the updated array and reassign it at the callsite instead of
 assuming the callee can update the caller's array header in place.
 
+### Async Functions
+
+```typescript
+declare function writeFileAsync(path: string, content: string): Promise<void>
+declare function readFileAsync(path: string): Promise<string>
+
+async function load(path: string): Promise<string> {
+  await writeFileAsync(path, "hello")
+  return await readFileAsync(path)
+}
+```
+
+TSN now supports a narrow async/await model for hosted code:
+
+- `async function` declarations are supported
+- `await` is supported inside async functions
+- async functions return `Promise<T>`
+- hosted async file/process APIs are supported
+- hosted async I/O is backed by the TSN hosted runtime on top of libuv
+
+Current limitation:
+
+- `await` currently blocks the current frame by pumping the hosted event loop until the promise settles
+- resumable state-machine lowering is not implemented yet
+- `try/catch`, timers, `fetch`, `new Promise(...)`, async arrows, and async methods are not supported yet
+
 ### Interfaces (Structs)
 
 ```typescript
@@ -74,6 +101,24 @@ const emp: Employee = {
 ```
 
 Interfaces compile to C structs. They're passed by value. Only data fields are supported (no methods).
+
+### Classes
+
+```typescript
+class Counter {
+  value: number
+
+  constructor(initial: number) {
+    this.value = initial
+  }
+
+  inc(): void {
+    this.value = this.value + 1
+  }
+}
+```
+
+Classes are supported as reference-like objects with constructors, fields, methods, `this`, and narrow generic-class support. Inheritance, async methods, and a complete visibility model are not fully supported yet.
 
 ### Control Flow
 
@@ -155,21 +200,26 @@ These features are rejected at validation time with clear error messages:
 | `var` | Use `let` or `const` |
 | `Proxy` / `Reflect` | No metaprogramming |
 | `with` | Dynamic scoping |
-| Classes | Use interfaces + functions |
-| `async` / `await` | Future work |
 | `try` / `catch` | Future work |
 | Generators / `yield` | Future work |
 | Bare imports (`'lodash'`) | Only relative imports (`./path`) supported |
 
+Additional async restrictions for now:
+
+- `new Promise(...)`
+- async arrow functions
+- async function expressions
+- async class/object methods
+
 ## Idioms
 
-### No closures — use parameters
+### General closures are still limited
 
 ```typescript
-// BAD: closure captures variable
+// Still not generally supported:
 // const handler = () => { doSomething(capturedVar) }
 
-// GOOD: pass data via function parameters
+// Good default: pass data via function parameters
 function onDeptClick(tag: number): void {
   deptFilterIdx = tag
   applyFilters()

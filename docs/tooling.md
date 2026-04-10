@@ -38,6 +38,7 @@ tsn build dashboard.tsx --debug
 - Array access uses `ARRAY_GET()` / `ARRAY_SET()` macros
 - Out-of-bounds access reports: file, line, array name, index, length
 - Works with `lldb`: `breakpoint set --file dashboard.tsx --line 160`
+- Hosted async code uses the same debug path: the current `await` implementation stays on the same native thread and pumps the hosted libuv loop until settlement, so file/line mapping and crash traces remain predictable
 
 ## Dev Server (Watch Mode)
 
@@ -52,6 +53,7 @@ tsn dev dashboard.tsx
 - Shows which file changed and compile time per rebuild
 - Detects crash signals and reports them (SIGSEGV, SIGABRT)
 - For UI apps: saves and restores window geometry across restarts
+- Rebuilds and relinks vendored runtime dependencies like Yoga/libuv through the same compiler package pipeline
 
 Output:
 ```
@@ -119,6 +121,8 @@ Query running UI apps via Unix socket. When a single app is running, the inspect
 The inspector commands are synchronous now: `click` and `type` only return after the main-thread interaction has been applied. This makes screenshot- and state-based verification reliable in automated checks.
 
 The default UI verification path now includes the native gallery app at [conformance/gallery.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/conformance/gallery.tsx). `bash harness/ui-conformance.sh` builds it, launches it, drives it through the inspector, and writes screenshots plus tree dumps to `/tmp/tsn-ui-conformance`.
+
+That matters for debugging too: the inspector path is part of the maintained verification loop, not an extra tool that only works in demos. Release and debug GUI builds go through `bash harness/gui-builds.sh`, and inspector-driven UI verification goes through `bash harness/ui-conformance.sh`.
 
 The repo also has two additional UI verification entrypoints:
 
@@ -194,6 +198,8 @@ lldb build/dashboard
 (lldb) breakpoint set --file dashboard.tsx --line 160
 (lldb) run
 ```
+
+For hosted async code, this still works cleanly in the current model because `await` does not yet split execution into resumable heap state machines. It blocks the current frame while driving the hosted libuv loop, so stack traces and source mapping are still direct and readable.
 
 ## Source Maps
 

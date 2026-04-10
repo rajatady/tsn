@@ -149,6 +149,39 @@ console.log("Total: " + String(count) + " items")
 // prints 3 pieces directly, no intermediate string
 ```
 
+## Hosted File and Process Builtins
+
+The current hosted builtins are available without imports:
+
+```typescript
+declare function readFile(path: string): string
+declare function writeFile(path: string, content: string): void
+declare function appendFile(path: string, content: string): void
+declare function fileExists(path: string): boolean
+declare function fileSize(path: string): number
+declare function listDir(path: string): string[]
+declare function exec(cmd: string): number
+```
+
+The current hosted async forms are:
+
+```typescript
+declare function readFileAsync(path: string): Promise<string>
+declare function writeFileAsync(path: string, content: string): Promise<void>
+declare function appendFileAsync(path: string, content: string): Promise<void>
+declare function fileExistsAsync(path: string): Promise<boolean>
+declare function fileSizeAsync(path: string): Promise<number>
+declare function listDirAsync(path: string): Promise<string[]>
+declare function execAsync(cmd: string): Promise<number>
+```
+
+Important limitation:
+
+- the async forms now return pending promises backed by the hosted libuv runtime
+- `await` drives them to completion by pumping the hosted event loop
+- they are real hosted async I/O, but not yet resumable state-machine async
+- timers and `fetch` are still not available yet
+
 ## Math
 
 | Method | Signature |

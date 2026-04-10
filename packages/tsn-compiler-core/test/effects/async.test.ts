@@ -8,7 +8,7 @@ import { assertIncludesAll, compileAndRunFromText, generateCFromText, validateMe
 // This suite is intentionally testing the async foundation in layers:
 // 1. Promise<T> type/runtime emission
 // 2. Hosted async builtin lowering to promise-returning wrappers
-// 3. Narrow async/await lowering over immediately-resolved promises
+// 3. Narrow async/await lowering over hosted-loop-backed pending promises
 //
 // As async lowering lands, add cases for:
 // - repeated awaits on the same promise
@@ -60,10 +60,10 @@ function copy(path: string): Promise<void> {
     'DEFINE_PROMISE(Promise_Str, Str)',
     'DEFINE_PROMISE(Promise_StrArr, StrArr)',
     'DEFINE_PROMISE_VOID(Promise_void)',
-    'static inline Promise_Str ts_readFileAsync(Str path) { return Promise_Str_resolved(ts_readFile(path)); }',
-    'static inline Promise_void ts_writeFileAsync(Str path, Str content) { ts_writeFile(path, content); return Promise_void_resolved(); }',
-    'static inline Promise_void ts_appendFileAsync(Str path, Str content) { ts_appendFile(path, content); return Promise_void_resolved(); }',
-    'static inline Promise_StrArr ts_listDirAsync(Str path) { return Promise_StrArr_resolved(ts_listDir(path)); }',
+    'static inline Promise_Str ts_readFileAsync(Str path) { Promise_Str _p = Promise_Str_pending(); ts_schedule_read_file(_p.state, path); return _p; }',
+    'static inline Promise_void ts_writeFileAsync(Str path, Str content) { Promise_void _p = Promise_void_pending(); ts_schedule_write_file(_p.state, path, content, false); return _p; }',
+    'static inline Promise_void ts_appendFileAsync(Str path, Str content) { Promise_void _p = Promise_void_pending(); ts_schedule_write_file(_p.state, path, content, true); return _p; }',
+    'static inline Promise_StrArr ts_listDirAsync(Str path) { Promise_StrArr _p = Promise_StrArr_pending(); ts_schedule_list_dir(_p.state, path); return _p; }',
     'ts_readFileAsync(path)',
     'ts_writeFileAsync(path, str_lit("hello"))',
     'ts_appendFileAsync(path, str_lit(" world"))',
@@ -88,16 +88,16 @@ function inspect(path: string): Promise<number> {
   assertIncludesAll(cCode, [
     'DEFINE_PROMISE(Promise_bool, bool)',
     'DEFINE_PROMISE(Promise_double, double)',
-    'static inline Promise_bool ts_fileExistsAsync(Str path) { return Promise_bool_resolved(ts_fileExists(path)); }',
-    'static inline Promise_double ts_fileSizeAsync(Str path) { return Promise_double_resolved(ts_fileSize(path)); }',
-    'static inline Promise_double ts_execAsync(Str cmd) { return Promise_double_resolved(ts_exec(cmd)); }',
+    'static inline Promise_bool ts_fileExistsAsync(Str path) { Promise_bool _p = Promise_bool_pending(); ts_schedule_file_exists(_p.state, path); return _p; }',
+    'static inline Promise_double ts_fileSizeAsync(Str path) { Promise_double _p = Promise_double_pending(); ts_schedule_file_size(_p.state, path); return _p; }',
+    'static inline Promise_double ts_execAsync(Str cmd) { Promise_double _p = Promise_double_pending(); ts_schedule_exec(_p.state, cmd); return _p; }',
     'ts_fileExistsAsync(path)',
     'ts_fileSizeAsync(path)',
     'ts_execAsync(str_lit("true"))',
   ])
 })
 
-test('hosted async builtin wrappers behave synchronously today in compiled binaries', () => {
+test('hosted async builtin wrappers return pending promises before await', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tsn-async-io-'))
   const filePath = join(tempDir, 'demo.txt')
   try {
@@ -110,21 +110,21 @@ function main(): void {
   const write: Promise<void> = writeFileAsync(${JSON.stringify(filePath)}, "hello")
   const read: Promise<string> = readFileAsync(${JSON.stringify(filePath)})
   const size: Promise<number> = fileSizeAsync(${JSON.stringify(filePath)})
-  console.log(String(write.state), read.value, String(size.value))
+  console.log(String(write.state), String(read.state), String(size.state))
 }
 `)
 
     assertIncludesAll(output, [
-      '1',
-      'hello',
-      '5',
+      '0',
+      '0',
+      '0',
     ])
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
 })
 
-test('codegen lowers async functions and await into immediate promise operations', () => {
+test('codegen lowers async functions and await into hosted-loop waits', () => {
   const cCode = generateCFromText(`
 declare function readFileAsync(path: string): Promise<string>
 
@@ -141,7 +141,23 @@ async function load(path: string): Promise<string> {
   ])
 })
 
-test('async functions behave synchronously today in compiled binaries', () => {
+test('codegen adds an implicit resolved return for async Promise<void> functions', () => {
+  const cCode = generateCFromText(`
+declare function writeFileAsync(path: string, content: string): Promise<void>
+
+async function save(path: string): Promise<void> {
+  await writeFileAsync(path, "done")
+}
+`)
+
+  assertIncludesAll(cCode, [
+    'Promise_void save(Str path)',
+    'TS_AWAIT_VOID(Promise_void, ts_writeFileAsync(path, str_lit("done")));',
+    'return Promise_void_resolved();',
+  ])
+})
+
+test('async functions await hosted async I/O end to end in compiled binaries', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'tsn-async-await-'))
   const filePath = join(tempDir, 'await-demo.txt')
   try {
@@ -164,6 +180,29 @@ function main(): void {
     assertIncludesAll(output, [
       '1',
       'hello async',
+    ])
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('async main is awaited by the generated entrypoint', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tsn-async-main-'))
+  const filePath = join(tempDir, 'main-demo.txt')
+  try {
+    const output = compileAndRunFromText(`
+declare function writeFileAsync(path: string, content: string): Promise<void>
+declare function readFileAsync(path: string): Promise<string>
+
+async function main(): Promise<void> {
+  await writeFileAsync(${JSON.stringify(filePath)}, "entrypoint async")
+  const text: string = await readFileAsync(${JSON.stringify(filePath)})
+  console.log(text)
+}
+`)
+
+    assertIncludesAll(output, [
+      'entrypoint async',
     ])
   } finally {
     rmSync(tempDir, { recursive: true, force: true })

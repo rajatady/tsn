@@ -60,6 +60,20 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: '"new Function()" is banned' })
     }
 
+    // Narrow async v1 only supports async function declarations.
+    if (ts.isArrowFunction(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
+      errors.push({ pos: node.getStart(), message: 'async arrow functions are not supported yet' })
+    }
+    if (ts.isFunctionExpression(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
+      errors.push({ pos: node.getStart(), message: 'async function expressions are not supported yet' })
+    }
+    if (ts.isMethodDeclaration(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
+      errors.push({ pos: node.getStart(), message: 'async class/object methods are not supported yet' })
+    }
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Promise') {
+      errors.push({ pos: node.getStart(), message: '"new Promise(...)" is not supported yet — use async functions and hosted async APIs' })
+    }
+
     // Ban: delete operator
     if (ts.isDeleteExpression(node)) {
       errors.push({ pos: node.getStart(), message: '"delete" is banned — objects cannot change shape' })

@@ -107,4 +107,202 @@ static inline double ts_exec(Str cmd) {
     return (double)system(cmdbuf);
 }
 
+/* ─── Hosted Async Scheduling (libuv-backed) ───────────────────── */
+
+static inline char *ts_owned_cstr(Str s) {
+    char *buf = (char *)malloc((size_t)s.len + 1);
+    memcpy(buf, s.data, s.len);
+    buf[s.len] = '\0';
+    return buf;
+}
+
+typedef struct {
+    uv_work_t work;
+    TSPromiseState *promise;
+    char *path;
+    Str result;
+} TSReadFileAsyncReq;
+
+typedef struct {
+    uv_work_t work;
+    TSPromiseState *promise;
+    char *path;
+    char *content;
+    size_t content_len;
+    bool append;
+} TSWriteFileAsyncReq;
+
+typedef struct {
+    uv_work_t work;
+    TSPromiseState *promise;
+    char *path;
+    bool result;
+} TSFileExistsAsyncReq;
+
+typedef struct {
+    uv_work_t work;
+    TSPromiseState *promise;
+    char *path;
+    double result;
+} TSFileSizeAsyncReq;
+
+typedef struct {
+    uv_work_t work;
+    TSPromiseState *promise;
+    char *path;
+    StrArr result;
+} TSListDirAsyncReq;
+
+typedef struct {
+    uv_work_t work;
+    TSPromiseState *promise;
+    char *cmd;
+    double result;
+} TSExecAsyncReq;
+
+static void ts_async_read_file_work(uv_work_t *work) {
+    TSReadFileAsyncReq *req = (TSReadFileAsyncReq *)work->data;
+    Str path = str_from(req->path, (int)strlen(req->path));
+    req->result = ts_readFile(path);
+}
+
+static void ts_async_read_file_done(uv_work_t *work, int status) {
+    TSReadFileAsyncReq *req = (TSReadFileAsyncReq *)work->data;
+    (void)status;
+    ts_promise_resolve_raw(req->promise, &req->result, sizeof(Str));
+    free(req->path);
+    free(req);
+}
+
+static inline void ts_schedule_read_file(TSPromiseState *promise, Str path) {
+    TSReadFileAsyncReq *req = (TSReadFileAsyncReq *)malloc(sizeof(TSReadFileAsyncReq));
+    memset(req, 0, sizeof(TSReadFileAsyncReq));
+    req->promise = promise;
+    req->path = ts_owned_cstr(path);
+    req->work.data = req;
+    uv_queue_work(ts_uv_loop(), &req->work, ts_async_read_file_work, ts_async_read_file_done);
+}
+
+static void ts_async_write_file_work(uv_work_t *work) {
+    TSWriteFileAsyncReq *req = (TSWriteFileAsyncReq *)work->data;
+    FILE *f = fopen(req->path, req->append ? "ab" : "wb");
+    if (f) {
+        fwrite(req->content, 1, req->content_len, f);
+        fclose(f);
+    }
+}
+
+static void ts_async_write_file_done(uv_work_t *work, int status) {
+    TSWriteFileAsyncReq *req = (TSWriteFileAsyncReq *)work->data;
+    (void)status;
+    ts_promise_resolve_raw(req->promise, NULL, 0);
+    free(req->path);
+    free(req->content);
+    free(req);
+}
+
+static inline void ts_schedule_write_file(TSPromiseState *promise, Str path, Str content, bool append) {
+    TSWriteFileAsyncReq *req = (TSWriteFileAsyncReq *)malloc(sizeof(TSWriteFileAsyncReq));
+    memset(req, 0, sizeof(TSWriteFileAsyncReq));
+    req->promise = promise;
+    req->path = ts_owned_cstr(path);
+    req->content = ts_owned_cstr(content);
+    req->content_len = (size_t)content.len;
+    req->append = append;
+    req->work.data = req;
+    uv_queue_work(ts_uv_loop(), &req->work, ts_async_write_file_work, ts_async_write_file_done);
+}
+
+static void ts_async_file_exists_work(uv_work_t *work) {
+    TSFileExistsAsyncReq *req = (TSFileExistsAsyncReq *)work->data;
+    Str path = str_from(req->path, (int)strlen(req->path));
+    req->result = ts_fileExists(path);
+}
+
+static void ts_async_file_exists_done(uv_work_t *work, int status) {
+    TSFileExistsAsyncReq *req = (TSFileExistsAsyncReq *)work->data;
+    (void)status;
+    ts_promise_resolve_raw(req->promise, &req->result, sizeof(bool));
+    free(req->path);
+    free(req);
+}
+
+static inline void ts_schedule_file_exists(TSPromiseState *promise, Str path) {
+    TSFileExistsAsyncReq *req = (TSFileExistsAsyncReq *)malloc(sizeof(TSFileExistsAsyncReq));
+    memset(req, 0, sizeof(TSFileExistsAsyncReq));
+    req->promise = promise;
+    req->path = ts_owned_cstr(path);
+    req->work.data = req;
+    uv_queue_work(ts_uv_loop(), &req->work, ts_async_file_exists_work, ts_async_file_exists_done);
+}
+
+static void ts_async_file_size_work(uv_work_t *work) {
+    TSFileSizeAsyncReq *req = (TSFileSizeAsyncReq *)work->data;
+    Str path = str_from(req->path, (int)strlen(req->path));
+    req->result = ts_fileSize(path);
+}
+
+static void ts_async_file_size_done(uv_work_t *work, int status) {
+    TSFileSizeAsyncReq *req = (TSFileSizeAsyncReq *)work->data;
+    (void)status;
+    ts_promise_resolve_raw(req->promise, &req->result, sizeof(double));
+    free(req->path);
+    free(req);
+}
+
+static inline void ts_schedule_file_size(TSPromiseState *promise, Str path) {
+    TSFileSizeAsyncReq *req = (TSFileSizeAsyncReq *)malloc(sizeof(TSFileSizeAsyncReq));
+    memset(req, 0, sizeof(TSFileSizeAsyncReq));
+    req->promise = promise;
+    req->path = ts_owned_cstr(path);
+    req->work.data = req;
+    uv_queue_work(ts_uv_loop(), &req->work, ts_async_file_size_work, ts_async_file_size_done);
+}
+
+static void ts_async_list_dir_work(uv_work_t *work) {
+    TSListDirAsyncReq *req = (TSListDirAsyncReq *)work->data;
+    Str path = str_from(req->path, (int)strlen(req->path));
+    req->result = ts_listDir(path);
+}
+
+static void ts_async_list_dir_done(uv_work_t *work, int status) {
+    TSListDirAsyncReq *req = (TSListDirAsyncReq *)work->data;
+    (void)status;
+    ts_promise_resolve_raw(req->promise, &req->result, sizeof(StrArr));
+    free(req->path);
+    free(req);
+}
+
+static inline void ts_schedule_list_dir(TSPromiseState *promise, Str path) {
+    TSListDirAsyncReq *req = (TSListDirAsyncReq *)malloc(sizeof(TSListDirAsyncReq));
+    memset(req, 0, sizeof(TSListDirAsyncReq));
+    req->promise = promise;
+    req->path = ts_owned_cstr(path);
+    req->work.data = req;
+    uv_queue_work(ts_uv_loop(), &req->work, ts_async_list_dir_work, ts_async_list_dir_done);
+}
+
+static void ts_async_exec_work(uv_work_t *work) {
+    TSExecAsyncReq *req = (TSExecAsyncReq *)work->data;
+    Str cmd = str_from(req->cmd, (int)strlen(req->cmd));
+    req->result = ts_exec(cmd);
+}
+
+static void ts_async_exec_done(uv_work_t *work, int status) {
+    TSExecAsyncReq *req = (TSExecAsyncReq *)work->data;
+    (void)status;
+    ts_promise_resolve_raw(req->promise, &req->result, sizeof(double));
+    free(req->cmd);
+    free(req);
+}
+
+static inline void ts_schedule_exec(TSPromiseState *promise, Str cmd) {
+    TSExecAsyncReq *req = (TSExecAsyncReq *)malloc(sizeof(TSExecAsyncReq));
+    memset(req, 0, sizeof(TSExecAsyncReq));
+    req->promise = promise;
+    req->cmd = ts_owned_cstr(cmd);
+    req->work.data = req;
+    uv_queue_work(ts_uv_loop(), &req->work, ts_async_exec_work, ts_async_exec_done);
+}
+
 #endif /* TSN_RUNTIME_HOSTED_IO_H */

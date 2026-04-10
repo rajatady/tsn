@@ -149,6 +149,7 @@ export function assembleProgram(
   }
 
   if (ctx.funcSigs.has('main')) {
+    const mainSig = ctx.funcSigs.get('main')
     const initLines: string[] = []
     for (const sf of sourceFiles) {
       if (sf === entryFile) continue
@@ -193,7 +194,19 @@ export function assembleProgram(
     lines.push('int main(int argc, char **argv) {')
     lines.push('    ts_install_crash_handler(argv[0]);')
     if (initLines.length > 0) lines.push('    _ts_init_globals();')
-    lines.push('    ts_main();')
+    if (mainSig?.returnType.startsWith('Promise<')) {
+      const mainReturnCType = mainSig.returnCType.startsWith('struct ')
+        ? mainSig.returnCType.replace('struct ', '')
+        : mainSig.returnCType
+      lines.push(`    ${mainReturnCType} _main_result = ts_main();`)
+      if (mainSig.returnType === 'Promise<void>') {
+        lines.push(`    TS_AWAIT_VOID(${mainReturnCType}, _main_result);`)
+      } else {
+        lines.push(`    (void)TS_AWAIT(${mainReturnCType}, _main_result);`)
+      }
+    } else {
+      lines.push('    ts_main();')
+    }
     lines.push('    return 0;')
     lines.push('}')
   }
