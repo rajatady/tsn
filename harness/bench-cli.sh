@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 JS_STDLIB_SHIM="$(pwd)/harness/js-stdlib-shim.cjs"
 
 echo "╔═══════════════════════════════════════════════════════╗"
-echo "║  TSN CLI Workloads: End-to-End Benchmarks       ║"
+echo "║  TSN CLI Benchmarks: Node vs Bun vs TSN vs Rust  ║"
 echo "║  5 runs per case, median wall time + peak RSS        ║"
 echo "╚═══════════════════════════════════════════════════════╝"
 echo ""
@@ -17,12 +17,20 @@ echo ""
 now_ns() { python3 -c 'import time; print(int(time.time_ns()))'; }
 resolve_binary() { python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"; }
 
+RUST_FLAGS="-C opt-level=3 -C lto=fat -C codegen-units=1 -C panic=abort -C strip=symbols"
+RUST_SRC="$(pwd)/harness/rust"
+
 echo "Binary sizes:"
 echo "  Node runtime:    $(ls -lh "$(resolve_binary "$(which node)")" | awk '{print $5}')"
 if command -v bun &> /dev/null; then
     echo "  Bun runtime:     $(ls -lh "$(resolve_binary "$(which bun)")" | awk '{print $5}')"
 else
     echo "  Bun runtime:     not installed"
+fi
+if command -v rustc &> /dev/null; then
+    echo "  Rust compiler:   $(rustc --version | awk '{print $2}')"
+else
+    echo "  Rust compiler:   not installed"
 fi
 echo ""
 
@@ -65,16 +73,27 @@ bench_case() {
     local binary="$4"
     local input="$5"
     local records="$6"
+    local rust_name="$7"
     local size
     size=$(ls -lh "$input" | awk '{print $5}')
+
+    # Build Rust binary if source exists
+    local rust_binary="./build/${rust_name}-rs"
+    local rust_src="$RUST_SRC/${rust_name}.rs"
+    if [ -f "$rust_src" ] && command -v rustc &> /dev/null; then
+        rustc $RUST_FLAGS -o "$rust_binary" "$rust_src" 2>/dev/null
+    fi
 
     echo "━━━ $title ━━━"
     echo "  $summary"
     echo "  Input: $records records, $size"
     if [ -f "$binary" ]; then
-        echo "  Native binary: $(ls -lh "$binary" | awk '{print $5}')"
+        echo "  TSN binary: $(ls -lh "$binary" | awk '{print $5}')"
     else
-        echo "  Native binary: not built"
+        echo "  TSN binary: not built"
+    fi
+    if [ -f "$rust_binary" ]; then
+        echo "  Rust binary: $(ls -lh "$rust_binary" | awk '{print $5}')"
     fi
     echo "  Runtime      Time     Memory   Throughput"
     echo "  ──────────── ──────── ──────── ─────────────────"
@@ -88,9 +107,15 @@ bench_case() {
     fi
 
     if [ -f "$binary" ]; then
-        run_bench "Native" "$input" "$records" "$binary"
+        run_bench "TSN" "$input" "$records" "$binary"
     else
-        printf "  %-12s %6s     %4s     %s\n" "Native" "---" "---" "not built"
+        printf "  %-12s %6s     %4s     %s\n" "TSN" "---" "---" "not built"
+    fi
+
+    if [ -f "$rust_binary" ]; then
+        run_bench "Rust" "$input" "$records" "$rust_binary"
+    else
+        printf "  %-12s %6s     %4s     %s\n" "Rust" "---" "---" "not built"
     fi
 
     echo ""
@@ -102,7 +127,8 @@ bench_case \
     "targets/csv-tool.ts" \
     "./build/csv-tool" \
     "harness/test-data/large.csv" \
-    "$(record_count_csv harness/test-data/large.csv)"
+    "$(record_count_csv harness/test-data/large.csv)" \
+    "csv-tool"
 
 bench_case \
     "Config Audit" \
@@ -110,7 +136,8 @@ bench_case \
     "examples/config-audit.ts" \
     "./build/config-audit" \
     "harness/test-data/config-audit.env" \
-    "$(record_count_lines harness/test-data/config-audit.env)"
+    "$(record_count_lines harness/test-data/config-audit.env)" \
+    "config-audit"
 
 bench_case \
     "Access Log Summary" \
@@ -118,7 +145,8 @@ bench_case \
     "examples/access-log-summary.ts" \
     "./build/access-log-summary" \
     "harness/test-data/access-log.txt" \
-    "$(record_count_lines harness/test-data/access-log.txt)"
+    "$(record_count_lines harness/test-data/access-log.txt)" \
+    "access-log-summary"
 
 bench_case \
     "Log Triage" \
@@ -126,7 +154,8 @@ bench_case \
     "examples/log-triage.ts" \
     "./build/log-triage" \
     "harness/test-data/log-triage.txt" \
-    "$(record_count_lines harness/test-data/log-triage.txt)"
+    "$(record_count_lines harness/test-data/log-triage.txt)" \
+    "log-triage"
 
 bench_case \
     "Revenue Rollup" \
@@ -134,7 +163,8 @@ bench_case \
     "examples/revenue-rollup.ts" \
     "./build/revenue-rollup" \
     "harness/test-data/revenue-rollup.csv" \
-    "$(record_count_csv harness/test-data/revenue-rollup.csv)"
+    "$(record_count_csv harness/test-data/revenue-rollup.csv)" \
+    "revenue-rollup"
 
 bench_case \
     "SLA Scorecard" \
@@ -142,7 +172,8 @@ bench_case \
     "examples/sla-scorecard.ts" \
     "./build/sla-scorecard" \
     "harness/test-data/sla-scorecard.csv" \
-    "$(record_count_csv harness/test-data/sla-scorecard.csv)"
+    "$(record_count_csv harness/test-data/sla-scorecard.csv)" \
+    "sla-scorecard"
 
 echo ""
 echo "Time is total wall time from invocation to exit. Memory is peak RSS. Throughput is input records processed per second."
