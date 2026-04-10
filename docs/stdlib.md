@@ -1,6 +1,6 @@
-# StrictTS Standard Library
+# TSN Standard Library
 
-Built-in functions and methods available in every StrictTS program.
+Built-in functions and methods available in every TSN program.
 
 ## String Methods
 

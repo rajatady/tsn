@@ -1,5 +1,5 @@
 /**
- * StrictTS Dev Server — watch mode with fast recompilation
+ * TSN Dev Server — watch mode with fast recompilation
  *
  * Usage: npx tsx compiler/dev.ts <file.ts|.tsx>
  *
@@ -70,14 +70,14 @@ function compile(): boolean {
       const yogaInclude = 'vendor'
 
       execSync(
-        `clang -O0 -g -DSTRICTTS_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
+        `clang -O0 -g -DTSN_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
         `${cPath} ${appKitSourcePath} ${yogaLib} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} ` +
         `-lc++ -o ${binaryPath}`,
         { stdio: 'pipe' }
       )
     } else {
       execSync(
-        `clang -O0 -g -DSTRICTTS_DEBUG -o ${binaryPath} ${cPath} -lm -I compiler/runtime`,
+        `clang -O0 -g -DTSN_DEBUG -o ${binaryPath} ${cPath} -lm -I compiler/runtime`,
         { stdio: 'pipe' }
       )
     }
@@ -105,7 +105,7 @@ function timestamp(): string {
 function saveWindowGeometry(): { x: number; y: number; w: number; h: number } | null {
   try {
     const net = require('node:net') as typeof import('node:net')
-    const sock = '/tmp/strictts-inspect.sock'
+    const sock = '/tmp/tsn-inspect.sock'
     if (!fs.existsSync(sock)) return null
 
     // Quick synchronous-ish socket read via execSync
@@ -159,7 +159,7 @@ function launchApp(): void {
 // ─── Main ──────────────────────────────────────────────────────────
 
 console.log(``)
-console.log(`  ┌─ StrictTS Dev Server ──────────────────┐`)
+console.log(`  ┌─ TSN Dev Server ──────────────────┐`)
 console.log(`  │  Source: ${baseName}${ext}`)
 console.log(`  │  Binary: ${binaryPath}`)
 console.log(`  │  Watching for changes...               │`)

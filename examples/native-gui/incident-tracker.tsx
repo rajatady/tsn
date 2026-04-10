@@ -1,10 +1,10 @@
 /*
- * StrictTS Native — macOS Landing Page
+ * TSN Native — macOS Landing Page
  *
  * A scrolling marketing page inspired by apple.com/macos.
  * Demonstrates ZStack, Gradient, Carousel, and Symbol primitives.
  *
- * Compile: ./strictts build examples/native-gui/incident-tracker.tsx
+ * Compile: ./tsn build examples/native-gui/incident-tracker.tsx
  * Run:     ./build/incident-tracker
  */
 

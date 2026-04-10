@@ -51,7 +51,7 @@ export function DirectoryToolbar() {
 export function DashboardFooter() {
   return (
     <HStack className="h-7 px-5 py-1 bg-zinc-950">
-      <Text className="text-xs text-zinc-500">StrictTS Native | 50K records | Multi-file imports</Text>
+      <Text className="text-xs text-zinc-500">TSN Native | 50K records | Multi-file imports</Text>
       <Spacer />
       <Text className="text-xs text-zinc-500">No JS Runtime</Text>
     </HStack>

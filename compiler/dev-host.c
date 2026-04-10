@@ -1,5 +1,5 @@
 /*
- * StrictTS Dev Host — hot-reload via dlopen/dlclose
+ * TSN Dev Host — hot-reload via dlopen/dlclose
  *
  * Watches for a signal file, reloads the dylib, calls ts_main().
  * For UI apps: the first load creates the window.
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     const char *dylib_path = argv[1];
     time_t last_mtime = 0;
 
-    printf("┌─ StrictTS Dev Server ─────────────────┐\n");
+    printf("┌─ TSN Dev Server ─────────────────┐\n");
     printf("│  Watching: %s\n", dylib_path);
     printf("│  Press Ctrl+C to stop                  │\n");
     printf("└────────────────────────────────────────┘\n\n");

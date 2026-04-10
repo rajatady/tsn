@@ -1,5 +1,5 @@
 /**
- * StrictTS Inspector CLI — query running app's view tree
+ * TSN Inspector CLI — query running app's view tree
  *
  * Usage:
  *   npx tsx compiler/inspect.ts tree                     — dump view hierarchy
@@ -18,20 +18,20 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 
 function resolveSocket(appName: string | null): string {
-  if (appName && appName.length > 0) return `/tmp/strictts-inspect-${appName}.sock`
+  if (appName && appName.length > 0) return `/tmp/tsn-inspect-${appName}.sock`
 
-  const legacy = '/tmp/strictts-inspect.sock'
+  const legacy = '/tmp/tsn-inspect.sock'
   if (fs.existsSync(legacy)) return legacy
 
   const tmpEntries = fs.readdirSync('/tmp')
   const sockets = tmpEntries
-    .filter((entry) => entry.startsWith('strictts-inspect-') && entry.endsWith('.sock'))
+    .filter((entry) => entry.startsWith('tsn-inspect-') && entry.endsWith('.sock'))
     .map((entry) => path.join('/tmp', entry))
 
   if (sockets.length === 1) return sockets[0]
   if (sockets.length > 1) {
-    const names = sockets.map((sock) => path.basename(sock, '.sock').replace('strictts-inspect-', '')).join(', ')
-    console.error(`Multiple running StrictTS apps found. Use --app <name>. Available: ${names}`)
+    const names = sockets.map((sock) => path.basename(sock, '.sock').replace('tsn-inspect-', '')).join(', ')
+    console.error(`Multiple running TSN apps found. Use --app <name>. Available: ${names}`)
     process.exit(1)
   }
 
@@ -67,7 +67,7 @@ client.on('data', (data) => {
 
 client.on('error', (err: any) => {
   if (err.code === 'ENOENT' || err.code === 'ECONNREFUSED') {
-    console.error('No running StrictTS app found. Start one with: strictts dev <file.tsx>')
+    console.error('No running TSN app found. Start one with: tsn dev <file.tsx>')
   } else {
     console.error('Error:', err.message)
   }

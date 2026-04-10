@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; }
+    .native-select { height: 28px; border-radius: 6px; background: rgb(50,50,52); border: 1px solid rgb(80,80,82); font-size: 13px; padding: 0 8px; color: white; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-col gap-4 w-[560px] h-[320px] bg-zinc-900 p-5">
+    <div data-testid="select-field" class="flex flex-col gap-2">
+      <div class="text-sm font-semibold text-white">Priority</div>
+      <select data-testid="select" class="native-select w-[160px]">
+        <option>Low</option>
+        <option selected>Medium</option>
+        <option>High</option>
+      </select>
+      <div class="text-xs text-white/55">Select control with low-level primitive backing.</div>
+    </div>
+    <div data-testid="checkbox-field" class="flex flex-row items-start gap-3">
+      <input type="checkbox" checked />
+      <div class="flex flex-col gap-1">
+        <div class="text-sm font-semibold text-white">Enable sync</div>
+        <div class="text-xs text-white/55">Checkbox row composed from primitives.</div>
+      </div>
+    </div>
+    <div data-testid="radio-group" class="flex flex-col gap-3">
+      <div data-testid="radio-primary" class="flex flex-row items-start gap-3">
+        <input type="radio" checked />
+        <div class="flex flex-col gap-1">
+          <div class="text-sm font-semibold text-white">Primary</div>
+          <div class="text-xs text-white/55">Default path.</div>
+        </div>
+      </div>
+      <div data-testid="radio-secondary" class="flex flex-row items-start gap-3">
+        <input type="radio" />
+        <div class="flex flex-col gap-1">
+          <div class="text-sm font-semibold text-white">Secondary</div>
+          <div class="text-xs text-white/55">Fallback path.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

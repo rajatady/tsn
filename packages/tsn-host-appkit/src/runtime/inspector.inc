@@ -10,72 +10,76 @@ static NSString *inspector_socket_path(void) {
     NSString *safe = [[[parts componentsJoinedByString:@"-"]
         stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"-"]] lowercaseString];
     if (safe.length == 0) safe = @"app";
-    return [NSString stringWithFormat:@"/tmp/strictts-inspect-%@.sock", safe];
+    return [NSString stringWithFormat:@"/tmp/tsn-inspect-%@.sock", safe];
 }
 
-static void dump_tree(NSView *view, int depth, NSMutableString *out) {
+static TSNShadowNode *inspector_root_node(void) {
+    if (!g_inspect_window) return nil;
+    TSNShadowNode *node = tsn_shadow_node_for_obj(g_inspect_window);
+    if (node) return node;
+    return tsn_shadow_node_for_obj(g_inspect_window.contentView);
+}
+
+static NSArray<NSView *> *inspector_child_views(NSView *view) {
+    TSNShadowNode *node = tsn_shadow_node_for_obj(view);
+    if (node && node.children.count > 0) {
+        NSMutableArray<NSView *> *views = [NSMutableArray new];
+        for (TSNShadowNode *child in node.children) {
+            if (child.view) [views addObject:child.view];
+        }
+        return views;
+    }
+    return view.subviews ?: @[];
+}
+
+static NSString *inspector_node_text(NSView *view) {
+    if ([view isKindOfClass:[TSNTextLabelView class]]) return tsn_text_string(view);
+    if ([view respondsToSelector:@selector(title)]) {
+        id title = [view valueForKey:@"title"];
+        if ([title isKindOfClass:[NSString class]]) return (NSString *)title;
+    }
+    if ([view isKindOfClass:[NSTextField class]]) return ((NSTextField *)view).stringValue ?: @"";
+    if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) return ((NSTextView *)((NSScrollView *)view).documentView).string ?: @"";
+    if ([view isKindOfClass:[NSPopUpButton class]]) return ((NSPopUpButton *)view).titleOfSelectedItem ?: @"";
+    if ([view isKindOfClass:[NSSwitch class]]) return ((NSSwitch *)view).state == NSControlStateValueOn ? @"true" : @"false";
+    if ([view isKindOfClass:[NSButton class]]) return ((NSButton *)view).title ?: @"";
+    if ([view isKindOfClass:[NSSearchField class]]) return ((NSSearchField *)view).stringValue ?: @"";
+    return @"";
+}
+
+static void dump_tree_node(TSNShadowNode *node, int depth, NSMutableString *out) {
+    if (!node || !node.view) return;
     NSString *indent = [@"" stringByPaddingToLength:depth * 2 withString:@" " startingAtIndex:0];
+    NSView *view = node.view;
     NSRect f = view.frame;
-    NSString *type = NSStringFromClass([view class]);
+    NSString *type = tsn_kind_name(node);
+    NSString *text = inspector_node_text(view);
+    NSString *extra = @"";
 
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        UIStackContainer *sc = (UIStackContainer *)view;
-        type = sc.direction == 0 ? @"VStack" : (sc.direction == 2 ? @"ZStack" : @"HStack");
-        NSString *extra = @"";
-        float fg = YGNodeStyleGetFlexGrow(sc.ygNode);
+    if (node.yogaNode) {
+        float fg = YGNodeStyleGetFlexGrow(node.yogaNode);
         if (fg > 0) extra = [extra stringByAppendingFormat:@" flex=%.0f", fg];
-        YGValue yw = YGNodeStyleGetWidth(sc.ygNode);
+        YGValue yw = YGNodeStyleGetWidth(node.yogaNode);
         if (yw.unit == YGUnitPoint) extra = [extra stringByAppendingFormat:@" fw=%.0f", yw.value];
-        YGValue yh = YGNodeStyleGetHeight(sc.ygNode);
+        YGValue yh = YGNodeStyleGetHeight(node.yogaNode);
         if (yh.unit == YGUnitPoint) extra = [extra stringByAppendingFormat:@" fh=%.0f", yh.value];
-        [out appendFormat:@"%@%@ (%.0f×%.0f at %.0f,%.0f)%@\n", indent, type,
-            f.size.width, f.size.height, f.origin.x, f.origin.y, extra];
-    } else if ([view isKindOfClass:[NSTextField class]]) {
-        NSString *text = ((NSTextField *)view).stringValue;
-        if (text.length > 40) text = [[text substringToIndex:40] stringByAppendingString:@"…"];
-        [out appendFormat:@"%@Text \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, text,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
-    } else if ([view isKindOfClass:[NSSearchField class]]) {
-        [out appendFormat:@"%@Search (%.0f×%.0f at %.0f,%.0f)\n", indent,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
-    } else if ([view isKindOfClass:[NSButton class]]) {
-        NSButton *btn = (NSButton *)view;
-        [out appendFormat:@"%@Button \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, btn.title,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
-    } else if ([view isKindOfClass:[UISpacer class]]) {
-        [out appendFormat:@"%@Spacer (%.0f×%.0f)\n", indent, f.size.width, f.size.height];
-    } else if ([view isKindOfClass:[NSScrollView class]]) {
-        [out appendFormat:@"%@ScrollView (%.0f×%.0f at %.0f,%.0f)\n", indent,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
-    } else if ([view isKindOfClass:[NSVisualEffectView class]]) {
-        [out appendFormat:@"%@BlurView (%.0f×%.0f at %.0f,%.0f)\n", indent,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
-    } else if ([view isKindOfClass:[UIBarChartView class]]) {
-        [out appendFormat:@"%@BarChart (%.0f×%.0f at %.0f,%.0f)\n", indent,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
-    } else if ([view isKindOfClass:[UIStatView class]]) {
-        UIStatView *sv = (UIStatView *)view;
-        [out appendFormat:@"%@Stat \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, sv.value_text,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
-    } else {
-        [out appendFormat:@"%@%@ (%.0f×%.0f at %.0f,%.0f)\n", indent, type,
-            f.size.width, f.size.height, f.origin.x, f.origin.y];
     }
 
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        for (NSView *child in ((UIStackContainer *)view).children) {
-            dump_tree(child, depth + 1, out);
-        }
+    if (text.length > 0) {
+        NSString *trimmed = text.length > 40 ? [[text substringToIndex:40] stringByAppendingString:@"…"] : text;
+        [out appendFormat:@"%@%@ \"%@\" (%.0f×%.0f at %.0f,%.0f)%@\n",
+            indent, type, trimmed, f.size.width, f.size.height, f.origin.x, f.origin.y, extra];
     } else {
-        for (NSView *sub in view.subviews) {
-            dump_tree(sub, depth + 1, out);
-        }
+        [out appendFormat:@"%@%@ (%.0f×%.0f at %.0f,%.0f)%@\n",
+            indent, type, f.size.width, f.size.height, f.origin.x, f.origin.y, extra];
     }
+
+    for (TSNShadowNode *child in node.children) dump_tree_node(child, depth + 1, out);
 }
 
 static NSString *take_screenshot(void) {
     if (!g_inspect_window) return @"No window";
-    NSString *path = @"/tmp/strictts-screenshot.png";
+    NSString *path = @"/tmp/tsn-screenshot.png";
 
     dispatch_sync(dispatch_get_main_queue(), ^{
         [g_inspect_window.contentView layoutSubtreeIfNeeded];
@@ -110,15 +114,20 @@ static NSString *click_button(NSString *label, NSView *view) {
             return [NSString stringWithFormat:@"Clicked: %@", btn.title];
         }
     }
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        for (NSView *child in ((UIStackContainer *)view).children) {
-            NSString *r = click_button(label, child);
-            if (r) return r;
+    if ([view respondsToSelector:@selector(tsnPerformClick)]) {
+        NSString *text = inspector_node_text(view);
+        if ([text containsString:label]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            [view performSelector:@selector(tsnPerformClick)];
+#pragma clang diagnostic pop
+            return [NSString stringWithFormat:@"Clicked: %@", text];
         }
     }
-    for (NSView *sub in view.subviews) {
-        NSString *r = click_button(label, sub);
-        if (r) return r;
+
+    for (NSView *child in inspector_child_views(view)) {
+        NSString *result = click_button(label, child);
+        if (result) return result;
     }
     return nil;
 }
@@ -132,9 +141,16 @@ static NSString *click_element(NSString *element_id) {
         [btn performClick:nil];
         return [NSString stringWithFormat:@"Clicked: %@", btn.title];
     }
+    if ([view respondsToSelector:@selector(tsnPerformClick)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [view performSelector:@selector(tsnPerformClick)];
+#pragma clang diagnostic pop
+        NSString *text = inspector_node_text(view);
+        return text.length > 0 ? [NSString stringWithFormat:@"Clicked: %@", text] : [NSString stringWithFormat:@"Clicked: %@", element_id];
+    }
 
-    NSArray<NSGestureRecognizer *> *gestures = view.gestureRecognizers;
-    for (NSGestureRecognizer *gesture in gestures) {
+    for (NSGestureRecognizer *gesture in view.gestureRecognizers) {
         id target = gesture.target;
         SEL action = gesture.action;
         if (target && action && [target respondsToSelector:action]) {
@@ -151,23 +167,36 @@ static NSString *click_element(NSString *element_id) {
 
 static NSString *type_text(NSString *text, NSView *view) {
     if ([view isKindOfClass:[NSSearchField class]]) {
-        NSSearchField *f = (NSSearchField *)view;
-        f.stringValue = text;
-        NSNotification *n = [NSNotification notificationWithName:NSControlTextDidChangeNotification
-                                                          object:f];
-        if (f.delegate && [f.delegate respondsToSelector:@selector(controlTextDidChange:)])
-            [f.delegate controlTextDidChange:n];
+        NSSearchField *field = (NSSearchField *)view;
+        field.stringValue = text;
+        NSNotification *note = [NSNotification notificationWithName:NSControlTextDidChangeNotification object:field];
+        if (field.delegate && [field.delegate respondsToSelector:@selector(controlTextDidChange:)]) {
+            [field.delegate controlTextDidChange:note];
+        }
         return [NSString stringWithFormat:@"Typed: %@", text];
     }
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        for (NSView *child in ((UIStackContainer *)view).children) {
-            NSString *r = type_text(text, child);
-            if (r) return r;
+    if ([view isKindOfClass:[NSTextField class]]) {
+        NSTextField *field = (NSTextField *)view;
+        field.stringValue = text;
+        NSNotification *note = [NSNotification notificationWithName:NSControlTextDidChangeNotification object:field];
+        if (field.delegate && [field.delegate respondsToSelector:@selector(controlTextDidChange:)]) {
+            [field.delegate controlTextDidChange:note];
         }
+        return [NSString stringWithFormat:@"Typed: %@", text];
     }
-    for (NSView *sub in view.subviews) {
-        NSString *r = type_text(text, sub);
-        if (r) return r;
+    if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) {
+        NSTextView *textView = (NSTextView *)((NSScrollView *)view).documentView;
+        textView.string = text;
+        NSNotification *note = [NSNotification notificationWithName:NSTextDidChangeNotification object:textView];
+        if (textView.delegate && [textView.delegate respondsToSelector:@selector(textDidChange:)]) {
+            [textView.delegate textDidChange:note];
+        }
+        return [NSString stringWithFormat:@"Typed: %@", text];
+    }
+
+    for (NSView *child in inspector_child_views(view)) {
+        NSString *result = type_text(text, child);
+        if (result) return result;
     }
     return nil;
 }
@@ -177,65 +206,78 @@ static NSString *type_text_into(NSString *element_id, NSString *text) {
     if (!view) return [NSString stringWithFormat:@"Element not found: %@", element_id];
 
     if ([view isKindOfClass:[NSSearchField class]]) {
-        NSSearchField *f = (NSSearchField *)view;
-        f.stringValue = text;
-        NSNotification *n = [NSNotification notificationWithName:NSControlTextDidChangeNotification
-                                                          object:f];
-        if (f.delegate && [f.delegate respondsToSelector:@selector(controlTextDidChange:)])
-            [f.delegate controlTextDidChange:n];
+        NSSearchField *field = (NSSearchField *)view;
+        field.stringValue = text;
+        NSNotification *note = [NSNotification notificationWithName:NSControlTextDidChangeNotification object:field];
+        if (field.delegate && [field.delegate respondsToSelector:@selector(controlTextDidChange:)]) {
+            [field.delegate controlTextDidChange:note];
+        }
         return [NSString stringWithFormat:@"Typed into %@: %@", element_id, text];
     }
 
     if ([view isKindOfClass:[NSTextField class]]) {
-        NSTextField *f = (NSTextField *)view;
-        f.stringValue = text;
-        NSNotification *n = [NSNotification notificationWithName:NSControlTextDidChangeNotification
-                                                          object:f];
-        if (f.delegate && [f.delegate respondsToSelector:@selector(controlTextDidChange:)])
-            [f.delegate controlTextDidChange:n];
+        NSTextField *field = (NSTextField *)view;
+        field.stringValue = text;
+        NSNotification *note = [NSNotification notificationWithName:NSControlTextDidChangeNotification object:field];
+        if (field.delegate && [field.delegate respondsToSelector:@selector(controlTextDidChange:)]) {
+            [field.delegate controlTextDidChange:note];
+        }
+        return [NSString stringWithFormat:@"Typed into %@: %@", element_id, text];
+    }
+
+    if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) {
+        NSTextView *textView = (NSTextView *)((NSScrollView *)view).documentView;
+        textView.string = text;
+        NSNotification *note = [NSNotification notificationWithName:NSTextDidChangeNotification object:textView];
+        if (textView.delegate && [textView.delegate respondsToSelector:@selector(textDidChange:)]) {
+            [textView.delegate textDidChange:note];
+        }
         return [NSString stringWithFormat:@"Typed into %@: %@", element_id, text];
     }
 
     return [NSString stringWithFormat:@"Element is not text input: %@", element_id];
 }
 
+static NSString *select_option_into(NSString *element_id, NSString *text) {
+    NSView *view = g_element_ids[element_id];
+    if (!view) return [NSString stringWithFormat:@"Element not found: %@", element_id];
+    if (![view isKindOfClass:[NSPopUpButton class]]) return [NSString stringWithFormat:@"Element is not select input: %@", element_id];
+    NSPopUpButton *button = (NSPopUpButton *)view;
+    NSString *title = text ?: @"";
+    if ([button itemWithTitle:title] == nil) {
+        return [NSString stringWithFormat:@"Option not found on %@: %@", element_id, title];
+    }
+    [button selectItemWithTitle:title];
+    id target = button.target;
+    SEL action = button.action;
+    if (target && action && [target respondsToSelector:action]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [target performSelector:action withObject:button];
+#pragma clang diagnostic pop
+    }
+    return [NSString stringWithFormat:@"Selected in %@: %@", element_id, title];
+}
+
 void ui_set_id(UIHandle v, const char *element_id) {
-    NSView *view = (__bridge NSView *)v;
+    NSView *view = view_for_handle(v);
+    if (!view) return;
     NSString *key = [NSString stringWithUTF8String:element_id];
     g_element_ids[key] = view;
 }
 
 static void find_text(NSView *view, NSString *query, int depth, NSMutableString *out) {
-    NSString *indent = [@"" stringByPaddingToLength:depth * 2 withString:@" " startingAtIndex:0];
-    NSRect f = view.frame;
-
-    if ([view isKindOfClass:[NSTextField class]]) {
-        NSString *text = ((NSTextField *)view).stringValue;
-        if ([text localizedCaseInsensitiveContainsString:query]) {
-            [out appendFormat:@"%@Text \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, text,
-                f.size.width, f.size.height, f.origin.x, f.origin.y];
-        }
-    } else if ([view isKindOfClass:[NSButton class]]) {
-        NSString *title = ((NSButton *)view).title;
-        if ([title localizedCaseInsensitiveContainsString:query]) {
-            [out appendFormat:@"%@Button \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, title,
-                f.size.width, f.size.height, f.origin.x, f.origin.y];
-        }
-    } else if ([view isKindOfClass:[NSSearchField class]]) {
-        NSString *text = ((NSSearchField *)view).stringValue;
-        if ([text localizedCaseInsensitiveContainsString:query]) {
-            [out appendFormat:@"%@Search \"%@\" (%.0f×%.0f at %.0f,%.0f)\n", indent, text,
-                f.size.width, f.size.height, f.origin.x, f.origin.y];
-        }
+    NSString *text = inspector_node_text(view);
+    if ([text localizedCaseInsensitiveContainsString:query]) {
+        NSString *indent = [@"" stringByPaddingToLength:depth * 2 withString:@" " startingAtIndex:0];
+        NSRect f = view.frame;
+        NSString *type = tsn_kind_name(tsn_shadow_node_for_obj(view));
+        [out appendFormat:@"%@%@ \"%@\" (%.0f×%.0f at %.0f,%.0f)\n",
+            indent, type, text, f.size.width, f.size.height, f.origin.x, f.origin.y];
     }
 
-    if ([view isKindOfClass:[UIStackContainer class]]) {
-        for (NSView *child in ((UIStackContainer *)view).children) {
-            find_text(child, query, depth + 1, out);
-        }
-    }
-    for (NSView *sub in view.subviews) {
-        find_text(sub, query, depth + 1, out);
+    for (NSView *child in inspector_child_views(view)) {
+        find_text(child, query, depth + 1, out);
     }
 }
 
@@ -243,106 +285,123 @@ static NSString *get_property(NSString *element_id, NSString *prop) {
     NSView *view = g_element_ids[element_id];
     if (!view) return [NSString stringWithFormat:@"Element not found: %@\n", element_id];
 
+    if (view.window.contentView) {
+        [view.window.contentView layoutSubtreeIfNeeded];
+        [view.window.contentView displayIfNeeded];
+    }
+
+    TSNShadowNode *node = tsn_shadow_node_for_obj(view);
+
     if ([prop isEqualToString:@"frame"]) {
         NSRect f = view.frame;
         return [NSString stringWithFormat:@"%.0f×%.0f at %.0f,%.0f\n",
             f.size.width, f.size.height, f.origin.x, f.origin.y];
     }
     if ([prop isEqualToString:@"wframe"]) {
-        /* Window-relative frame in top-left coordinates (matching browser convention).
-           AppKit's convertRect:toView:nil returns bottom-left origin coords,
-           so we flip Y relative to the content view height. */
         NSRect local = view.bounds;
         NSRect windowRect = [view convertRect:local toView:nil];
         NSView *contentView = view.window.contentView;
         CGFloat contentHeight = contentView ? contentView.frame.size.height : windowRect.origin.y + windowRect.size.height;
         CGFloat flippedY = contentHeight - windowRect.origin.y - windowRect.size.height;
         return [NSString stringWithFormat:@"%.0f×%.0f at %.0f,%.0f\n",
-            windowRect.size.width, windowRect.size.height,
-            windowRect.origin.x, flippedY];
+            windowRect.size.width, windowRect.size.height, windowRect.origin.x, flippedY];
     }
     if ([prop isEqualToString:@"text"]) {
-        if ([view isKindOfClass:[NSTextField class]])
-            return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
-        if ([view isKindOfClass:[NSButton class]])
-            return [NSString stringWithFormat:@"%@\n", ((NSButton *)view).title];
-        if ([view isKindOfClass:[NSSearchField class]])
-            return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
-        return @"(no text)\n";
+        NSString *text = inspector_node_text(view);
+        return text.length > 0 ? [NSString stringWithFormat:@"%@\n", text] : @"(no text)\n";
     }
     if ([prop isEqualToString:@"value"]) {
-        if ([view isKindOfClass:[NSTextField class]])
-            return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
-        if ([view isKindOfClass:[NSSearchField class]])
-            return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
+        if ([view isKindOfClass:[TSNTextLabelView class]]) return [NSString stringWithFormat:@"%@\n", tsn_text_string(view)];
+        if ([view isKindOfClass:[NSTextField class]]) return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).stringValue];
+        if ([view isKindOfClass:[NSSearchField class]]) return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).stringValue];
+        if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView isKindOfClass:[NSTextView class]]) {
+            return [NSString stringWithFormat:@"%@\n", ((NSTextView *)((NSScrollView *)view).documentView).string ?: @""];
+        }
+        if ([view isKindOfClass:[NSPopUpButton class]]) {
+            return [NSString stringWithFormat:@"%@\n", ((NSPopUpButton *)view).titleOfSelectedItem ?: @""];
+        }
+        if ([view isKindOfClass:[NSSwitch class]]) {
+            return ((NSSwitch *)view).state == NSControlStateValueOn ? @"true\n" : @"false\n";
+        }
+        if ([view isKindOfClass:[NSButton class]] && tsn_bool_control_has_state(view)) {
+            NSButton *button = (NSButton *)view;
+            return button.state == NSControlStateValueOn ? @"true\n" : @"false\n";
+        }
         if ([view isKindOfClass:[NSProgressIndicator class]]) {
-            NSProgressIndicator *pi = (NSProgressIndicator *)view;
-            if (pi.indeterminate) return @"indeterminate\n";
-            return [NSString stringWithFormat:@"%.2f\n", pi.doubleValue];
+            NSProgressIndicator *indicator = (NSProgressIndicator *)view;
+            return indicator.indeterminate ? @"indeterminate\n" : [NSString stringWithFormat:@"%.2f\n", indicator.doubleValue];
         }
         return @"(no value)\n";
     }
     if ([prop isEqualToString:@"placeholder"]) {
-        if ([view isKindOfClass:[NSTextField class]]) {
-            NSString *placeholder = ((NSTextField *)view).placeholderString ?: @"";
-            return [NSString stringWithFormat:@"%@\n", placeholder];
-        }
-        if ([view isKindOfClass:[NSSearchField class]]) {
-            NSString *placeholder = ((NSSearchField *)view).placeholderString ?: @"";
-            return [NSString stringWithFormat:@"%@\n", placeholder];
+        if ([view isKindOfClass:[NSTextField class]]) return [NSString stringWithFormat:@"%@\n", ((NSTextField *)view).placeholderString ?: @""];
+        if ([view isKindOfClass:[NSSearchField class]]) return [NSString stringWithFormat:@"%@\n", ((NSSearchField *)view).placeholderString ?: @""];
+        if ([view isKindOfClass:[NSScrollView class]] && [((NSScrollView *)view).documentView respondsToSelector:@selector(placeholderString)]) {
+            id placeholder = [((NSScrollView *)view).documentView valueForKey:@"placeholderString"];
+            return [NSString stringWithFormat:@"%@\n", placeholder ?: @""];
         }
         return @"(no placeholder)\n";
     }
     if ([prop isEqualToString:@"indeterminate"]) {
-        if ([view isKindOfClass:[NSProgressIndicator class]])
-            return ((NSProgressIndicator *)view).indeterminate ? @"true\n" : @"false\n";
+        if ([view isKindOfClass:[NSProgressIndicator class]]) return ((NSProgressIndicator *)view).indeterminate ? @"true\n" : @"false\n";
         return @"false\n";
     }
     if ([prop isEqualToString:@"hidden"]) return view.isHidden ? @"true\n" : @"false\n";
     if ([prop isEqualToString:@"children"]) {
-        if ([view isKindOfClass:[UIStackContainer class]]) {
-            int count = (int)((UIStackContainer *)view).children.count;
-            return [NSString stringWithFormat:@"%d children\n", count];
-        }
+        if (node) return [NSString stringWithFormat:@"%d children\n", (int)node.children.count];
         return [NSString stringWithFormat:@"%d subviews\n", (int)view.subviews.count];
     }
     if ([prop isEqualToString:@"rows"]) {
         if ([view isKindOfClass:[NSScrollView class]]) {
             NSView *document = ((NSScrollView *)view).documentView;
-            if ([document isKindOfClass:[NSTableView class]])
-                return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)document).numberOfRows];
+            if ([document isKindOfClass:[NSTableView class]]) return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)document).numberOfRows];
         }
-        if ([view isKindOfClass:[NSTableView class]])
-            return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)view).numberOfRows];
+        if ([view isKindOfClass:[NSTableView class]]) return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)view).numberOfRows];
         return @"0\n";
     }
     if ([prop isEqualToString:@"columns"]) {
         if ([view isKindOfClass:[NSScrollView class]]) {
             NSView *document = ((NSScrollView *)view).documentView;
-            if ([document isKindOfClass:[NSTableView class]])
-                return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)document).tableColumns.count];
+            if ([document isKindOfClass:[NSTableView class]]) return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)document).tableColumns.count];
         }
-        if ([view isKindOfClass:[NSTableView class]])
-            return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)view).tableColumns.count];
+        if ([view isKindOfClass:[NSTableView class]]) return [NSString stringWithFormat:@"%ld\n", (long)((NSTableView *)view).tableColumns.count];
         return @"0\n";
     }
     if ([prop isEqualToString:@"flex"]) {
-        if ([view isKindOfClass:[UIStackContainer class]])
-            return [NSString stringWithFormat:@"%.0f\n", YGNodeStyleGetFlexGrow(((UIStackContainer *)view).ygNode)];
+        if (node && node.yogaNode) return [NSString stringWithFormat:@"%.0f\n", YGNodeStyleGetFlexGrow(node.yogaNode)];
         return @"0\n";
     }
     if ([prop isEqualToString:@"type"]) {
-        if ([view isKindOfClass:[UIStackContainer class]]) {
-            UIStackContainer *sc = (UIStackContainer *)view;
-            return [NSString stringWithFormat:@"%@\n", sc.direction == 0 ? @"VStack" : @"HStack"];
-        }
+        if (node) return [NSString stringWithFormat:@"%@\n", tsn_kind_name(node)];
         return [NSString stringWithFormat:@"%@\n", NSStringFromClass([view class])];
     }
 
     NSRect f = view.frame;
-    NSString *type = NSStringFromClass([view class]);
-    return [NSString stringWithFormat:@"%@ (%.0f×%.0f at %.0f,%.0f)\n", type,
-        f.size.width, f.size.height, f.origin.x, f.origin.y];
+    NSString *type = node ? tsn_kind_name(node) : NSStringFromClass([view class]);
+    return [NSString stringWithFormat:@"%@ (%.0f×%.0f at %.0f,%.0f)\n",
+        type, f.size.width, f.size.height, f.origin.x, f.origin.y];
+}
+
+static NSScrollView *find_main_scroll_view(NSView *root) {
+    NSScrollView *best = nil;
+    CGFloat bestArea = 0;
+    NSMutableArray<NSView *> *queue = [NSMutableArray arrayWithObject:root];
+    while (queue.count > 0) {
+        NSView *view = queue[0];
+        [queue removeObjectAtIndex:0];
+        if ([view isKindOfClass:[NSScrollView class]]) {
+            NSScrollView *scrollView = (NSScrollView *)view;
+            if (scrollView.hasVerticalScroller || !scrollView.hasHorizontalScroller) {
+                CGFloat area = scrollView.frame.size.width * scrollView.frame.size.height;
+                if (area > bestArea) {
+                    best = scrollView;
+                    bestArea = area;
+                }
+            }
+        }
+        for (NSView *child in inspector_child_views(view)) [queue addObject:child];
+    }
+    return best;
 }
 
 static NSString *handle_command(NSString *cmd) {
@@ -355,7 +414,15 @@ static NSString *handle_command(NSString *cmd) {
             NSRect wf = g_inspect_window.frame;
             [out appendFormat:@"Window \"%@\" (%.0f×%.0f)\n",
                 g_inspect_window.title, wf.size.width, wf.size.height];
-            dump_tree(g_inspect_window.contentView, 1, out);
+            TSNShadowNode *root = inspector_root_node();
+            if (root) {
+                for (TSNShadowNode *child in root.children) dump_tree_node(child, 1, out);
+            } else {
+                for (NSView *subview in g_inspect_window.contentView.subviews) {
+                    TSNShadowNode *childNode = tsn_shadow_node_for_obj(subview);
+                    if (childNode) dump_tree_node(childNode, 1, out);
+                }
+            }
         });
         return out;
     }
@@ -406,6 +473,20 @@ static NSString *handle_command(NSString *cmd) {
         return result ?: [NSString stringWithFormat:@"Input not found: %@", element_id];
     }
 
+    if ([cmd hasPrefix:@"selectid "]) {
+        NSString *args = [cmd substringFromIndex:9];
+        NSRange firstSpace = [args rangeOfString:@" "];
+        if (firstSpace.location == NSNotFound) return @"Usage: selectid <id> <option>\n";
+        NSString *element_id = [args substringToIndex:firstSpace.location];
+        NSString *text = [args substringFromIndex:firstSpace.location + 1];
+        if (!g_inspect_window) return @"No window\n";
+        __block NSString *result = nil;
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            result = select_option_into(element_id, text);
+        });
+        return result ?: [NSString stringWithFormat:@"Select not found: %@", element_id];
+    }
+
     if ([cmd hasPrefix:@"find "]) {
         NSString *query = [[cmd substringFromIndex:5] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\"'"]];
         if (!g_inspect_window) return @"No window\n";
@@ -419,41 +500,38 @@ static NSString *handle_command(NSString *cmd) {
     if ([cmd hasPrefix:@"get "]) {
         NSString *args = [cmd substringFromIndex:4];
         NSArray *parts = [args componentsSeparatedByString:@" "];
-        NSString *eid = parts[0];
+        NSString *element_id = parts[0];
         NSString *prop = parts.count > 1 ? parts[1] : @"frame";
         __block NSString *result = nil;
         dispatch_sync(dispatch_get_main_queue(), ^{
-            result = get_property(eid, prop);
+            result = get_property(element_id, prop);
         });
         return result;
     }
 
-    /* ── Probe command — box model inspector ────────────────────── */
-
     if ([cmd hasPrefix:@"probe "]) {
-        NSString *eid = [cmd substringFromIndex:6];
+        NSString *element_id = [cmd substringFromIndex:6];
         __block NSString *result = nil;
         dispatch_sync(dispatch_get_main_queue(), ^{
-            NSView *view = g_element_ids[eid];
-            if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+            NSView *view = g_element_ids[element_id];
+            if (!view) {
+                result = [NSString stringWithFormat:@"Element not found: %@\n", element_id];
+                return;
+            }
 
+            TSNShadowNode *node = tsn_shadow_node_for_obj(view);
             NSRect f = view.frame;
             NSMutableString *out = [NSMutableString new];
-            [out appendFormat:@"probe %@\n", eid];
+            [out appendFormat:@"probe %@\n", element_id];
             [out appendFormat:@"  self: %.0f×%.0f at %.0f,%.0f\n", f.size.width, f.size.height, f.origin.x, f.origin.y];
 
-            /* Parent info */
             NSView *parent = view.superview;
             if (parent) {
                 NSRect pf = parent.frame;
                 [out appendFormat:@"  parent: %.0f×%.0f at %.0f,%.0f", pf.size.width, pf.size.height, pf.origin.x, pf.origin.y];
-                if ([parent isKindOfClass:[UIStackContainer class]]) {
-                    UIStackContainer *sc = (UIStackContainer *)parent;
-                    [out appendFormat:@" (%@)", sc.direction == 0 ? @"VStack" : @"HStack"];
-                }
+                TSNShadowNode *parentNode = tsn_shadow_node_for_obj(parent);
+                if (parentNode) [out appendFormat:@" (%@)", tsn_kind_name(parentNode)];
                 [out appendString:@"\n"];
-
-                /* Edge gaps: how far is this element from parent edges */
                 CGFloat gapLeft = f.origin.x;
                 CGFloat gapTop = f.origin.y;
                 CGFloat gapRight = pf.size.width - (f.origin.x + f.size.width);
@@ -463,10 +541,8 @@ static NSString *handle_command(NSString *cmd) {
                 [out appendString:@"  parent: (none)\n"];
             }
 
-            /* If this element IS a UIStackContainer, report its padding */
-            if ([view isKindOfClass:[UIStackContainer class]]) {
-                UIStackContainer *sc = (UIStackContainer *)view;
-                YGNodeRef yn = sc.ygNode;
+            if (node && node.yogaNode) {
+                YGNodeRef yn = node.yogaNode;
                 [out appendFormat:@"  padding: top=%.0f right=%.0f bottom=%.0f left=%.0f\n",
                     YGNodeStyleGetPadding(yn, YGEdgeTop).value,
                     YGNodeStyleGetPadding(yn, YGEdgeRight).value,
@@ -475,33 +551,18 @@ static NSString *handle_command(NSString *cmd) {
                 YGValue gap = YGNodeStyleGetGap(yn, YGGutterAll);
                 [out appendFormat:@"  spacing: %.0f  align_items: %d  justify: %d\n",
                     gap.value, (int)YGNodeStyleGetAlignItems(yn), (int)YGNodeStyleGetJustifyContent(yn)];
-                [out appendFormat:@"  children: %lu\n", (unsigned long)sc.children.count];
+                [out appendFormat:@"  children: %lu\n", (unsigned long)node.children.count];
 
-                /* Report each child's frame */
-                for (NSUInteger i = 0; i < sc.children.count; i++) {
-                    NSView *child = sc.children[i];
+                for (NSUInteger i = 0; i < node.children.count; i++) {
+                    TSNShadowNode *childNode = node.children[i];
+                    NSView *child = childNode.view;
                     NSRect cf = child.frame;
-                    NSString *childType = @"?";
-                    if ([child isKindOfClass:[UIStackContainer class]])
-                        childType = ((UIStackContainer *)child).direction == 0 ? @"VStack" : @"HStack";
-                    else if ([child isKindOfClass:[NSTextField class]])
-                        childType = @"Text";
-                    else if ([child isKindOfClass:[NSImageView class]])
-                        childType = @"Image";
-                    else if ([child isKindOfClass:[NSButton class]])
-                        childType = @"Button";
-                    else if ([child isKindOfClass:[NSBox class]])
-                        childType = @"Divider";
-                    else
-                        childType = NSStringFromClass([child class]);
-
-                    /* Find element ID if registered */
                     NSString *childId = @"";
                     for (NSString *key in g_element_ids) {
                         if (g_element_ids[key] == child) { childId = key; break; }
                     }
                     [out appendFormat:@"    [%lu] %@ %@  %.0f×%.0f at %.0f,%.0f\n",
-                        (unsigned long)i, childType, childId,
+                        (unsigned long)i, tsn_kind_name(childNode), childId,
                         cf.size.width, cf.size.height, cf.origin.x, cf.origin.y];
                 }
             }
@@ -510,63 +571,47 @@ static NSString *handle_command(NSString *cmd) {
         return result;
     }
 
-    /* ── Scroll commands ─────────────────────────────────────────── */
-
-    /* Helper: find deepest vertical NSScrollView in view hierarchy */
-    static NSScrollView *(^findMainScrollView)(NSView *) = ^NSScrollView *(NSView *root) {
-        /* BFS for the largest vertical scroll view (the main content scroller) */
-        NSScrollView *best = nil;
-        CGFloat bestArea = 0;
-        NSMutableArray *queue = [NSMutableArray arrayWithObject:root];
-        while (queue.count > 0) {
-            NSView *v = queue[0]; [queue removeObjectAtIndex:0];
-            if ([v isKindOfClass:[NSScrollView class]]) {
-                NSScrollView *sv = (NSScrollView *)v;
-                if (sv.hasVerticalScroller || !sv.hasHorizontalScroller) {
-                    CGFloat area = sv.frame.size.width * sv.frame.size.height;
-                    if (area > bestArea) { best = sv; bestArea = area; }
-                }
-            }
-            for (NSView *sub in v.subviews) [queue addObject:sub];
-            if ([v isKindOfClass:[UIStackContainer class]])
-                for (NSView *c in ((UIStackContainer *)v).children) [queue addObject:c];
-        }
-        return best;
-    };
-
     if ([cmd hasPrefix:@"scroll "]) {
         NSString *args = [cmd substringFromIndex:7];
         NSArray *parts = [args componentsSeparatedByString:@" "];
         int ticks = [parts[0] intValue];
-        /* If first arg is a number, scroll main scroll view. If it's an ID, scroll that element's ancestor. */
         BOOL isNumber = ticks != 0 || [parts[0] isEqualToString:@"0"];
-        NSString *eid = isNumber ? nil : parts[0];
+        NSString *element_id = isNumber ? nil : parts[0];
         if (!isNumber && parts.count > 1) ticks = [parts[1] intValue];
         if (isNumber && ticks == 0) ticks = 1;
         __block NSString *result = nil;
         dispatch_sync(dispatch_get_main_queue(), ^{
-            NSScrollView *sv = nil;
-            if (eid) {
-                NSView *view = g_element_ids[eid];
-                if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+            NSScrollView *scrollView = nil;
+            if (element_id) {
+                NSView *view = g_element_ids[element_id];
+                if (!view) {
+                    result = [NSString stringWithFormat:@"Element not found: %@\n", element_id];
+                    return;
+                }
                 NSView *walk = view;
                 while (walk) {
-                    if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                    if ([walk isKindOfClass:[NSScrollView class]]) {
+                        scrollView = (NSScrollView *)walk;
+                        break;
+                    }
                     walk = walk.superview;
                 }
             } else {
-                sv = findMainScrollView(g_inspect_window.contentView);
+                scrollView = find_main_scroll_view(g_inspect_window.contentView);
             }
-            if (!sv) { result = @"No scroll view found\n"; return; }
-            NSClipView *clip = sv.contentView;
+            if (!scrollView) {
+                result = @"No scroll view found\n";
+                return;
+            }
+            NSClipView *clip = scrollView.contentView;
             NSPoint origin = clip.bounds.origin;
             CGFloat tickSize = 80.0;
             CGFloat newY = origin.y + ticks * tickSize;
-            CGFloat maxY = sv.documentView.frame.size.height - clip.bounds.size.height;
+            CGFloat maxY = scrollView.documentView.frame.size.height - clip.bounds.size.height;
             if (newY < 0) newY = 0;
             if (maxY > 0 && newY > maxY) newY = maxY;
             [clip scrollToPoint:NSMakePoint(origin.x, newY)];
-            [sv reflectScrolledClipView:clip];
+            [scrollView reflectScrolledClipView:clip];
             result = [NSString stringWithFormat:@"Scrolled to y=%.0f (ticks=%d)\n", newY, ticks];
         });
         return result;
@@ -575,78 +620,103 @@ static NSString *handle_command(NSString *cmd) {
     if ([cmd hasPrefix:@"scrollto "]) {
         NSString *args = [cmd substringFromIndex:9];
         NSArray *parts = [args componentsSeparatedByString:@" "];
-        NSString *eid = parts[0];
+        NSString *element_id = parts[0];
         CGFloat margin = parts.count > 1 ? [parts[1] doubleValue] : 0;
         __block NSString *result = nil;
         dispatch_sync(dispatch_get_main_queue(), ^{
-            NSView *view = g_element_ids[eid];
-            if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
-            NSScrollView *sv = nil;
+            NSView *view = g_element_ids[element_id];
+            if (!view) {
+                result = [NSString stringWithFormat:@"Element not found: %@\n", element_id];
+                return;
+            }
+            NSScrollView *scrollView = nil;
             NSView *walk = view.superview;
             while (walk) {
-                if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                if ([walk isKindOfClass:[NSScrollView class]]) {
+                    scrollView = (NSScrollView *)walk;
+                    break;
+                }
                 walk = walk.superview;
             }
-            if (!sv) { result = @"No scroll view ancestor found\n"; return; }
-            /* Convert element frame to document view coordinates */
-            NSRect viewRect = [view convertRect:view.bounds toView:sv.documentView];
-            /* Flip Y for flipped document views */
+            if (!scrollView) {
+                result = @"No scroll view ancestor found\n";
+                return;
+            }
+            NSRect viewRect = [view convertRect:view.bounds toView:scrollView.documentView];
             CGFloat targetY = viewRect.origin.y - margin;
             if (targetY < 0) targetY = 0;
-            CGFloat maxY = sv.documentView.frame.size.height - sv.contentView.bounds.size.height;
+            CGFloat maxY = scrollView.documentView.frame.size.height - scrollView.contentView.bounds.size.height;
             if (targetY > maxY) targetY = maxY;
-            [sv.contentView scrollToPoint:NSMakePoint(0, targetY)];
-            [sv reflectScrolledClipView:sv.contentView];
-            result = [NSString stringWithFormat:@"Scrolled to %@ at y=%.0f (margin=%.0f)\n", eid, targetY, margin];
+            [scrollView.contentView scrollToPoint:NSMakePoint(0, targetY)];
+            [scrollView reflectScrolledClipView:scrollView.contentView];
+            result = [NSString stringWithFormat:@"Scrolled to %@ at y=%.0f (margin=%.0f)\n", element_id, targetY, margin];
         });
         return result;
     }
 
     if ([cmd isEqualToString:@"scrolltop"] || [cmd hasPrefix:@"scrolltop "]) {
-        NSString *eid = cmd.length > 10 ? [cmd substringFromIndex:10] : nil;
+        NSString *element_id = cmd.length > 10 ? [cmd substringFromIndex:10] : nil;
         __block NSString *result = nil;
         dispatch_sync(dispatch_get_main_queue(), ^{
-            NSScrollView *sv = nil;
-            if (eid.length > 0) {
-                NSView *view = g_element_ids[eid];
-                if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+            NSScrollView *scrollView = nil;
+            if (element_id.length > 0) {
+                NSView *view = g_element_ids[element_id];
+                if (!view) {
+                    result = [NSString stringWithFormat:@"Element not found: %@\n", element_id];
+                    return;
+                }
                 NSView *walk = view;
                 while (walk) {
-                    if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                    if ([walk isKindOfClass:[NSScrollView class]]) {
+                        scrollView = (NSScrollView *)walk;
+                        break;
+                    }
                     walk = walk.superview;
                 }
             } else {
-                sv = findMainScrollView(g_inspect_window.contentView);
+                scrollView = find_main_scroll_view(g_inspect_window.contentView);
             }
-            if (!sv) { result = @"No scroll view found\n"; return; }
-            [sv.contentView scrollToPoint:NSMakePoint(0, 0)];
-            [sv reflectScrolledClipView:sv.contentView];
+            if (!scrollView) {
+                result = @"No scroll view found\n";
+                return;
+            }
+            [scrollView.contentView scrollToPoint:NSMakePoint(0, 0)];
+            [scrollView reflectScrolledClipView:scrollView.contentView];
             result = @"Scrolled to top\n";
         });
         return result;
     }
 
     if ([cmd isEqualToString:@"scrollbottom"] || [cmd hasPrefix:@"scrollbottom "]) {
-        NSString *eid = cmd.length > 13 ? [cmd substringFromIndex:13] : nil;
+        NSString *element_id = cmd.length > 13 ? [cmd substringFromIndex:13] : nil;
         __block NSString *result = nil;
         dispatch_sync(dispatch_get_main_queue(), ^{
-            NSScrollView *sv = nil;
-            if (eid.length > 0) {
-                NSView *view = g_element_ids[eid];
-                if (!view) { result = [NSString stringWithFormat:@"Element not found: %@\n", eid]; return; }
+            NSScrollView *scrollView = nil;
+            if (element_id.length > 0) {
+                NSView *view = g_element_ids[element_id];
+                if (!view) {
+                    result = [NSString stringWithFormat:@"Element not found: %@\n", element_id];
+                    return;
+                }
                 NSView *walk = view;
                 while (walk) {
-                    if ([walk isKindOfClass:[NSScrollView class]]) { sv = (NSScrollView *)walk; break; }
+                    if ([walk isKindOfClass:[NSScrollView class]]) {
+                        scrollView = (NSScrollView *)walk;
+                        break;
+                    }
                     walk = walk.superview;
                 }
             } else {
-                sv = findMainScrollView(g_inspect_window.contentView);
+                scrollView = find_main_scroll_view(g_inspect_window.contentView);
             }
-            if (!sv) { result = @"No scroll view found\n"; return; }
-            CGFloat maxY = sv.documentView.frame.size.height - sv.contentView.bounds.size.height;
+            if (!scrollView) {
+                result = @"No scroll view found\n";
+                return;
+            }
+            CGFloat maxY = scrollView.documentView.frame.size.height - scrollView.contentView.bounds.size.height;
             if (maxY < 0) maxY = 0;
-            [sv.contentView scrollToPoint:NSMakePoint(0, maxY)];
-            [sv reflectScrolledClipView:sv.contentView];
+            [scrollView.contentView scrollToPoint:NSMakePoint(0, maxY)];
+            [scrollView reflectScrolledClipView:scrollView.contentView];
             result = [NSString stringWithFormat:@"Scrolled to bottom (y=%.0f)\n", maxY];
         });
         return result;
@@ -654,28 +724,31 @@ static NSString *handle_command(NSString *cmd) {
 
     if ([cmd isEqualToString:@"help"]) {
         return @"Commands:\n"
-               "  tree                  — dump view hierarchy\n"
-               "  screenshot            — save /tmp/strictts-screenshot.png\n"
-               "  click <label>         — click button containing label\n"
-               "  clickid <id>          — click element by inspector id\n"
-               "  type <text>           — type into first search field\n"
-               "  typeid <id> <txt>     — type into specific input by inspector id\n"
-               "  find <text>           — find elements containing text\n"
-               "  get <id> [prop]       — get element property\n"
-               "  probe <id>           — box model: edges, padding, children\n"
-               "  scroll <id> <ticks>   — scroll by ticks (80px each, negative=up)\n"
-               "  scrollto <id> [margin]— scroll element to top of scroll view\n"
-               "  scrolltop <id>        — scroll to top\n"
-               "  scrollbottom <id>     — scroll to bottom\n"
-               "  help                  — this message\n";
+               "  tree                  - dump view hierarchy\n"
+               "  screenshot            - save /tmp/tsn-screenshot.png\n"
+               "  click <label>         - click button containing label\n"
+               "  clickid <id>          - click element by inspector id\n"
+               "  type <text>           - type into first text input\n"
+               "  typeid <id> <txt>     - type into specific input by inspector id\n"
+               "  find <text>           - find elements containing text\n"
+               "  get <id> [prop]       - get element property\n"
+               "  probe <id>            - inspect box model and child frames\n"
+               "  scroll <id> <ticks>   - scroll by ticks (80px each)\n"
+               "  scrollto <id> [margin]- scroll element to top of scroll view\n"
+               "  scrolltop <id>        - scroll to top\n"
+               "  scrollbottom <id>     - scroll to bottom\n"
+               "  help                  - this message\n";
     }
 
     return [NSString stringWithFormat:@"Unknown command: %@\nType 'help' for usage.\n", cmd];
 }
 
 void ui_inspector_start(void) {
-    for (NSWindow *w in [NSApp windows]) {
-        if (w.isVisible) { g_inspect_window = w; break; }
+    for (NSWindow *window in [NSApp windows]) {
+        if (window.isVisible) {
+            g_inspect_window = window;
+            break;
+        }
     }
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{

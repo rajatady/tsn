@@ -13,7 +13,7 @@ import { uiConformanceSuites } from '../conformance/ui/specs/registry.js'
 const root = '/Users/kumardivyarajat/WebstormProjects/bun-vite/vite'
 const artifactRoot = '/tmp/tsn-ui-conformance'
 const inspectApp = 'gallery'
-const inspectSocket = `/tmp/strictts-inspect-${inspectApp}.sock`
+const inspectSocket = `/tmp/tsn-inspect-${inspectApp}.sock`
 const captureCaseScreenshots = process.env.UI_CONFORMANCE_CASE_SCREENSHOTS === '1'
 
 function runCommand(file: string, args: string[]): string {
@@ -56,17 +56,17 @@ async function waitForInspector(): Promise<void> {
   while (attempt < 40) {
     try {
       const tree = await inspect(['tree'])
-      if (tree.includes('Window "UI Gallery"')) return
+      if (tree.includes('Window "Geometry Conformance"')) return
     } catch (_err) {
     }
     attempt = attempt + 1
     await sleep(250)
   }
-  throw new Error('UI Gallery inspector did not become ready in time')
+  throw new Error('Geometry conformance inspector did not become ready in time')
 }
 
 function copyLatestScreenshot(targetPath: string): void {
-  const source = '/tmp/strictts-screenshot.png'
+  const source = '/tmp/tsn-screenshot.png'
   if (!fs.existsSync(source)) {
     throw new Error(`Missing screenshot artifact: ${source}`)
   }
@@ -100,6 +100,12 @@ async function typeInto(id: string, text: string): Promise<void> {
   await sleep(25)
 }
 
+async function selectInto(id: string, text: string): Promise<void> {
+  const result = await inspect(['selectid', id, text])
+  assert.ok(result.includes('Selected in'), `Expected selected result for ${id}, got: ${result}`)
+  await sleep(25)
+}
+
 async function runAction(action: ConformanceAction): Promise<void> {
   if (action.kind === 'click-id') {
     await clickById(action.id)
@@ -107,6 +113,10 @@ async function runAction(action: ConformanceAction): Promise<void> {
   }
   if (action.kind === 'click-label') {
     await clickByLabel(action.label)
+    return
+  }
+  if (action.kind === 'select-id') {
+    await selectInto(action.id, action.text)
     return
   }
   await typeInto(action.id, action.text)
@@ -187,7 +197,7 @@ async function main(): Promise<void> {
   fs.mkdirSync(artifactRoot, { recursive: true })
 
   console.log('Building UI conformance gallery...')
-  runCommand('./strictts', ['build', 'conformance/gallery.tsx'])
+  runCommand('./tsn', ['build', 'conformance/gallery.tsx'])
 
   console.log('Launching UI conformance gallery...')
   const child = spawn('./build/gallery', [], {

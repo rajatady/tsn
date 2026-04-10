@@ -6,7 +6,7 @@
 //   - Process gigabytes of data with minimal memory
 //   - Deploy as a single binary, no dependencies
 //
-// StrictTS only — no any, no dynamic access, no eval.
+// TSN only — no any, no dynamic access, no eval.
 
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);

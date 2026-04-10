@@ -3,50 +3,28 @@ UIHandle ui_sidebar(int width) {
     NSVisualEffectView *vev = [NSVisualEffectView new];
     vev.material = NSVisualEffectMaterialSidebar;
     vev.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-
-    UIStackContainer *s = [UIStackContainer new];
-    s.direction = 0;
-    YGNodeStyleSetWidth(s.ygNode, width);
-    YGNodeStyleSetGap(s.ygNode, YGGutterAll, 2);
-    YGNodeStyleSetPadding(s.ygNode, YGEdgeTop, 8);
-    YGNodeStyleSetPadding(s.ygNode, YGEdgeLeft, 8);
-    YGNodeStyleSetPadding(s.ygNode, YGEdgeRight, 8);
-    [vev addSubview:s];
-    s.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    TSNShadowNode *node = tsn_create_view_node(vev, TSNNodeKindVStack, 0, NO);
+    YGNodeStyleSetWidth(node.yogaNode, width);
+    YGNodeStyleSetGap(node.yogaNode, YGGutterAll, 2);
+    YGNodeStyleSetPadding(node.yogaNode, YGEdgeTop, 8);
+    YGNodeStyleSetPadding(node.yogaNode, YGEdgeLeft, 8);
+    YGNodeStyleSetPadding(node.yogaNode, YGEdgeRight, 8);
 
     retain_render(vev);
-    retain_render(s);
     return (__bridge UIHandle)vev;
 }
 
 UIHandle ui_sidebar_section(UIHandle sidebar, const char *header) {
-    NSView *vev = (__bridge NSView *)sidebar;
-    UIStackContainer *s = nil;
-    for (NSView *sub in vev.subviews) {
-        if ([sub isKindOfClass:[UIStackContainer class]]) { s = (UIStackContainer *)sub; break; }
-    }
-    if (!s) return sidebar;
-
-    NSTextField *h = [NSTextField labelWithString:[NSString stringWithUTF8String:header]];
+    UIHandle textHandle = ui_text(header, 10, true);
+    NSTextField *h = (__bridge NSTextField *)textHandle;
     h.font = [NSFont systemFontOfSize:10 weight:NSFontWeightBold];
     h.textColor = [NSColor colorWithWhite:0.45 alpha:1];
-    [s.children addObject:h];
-    [s addSubview:h];
-    YGNodeRef leafNode = yoga_leaf_node_for_view(h);
-    YGNodeInsertChild(s.ygNode, leafNode, (uint32_t)YGNodeGetChildCount(s.ygNode));
-
+    ui_add_child(sidebar, textHandle);
     return sidebar;
 }
 
 UIHandle ui_sidebar_item(UIHandle section, const char *label, const char *sf_symbol,
                          int tag, UIClickFn fn) {
-    NSView *vev = (__bridge NSView *)section;
-    UIStackContainer *s = nil;
-    for (NSView *sub in vev.subviews) {
-        if ([sub isKindOfClass:[UIStackContainer class]]) { s = (UIStackContainer *)sub; break; }
-    }
-    if (!s) return section;
-
     UIHandle btn;
     if (sf_symbol && strlen(sf_symbol) > 0) {
         btn = ui_button_icon(sf_symbol, label, fn, tag);
@@ -56,11 +34,7 @@ UIHandle ui_sidebar_item(UIHandle section, const char *label, const char *sf_sym
 
     NSButton *b = (__bridge NSButton *)btn;
     b.alignment = NSTextAlignmentLeft;
-    [s.children addObject:b];
-    [s addSubview:b];
-    YGNodeRef leafNode = yoga_leaf_node_for_view(b);
-    YGNodeInsertChild(s.ygNode, leafNode, (uint32_t)YGNodeGetChildCount(s.ygNode));
-
+    ui_add_child(section, btn);
     return btn;
 }
 
@@ -109,6 +83,7 @@ UIHandle ui_scroll(void) {
     sv.hasVerticalScroller = YES;
     sv.hasHorizontalScroller = NO;
     sv.drawsBackground = NO;
+    tsn_create_scroll_node(sv);
     retain_render(sv);
     return (__bridge UIHandle)sv;
 }
@@ -116,6 +91,8 @@ UIHandle ui_scroll(void) {
 void ui_scroll_set_axis(UIHandle s, int axis) {
     NSScrollView *sv = (__bridge NSScrollView *)s;
     if (![sv isKindOfClass:[NSScrollView class]]) return;
+    TSNShadowNode *node = tsn_shadow_node_for_obj(sv);
+    if (node) node.scrollAxis = axis;
     if (axis == 1) {
         sv.hasHorizontalScroller = YES;
         sv.hasVerticalScroller = NO;

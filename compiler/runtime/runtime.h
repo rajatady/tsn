@@ -1,5 +1,5 @@
 /*
- * StrictTS Runtime v4 — Reference Counting
+ * TSN Runtime v4 — Reference Counting
  *
  * Every heap-allocated buffer (string data, array data) carries a refcount.
  * The compiler inserts retain/release automatically:
@@ -11,8 +11,8 @@
  * header before the data pointer, shared across slices.
  */
 
-#ifndef STRICTTS_RUNTIME_H
-#define STRICTTS_RUNTIME_H
+#ifndef TSN_RUNTIME_H
+#define TSN_RUNTIME_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -471,4 +471,4 @@ static inline double ts_math_floor(double x) { return floor(x); }
 #include "debug.h"
 #include "crash.h"
 
-#endif /* STRICTTS_RUNTIME_H */
+#endif /* TSN_RUNTIME_H */

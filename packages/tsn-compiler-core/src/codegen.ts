@@ -1,5 +1,5 @@
 /**
- * StrictTS Code Generator v3 — Generate actual C.
+ * TSN Code Generator v3 — Generate actual C.
  *
  * Type mappings:
  *   number       → double

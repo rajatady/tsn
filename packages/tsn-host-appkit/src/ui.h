@@ -1,13 +1,13 @@
 /*
- * StrictTS Native UI Framework — Apple-quality macOS components
+ * TSN Native UI Framework — Apple-quality macOS components
  *
  * C API over AppKit. TypeScript devs call functions, get native views.
  * Supports: vibrancy, blur, SF Symbols, dark mode, gradients,
  * split views, outline views, popovers, badges, progress, segmented controls.
  */
 
-#ifndef STRICTTS_UI_H
-#define STRICTTS_UI_H
+#ifndef TSN_UI_H
+#define TSN_UI_H
 
 #include <stdbool.h>
 
@@ -27,16 +27,24 @@ void        ui_window_fullsize_content(UIHandle w);
 UIHandle    ui_vstack(void);
 UIHandle    ui_hstack(void);
 UIHandle    ui_zstack(void);
+UIHandle    ui_view(void);
 void        ui_set_clip(UIHandle v, int clip);
 void        ui_set_aspect(UIHandle v, int w, int h);
 void        ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
                             double r2, double g2, double b2, double a2, int direction);
 void        ui_set_padding(UIHandle v, int top, int right, int bottom, int left);
+void        ui_set_margin(UIHandle v, int top, int right, int bottom, int left);
 void        ui_set_spacing(UIHandle v, int spacing);
 void        ui_set_flex(UIHandle v, int flex);
 void        ui_set_size(UIHandle v, int w, int h);  /* -1 = auto */
+void        ui_set_size_pct(UIHandle v, double w, double h);  /* percentages, -1 = unset */
 void        ui_set_min_size(UIHandle v, int w, int h);
+void        ui_set_min_size_pct(UIHandle v, double w, double h);
 void        ui_set_max_size(UIHandle v, int w, int h);
+void        ui_set_max_size_pct(UIHandle v, double w, double h);
+void        ui_set_position_type(UIHandle v, int position); /* 0=relative, 1=absolute */
+void        ui_set_inset(UIHandle v, int top, int right, int bottom, int left);
+void        ui_set_inset_pct(UIHandle v, double top, double right, double bottom, double left);
 void        ui_set_alignment(UIHandle v, int align); /* child self-alignment on cross-axis: 0=leading, 1=center, 2=trailing */
 void        ui_set_margin_auto(UIHandle v);           /* mx-auto: auto left+right margins for centering */
 void        ui_set_align_items(UIHandle v, int align);    /* container cross-axis: 0=start, 1=center, 2=end, 3=stretch */
@@ -76,9 +84,20 @@ void        ui_image_set_scaling(UIHandle img, int mode); /* 0=contain, 1=cover,
 /* ─── Text Field / Search ────────────────────────────────────────── */
 UIHandle    ui_text_field(const char *placeholder);
 UIHandle    ui_search_field(const char *placeholder);
+UIHandle    ui_text_area(const char *placeholder);
+UIHandle    ui_select(void);
+void        ui_select_add_option(UIHandle select, const char *label);
+void        ui_select_set_value(UIHandle select, const char *value);
 typedef void (*UITextChangedFn)(const char *text);
 void        ui_on_text_changed(UIHandle field, UITextChangedFn fn);
+void        ui_on_select_changed(UIHandle select, UITextChangedFn fn);
 void        ui_text_input_set_value(UIHandle field, const char *text);
+UIHandle    ui_checkbox(const char *label, bool initial);
+UIHandle    ui_radio(const char *label, bool initial);
+UIHandle    ui_switch(bool initial);
+typedef void (*UIBoolChangedFn)(bool on);
+void        ui_on_bool_changed(UIHandle control, UIBoolChangedFn fn);
+void        ui_bool_control_set_value(UIHandle control, bool on);
 
 /* ─── Buttons ────────────────────────────────────────────────────── */
 typedef void (*UIClickFn)(int tag);
@@ -156,7 +175,8 @@ void        ui_set_shadow(UIHandle v, double ox, double oy, double radius, doubl
 void        ui_set_background_rgb(UIHandle v, double r, double g, double b, double a);
 void        ui_set_background_system(UIHandle v, int color);
 void        ui_set_corner_radius(UIHandle v, double r);
-void        ui_set_border(UIHandle v, double r, double g, double b, double width);
+void        ui_set_border_color(UIHandle v, double r, double g, double b, double a);
+void        ui_set_border_width(UIHandle v, double width);
 
 /* ─── Animation ──────────────────────────────────────────────────── */
 void        ui_animate(UIHandle v, double duration); /* next property change is animated */
@@ -166,7 +186,7 @@ typedef void (*UITimerFn)(void);
 void        ui_set_timer(double interval_sec, UITimerFn fn);
 
 /* ─── Inspector (dev tools) ──────────────────────────────────────── */
-void        ui_inspector_start(void);  /* starts Unix socket listener on /tmp/strictts-inspect.sock */
+void        ui_inspector_start(void);  /* starts Unix socket listener on /tmp/tsn-inspect.sock */
 void        ui_set_id(UIHandle v, const char *element_id);  /* register element for inspector lookup */
 
-#endif /* STRICTTS_UI_H */
+#endif /* TSN_UI_H */

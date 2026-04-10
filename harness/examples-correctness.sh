@@ -48,29 +48,29 @@ run_case() {
   echo ""
   echo "━━━ $name ━━━"
 
-  NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "$source" < "$input" > "/tmp/strictts-$name-node.txt" 2>&1
-  check "Node.js" "/tmp/strictts-$name-node.txt" "$expected"
+  NODE_OPTIONS="--require=$JS_STDLIB_SHIM" npx tsx "$source" < "$input" > "/tmp/tsn-$name-node.txt" 2>&1
+  check "Node.js" "/tmp/tsn-$name-node.txt" "$expected"
 
   if command -v bun &> /dev/null; then
-    bun --preload "$JS_STDLIB_SHIM" "$source" < "$input" > "/tmp/strictts-$name-bun.txt" 2>&1
-    check "Bun    " "/tmp/strictts-$name-bun.txt" "$expected"
+    bun --preload "$JS_STDLIB_SHIM" "$source" < "$input" > "/tmp/tsn-$name-bun.txt" 2>&1
+    check "Bun    " "/tmp/tsn-$name-bun.txt" "$expected"
   else
     echo -e "  ${YELLOW}SKIP${NC} Bun (not installed)"
     SKIP=$((SKIP + 1))
   fi
 
-  if ./strictts build "$source" > "/tmp/strictts-$name-build.txt" 2>&1; then
-    "$binary" < "$input" > "/tmp/strictts-$name-native.txt" 2>&1
-    check "Native " "/tmp/strictts-$name-native.txt" "$expected"
+  if ./tsn build "$source" > "/tmp/tsn-$name-build.txt" 2>&1; then
+    "$binary" < "$input" > "/tmp/tsn-$name-native.txt" 2>&1
+    check "Native " "/tmp/tsn-$name-native.txt" "$expected"
   else
     echo -e "  ${RED}FAIL${NC} Native build"
-    tail -20 "/tmp/strictts-$name-build.txt"
+    tail -20 "/tmp/tsn-$name-build.txt"
     FAIL=$((FAIL + 1))
   fi
 }
 
 echo "╔═══════════════════════════════════════════════╗"
-echo "║  StrictTS CLI Examples: Correctness Tests     ║"
+echo "║  TSN CLI Examples: Correctness Tests     ║"
 echo "╚═══════════════════════════════════════════════╝"
 
 run_case "config-audit" "examples/config-audit.ts" "harness/test-data/config-audit.env" "harness/expected/config-audit.expected.txt"

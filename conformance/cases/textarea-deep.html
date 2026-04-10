@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; background: black; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    textarea { resize: none; }
+  </style>
+</head>
+<body>
+  <div data-testid="root" class="flex flex-col gap-4 w-[520px] h-[320px] bg-zinc-900 p-4">
+    <textarea data-testid="textarea-main" placeholder="Write release notes..." class="w-[420px] h-[120px]"></textarea>
+    <div data-testid="row-secondary" class="flex items-end gap-3">
+      <textarea data-testid="textarea-side" placeholder="Short note..." class="w-[240px] h-[84px]"></textarea>
+      <div data-testid="action" class="w-[96px] h-[40px] rounded-lg bg-zinc-700"></div>
+    </div>
+  </div>
+</body>
+</html>

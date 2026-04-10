@@ -117,7 +117,7 @@ static void ts_error_overlay(const char *title, const char *message,
             [overlay addSubview:stack];
         }
 
-        NSTextField *watermark = [NSTextField labelWithString:@"StrictTS Error Overlay  ·  Debug Build"];
+        NSTextField *watermark = [NSTextField labelWithString:@"TSN Error Overlay  ·  Debug Build"];
         watermark.font = [NSFont systemFontOfSize:10 weight:NSFontWeightMedium];
         watermark.textColor = [NSColor colorWithRed:0.5 green:0.25 blue:0.25 alpha:1.0];
         watermark.frame = NSMakeRect(pad, 12, bounds.size.width - 2*pad, 14);
@@ -133,8 +133,8 @@ static void ts_error_overlay(const char *title, const char *message,
         NSBitmapImageRep *rep = [content bitmapImageRepForCachingDisplayInRect:content.bounds];
         [content cacheDisplayInRect:content.bounds toBitmapImageRep:rep];
         NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
-        [png writeToFile:@"/tmp/strictts-error.png" atomically:YES];
-        fprintf(stderr, "\n  \033[90mError screenshot: /tmp/strictts-error.png\033[0m\n\n");
+        [png writeToFile:@"/tmp/tsn-error.png" atomically:YES];
+        fprintf(stderr, "\n  \033[90mError screenshot: /tmp/tsn-error.png\033[0m\n\n");
     };
 
     if ([NSThread isMainThread]) {
@@ -220,6 +220,15 @@ void ui_replace_root(UIHandle root) {
     [current makeKeyAndOrderFront:nil];
     g_inspect_window = current;
 
+    TSNShadowNode *nextNode = tsn_shadow_node_for_obj(next);
+    if (!nextNode) nextNode = tsn_shadow_node_for_obj(replacement);
+    if (nextNode) {
+        nextNode.window = current;
+        nextNode.view = replacement;
+        tsn_set_shadow_node_for_obj(current, nextNode);
+        tsn_set_shadow_node_for_obj(replacement, nextNode);
+    }
+
     [next orderOut:nil];
     [next close];
     finish_render_cycle();
@@ -240,10 +249,10 @@ UIHandle ui_window(const char *title, int w, int h, bool dark) {
 
     UIStackContainer *root = [UIStackContainer new];
     root.direction = 0;
-    YGNodeStyleSetFlexGrow(root.ygNode, 1);
     root.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     root.frame = win.contentView.bounds;
     win.contentView = root;
+    tsn_create_window_node(win, root);
 
     retain_render(win);
     return (__bridge UIHandle)win;

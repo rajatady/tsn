@@ -1,7 +1,7 @@
 /**
  * Geometry Oracle Conformance Harness
  *
- * Compares element geometry between native (StrictTS/AppKit) and
+ * Compares element geometry between native (TSN/AppKit) and
  * browser (Playwright/Tailwind CSS). The browser is the oracle —
  * if positions/sizes match within tolerance, the layout is correct.
  *
@@ -19,7 +19,7 @@ import { geometryCases, type GeometryCase } from './registry.js'
 
 const root = process.cwd()
 const artifactDir = '/tmp/tsn-geometry-conformance'
-const inspectSocket = '/tmp/strictts-inspect-gallery.sock'
+const inspectSocket = '/tmp/tsn-inspect-gallery.sock'
 const casesDir = path.join(root, 'conformance', 'cases')
 
 const DEFAULT_TOLERANCE = { position: 4, size: 8 }
@@ -193,7 +193,7 @@ async function main(): Promise<void> {
 
   // Build gallery
   console.log('Building conformance gallery...')
-  execFileSync('./strictts', ['build', 'conformance/gallery.tsx'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  execFileSync('./tsn', ['build', 'conformance/gallery.tsx'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 
   // Launch gallery
   console.log('Launching conformance gallery...')

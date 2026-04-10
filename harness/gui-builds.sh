@@ -17,7 +17,7 @@ build_case() {
   shift
   local log="/tmp/$(echo "$label" | tr ' /' '__').log"
 
-  if ./strictts build "$@" > "$log" 2>&1; then
+  if ./tsn build "$@" > "$log" 2>&1; then
     echo -e "  ${GREEN}PASS${NC} $label"
     PASS=$((PASS + 1))
   else
@@ -28,7 +28,7 @@ build_case() {
 }
 
 echo "╔═══════════════════════════════════════════════╗"
-echo "║  StrictTS Native GUI: Build Harness           ║"
+echo "║  TSN Native GUI: Build Harness           ║"
 echo "╚═══════════════════════════════════════════════╝"
 
 echo ""

@@ -1,6 +1,6 @@
 # JSX & Components
 
-StrictTS supports React-like TSX syntax that compiles to native macOS UI. Write familiar JSX with Tailwind classes — the compiler emits C calls to the AppKit host in [packages/tsn-host-appkit/src/ui.h](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/packages/tsn-host-appkit/src/ui.h).
+TSN supports React-like TSX syntax that compiles to native macOS UI. Write familiar JSX with Tailwind classes — the compiler emits C calls to the AppKit host in [packages/tsn-host-appkit/src/ui.h](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/packages/tsn-host-appkit/src/ui.h).
 
 ## How It Works
 
@@ -28,7 +28,7 @@ ui_add_child(_j0, _j1);
 
 ## Function Components
 
-StrictTS now supports named React-style function components that return JSX. The normal `return (...)` form is supported, including destructured props and a top-level `<App />` root.
+TSN now supports named React-style function components that return JSX. The normal `return (...)` form is supported, including destructured props and a top-level `<App />` root.
 
 ```tsx
 interface HeaderProps {
@@ -66,7 +66,7 @@ Notes:
 
 ## Hooks and App State
 
-StrictTS now supports a small React-like hook slice for native UI apps:
+TSN now supports a small React-like hook slice for native UI apps:
 
 ```tsx
 import { useRoute, useState, useStore } from '../../packages/tsn-ui/src/react'
@@ -98,6 +98,10 @@ Current model:
 - `useStore()` dedupes by store key across the app
 
 ## Component Catalog
+
+The current UI catalog is split between low-level primitives and higher-level components. For new UI work, prefer low-level primitives first and treat the higher-level pieces as convenience layers rather than the foundation.
+
+There is also a small helper layer in `packages/tsn-ui/src/helpers.tsx` for composed field patterns such as `CheckboxField`, `RadioField`, and `SelectField`. Those helpers are app-facing sugar on top of the primitive layer, not a separate host/runtime layer.
 
 ### Window
 
@@ -133,6 +137,19 @@ Flexbox-like layout containers.
   <Spacer />
   <Text>Right</Text>
 </HStack>
+```
+
+### View / ZStack
+
+`View` is the neutral box primitive. Use it for shells, cards, pills, panels, rows, and other generic containers. `ZStack` is the overlay container.
+
+```tsx
+<ZStack className="flex-1">
+  <View className="absolute inset-[0] rounded-[24] bg-zinc-950" />
+  <VStack className="p-6">
+    <Text className="text-lg font-semibold">Foreground content</Text>
+  </VStack>
+</ZStack>
 ```
 
 ### Text
@@ -197,6 +214,23 @@ Plain text input field.
 | `placeholder` | string | Placeholder text |
 | `onChange` | `(text: string) => void` | Called on text change |
 | `className` | string | Tailwind classes |
+
+### TextArea / Select / Checkbox / Radio / Switch
+
+These are now first-class low-level primitives.
+
+```tsx
+<TextArea value={notes} placeholder="Add release notes" onChange={onNotesChange} className="w-[320] h-[120]" />
+<Select value={priority} options={priorityOptions} onChange={onPriorityChange} className="w-[160]" />
+<Checkbox checked={publishNow} onChange={onPublishNowChange}>Publish now</Checkbox>
+<Radio checked={envProd} onChange={onEnvProdChange}>Production</Radio>
+<Switch checked={notificationsEnabled} onChange={onNotificationsChange} />
+```
+
+Notes:
+- `TextArea` is multiline and controlled like `Input`
+- `Select` takes a string `value`, a string array `options`, and an `onChange`
+- `Checkbox`, `Radio`, and `Switch` use boolean `checked` / `onChange`
 
 ### Sidebar
 
@@ -402,7 +436,12 @@ Compile-time parsing. No CSS runtime. 1 Tailwind unit = 4 pixels.
 | `p-N` | Padding all sides | `p-5` = 20px |
 | `px-N`, `py-N` | Horizontal/vertical padding | `px-5` = 20px left+right |
 | `pt-N`, `pr-N`, `pb-N`, `pl-N` | Individual padding | `pt-4` = 16px top |
-| `m-N`, `mx-N`, `my-N` | Margin (emitted as padding) | `mx-5` = 20px left+right |
+| `m-N`, `mx-N`, `my-N` | Margin | `mx-5` = 20px left+right |
+| `items-start`, `items-center`, `items-end`, `items-stretch` | Container cross-axis alignment | Stack/container alignment |
+| `justify-start`, `justify-center`, `justify-end`, `justify-between` | Container main-axis alignment | Main-axis distribution |
+| `self-start`, `self-center`, `self-end`, `self-stretch` | Child cross-axis alignment | Self alignment |
+| `relative`, `absolute` | Position mode | Positioned layout |
+| `top-*`, `right-*`, `bottom-*`, `left-*`, `inset-*` | Positioned offsets | `absolute inset-[0]` |
 
 ### Sizing
 
@@ -412,6 +451,7 @@ Compile-time parsing. No CSS runtime. 1 Tailwind unit = 4 pixels.
 | `h-N` | Height = N * 4px |
 | `w-[200]` | Width = 200px (arbitrary) |
 | `h-[100]` | Height = 100px (arbitrary) |
+| `w-full`, `h-full` | 100% size |
 | `min-w-N`, `min-h-N` | Minimum size = N * 4px |
 | `max-w-N`, `max-h-N` | Maximum size = N * 4px |
 | `min-w-[460]`, `max-w-[1160]` | Arbitrary min/max size |
@@ -429,6 +469,12 @@ Compile-time parsing. No CSS runtime. 1 Tailwind unit = 4 pixels.
 | `text-3xl` | 30px |
 | `text-4xl` | 36px |
 | `font-bold` | Bold weight |
+| `font-medium`, `font-semibold` | Medium and semibold weights |
+| `uppercase`, `lowercase` | Text transform |
+| `tracking-[N]` | Letter spacing in points |
+| `leading-none`, `leading-tight`, `leading-snug`, `leading-normal`, `leading-relaxed`, `leading-loose` | Line-height presets |
+| `truncate` | Single-line tail truncation |
+| `text-left`, `text-center`, `text-right` | Text alignment |
 
 ### Colors
 
@@ -456,6 +502,8 @@ Text colors use system color indices:
 
 | Class | Effect |
 |-------|--------|
+| `border`, `border-[N]` | Border width |
+| `border-*` | Border color |
 | `rounded` | 8px corner radius |
 | `rounded-sm` | 4px |
 | `rounded-md` | 6px |
@@ -471,6 +519,8 @@ Text colors use system color indices:
 | `self-end` | Trailing alignment on the cross-axis |
 | `overflow-y-auto` | Vertical native `Scroll` |
 | `overflow-x-auto` | Horizontal native `Scroll` |
+
+The current parser/compiler path is strongest when `className` is statically resolvable at compile time. Plain string literals are the most reliable path.
 
 The App Store-style centered content rail is now expressed with these classes instead of repeating one giant fixed width on every section:
 
@@ -528,4 +578,4 @@ UIHandle _j0 = ui_window("App", 800, 600, true);
 ui_set_id(_j0, "_j0");
 ```
 
-Query elements at runtime via the inspector: `strictts inspect get _j5 type`
+Query elements at runtime via the inspector: `tsn inspect get _j5 type`

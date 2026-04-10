@@ -5,7 +5,7 @@ The native AppKit host (`packages/tsn-host-appkit/src/ui.h` + `ui.m`) wraps macO
 ## Architecture
 
 ```
-TypeScript JSX  →  codegen (jsx.ts)  →  ui_*() C calls  →  AppKit views
+TypeScript JSX  →  planner / Tailwind lowering  →  ui_*() C calls  →  AppKit views
 ```
 
 Every `ui_*()` function creates a real NSView subclass. The compile entrypoint is [ui.m](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/packages/tsn-host-appkit/src/ui.m), but the implementation is now split by responsibility under `packages/tsn-host-appkit/src/runtime/`:
@@ -41,13 +41,29 @@ void     ui_window_fullsize_content(UIHandle w);
 ```c
 UIHandle ui_vstack(void);                                  // Vertical stack (flexbox column)
 UIHandle ui_hstack(void);                                  // Horizontal stack (flexbox row)
+UIHandle ui_zstack(void);                                  // Overlay stack
+UIHandle ui_view(void);                                    // Neutral generic box
+void     ui_set_clip(UIHandle v, int clip);
+void     ui_set_aspect(UIHandle v, int w, int h);
+void     ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
+                         double r2, double g2, double b2, double a2, int direction);
 void     ui_set_padding(UIHandle v, int t, int r, int b, int l);
+void     ui_set_margin(UIHandle v, int t, int r, int b, int l);
 void     ui_set_spacing(UIHandle v, int spacing);          // Gap between children
 void     ui_set_flex(UIHandle v, int flex);                // Flex grow factor
 void     ui_set_size(UIHandle v, int w, int h);            // -1 = auto
+void     ui_set_size_pct(UIHandle v, double w, double h);
 void     ui_set_min_size(UIHandle v, int w, int h);
+void     ui_set_min_size_pct(UIHandle v, double w, double h);
 void     ui_set_max_size(UIHandle v, int w, int h);
+void     ui_set_max_size_pct(UIHandle v, double w, double h);
+void     ui_set_position_type(UIHandle v, int position);   // 0=relative, 1=absolute
+void     ui_set_inset(UIHandle v, int top, int right, int bottom, int left);
+void     ui_set_inset_pct(UIHandle v, double top, double right, double bottom, double left);
 void     ui_set_alignment(UIHandle v, int align);          // child self-alignment on cross-axis
+void     ui_set_margin_auto(UIHandle v);
+void     ui_set_align_items(UIHandle v, int align);
+void     ui_set_justify_content(UIHandle v, int just);
 void     ui_add_child(UIHandle parent, UIHandle child);
 UIHandle ui_spacer(void);                                  // Flexible space filler
 UIHandle ui_divider(void);                                 // Horizontal line
@@ -75,10 +91,16 @@ Layout algorithm:
 ```c
 UIHandle ui_text(const char *content, int size, bool bold);
 UIHandle ui_text_mono(const char *content, int size, bool bold);
-UIHandle ui_label(const char *content);
 void     ui_text_set_color_rgb(UIHandle t, double r, double g, double b, double a);
 void     ui_text_set_color_system(UIHandle t, int color);
 void     ui_text_set_selectable(UIHandle t, bool sel);
+void     ui_text_set_weight(UIHandle t, int weight);
+void     ui_text_set_line_height(UIHandle t, double mult);
+void     ui_text_set_tracking(UIHandle t, double kern);
+void     ui_text_set_transform(UIHandle t, int xform);
+void     ui_text_set_align(UIHandle t, int align);
+void     ui_text_set_truncate(UIHandle t);
+UIHandle ui_label(const char *content);
 ```
 
 ## SF Symbols
@@ -93,13 +115,24 @@ void     ui_symbol_set_color(UIHandle s, int system_color);
 ```c
 UIHandle ui_text_field(const char *placeholder);
 UIHandle ui_search_field(const char *placeholder);
+UIHandle ui_text_area(const char *placeholder);
+UIHandle ui_select(void);
+void     ui_select_add_option(UIHandle select, const char *label);
+void     ui_select_set_value(UIHandle select, const char *value);
 
 typedef void (*UITextChangedFn)(const char *text);
 void     ui_on_text_changed(UIHandle field, UITextChangedFn fn);
+void     ui_on_select_changed(UIHandle select, UITextChangedFn fn);
 void     ui_text_input_set_value(UIHandle field, const char *text);
+UIHandle ui_checkbox(const char *label, bool initial);
+UIHandle ui_radio(const char *label, bool initial);
+UIHandle ui_switch(bool initial);
+typedef void (*UIBoolChangedFn)(bool on);
+void     ui_on_bool_changed(UIHandle control, UIBoolChangedFn fn);
+void     ui_bool_control_set_value(UIHandle control, bool on);
 ```
 
-`ui_text_input_set_value()` is what controlled `Search` / `Input` values use during rerenders and reset flows.
+`ui_text_input_set_value()` is what controlled `Search`, `Input`, and `TextArea` values use during rerenders and reset flows.
 
 ## Buttons
 
@@ -107,7 +140,8 @@ void     ui_text_input_set_value(UIHandle field, const char *text);
 typedef void (*UIClickFn)(int tag);
 UIHandle ui_button(const char *label, UIClickFn fn, int tag);
 UIHandle ui_button_icon(const char *sf_symbol, const char *label, UIClickFn fn, int tag);
-void     ui_button_set_style(UIHandle b, int style);       // 0=regular 1=prominent 2=destructive 3=borderless
+void     ui_button_set_style(UIHandle b, int style);       // 0=regular 1=prominent 2=destructive 3=borderless 4=ghost 5=secondary 6=outline 7=link
+void     ui_on_click(UIHandle v, UIClickFn fn, int tag);
 ```
 
 ## Sidebar
@@ -167,7 +201,9 @@ UIHandle ui_tab(UIHandle tv, const char *label, const char *sf_symbol);
 void ui_set_background_rgb(UIHandle v, double r, double g, double b, double a);
 void ui_set_background_system(UIHandle v, int color);
 void ui_set_corner_radius(UIHandle v, double r);
-void ui_set_border(UIHandle v, double r, double g, double b, double width);
+void ui_set_border_color(UIHandle v, double r, double g, double b, double a);
+void ui_set_border_width(UIHandle v, double width);
+void ui_set_shadow(UIHandle v, double ox, double oy, double radius, double opacity);
 void ui_animate(UIHandle v, double duration);
 ```
 
@@ -177,8 +213,10 @@ void ui_animate(UIHandle v, double duration);
 void ui_show_popover(UIHandle anchor, UIHandle content, int width, int height);
 void ui_alert(const char *title, const char *message, const char *button);
 UIHandle ui_progress(double value);              // 0-1 or -1 for indeterminate
-UIHandle ui_toggle(bool initial, UIToggleFn fn);
-UIHandle ui_segmented(const char **labels, int count, UISegmentFn fn);
+UIHandle ui_toggle(const char *label, bool initial);
+void     ui_toggle_on_change(UIHandle tog, UIToggleFn fn);
+UIHandle ui_segmented(int count, const char **labels);
+void     ui_segmented_on_change(UIHandle seg, UISegmentFn fn);
 
 typedef void (*UITimerFn)(void);
 void ui_set_timer(double interval_sec, UITimerFn fn);

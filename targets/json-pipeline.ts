@@ -2,7 +2,7 @@
 // Real-world pattern: read a dataset, filter, transform, aggregate, rank.
 // Exercises: typed objects, arrays, closures, string ops, sorting.
 //
-// StrictTS only — no any, no dynamic access, no eval.
+// TSN only — no any, no dynamic access, no eval.
 
 interface Person {
   name: string;

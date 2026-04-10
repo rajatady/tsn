@@ -1,6 +1,19 @@
+import type { LengthValue } from './types.js'
+
+export function parseArbitraryValue(cls: string): LengthValue | null {
+  const match = cls.match(/\[(-?\d+(?:\.\d+)?)(px|%)?\]/)
+  if (!match) return null
+  const value = parseFloat(match[1])
+  if (Number.isNaN(value)) return null
+  return match[2] === '%'
+    ? { unit: 'percent', value }
+    : { unit: 'point', value }
+}
+
 export function parseArbitrary(cls: string): number {
-  const match = cls.match(/\[(\d+)\]/)
-  return match ? parseInt(match[1]) : -1
+  const parsed = parseArbitraryValue(cls)
+  if (!parsed || parsed.unit !== 'point') return -1
+  return parsed.value
 }
 
 export function tokenizeClassName(className: string): string[] {
@@ -49,7 +62,14 @@ export function parseColorAlpha(raw: string): { name: string, alpha: number } {
   const slashIdx = raw.lastIndexOf('/')
   if (slashIdx === -1) return { name: raw, alpha: 1 }
   const name = raw.slice(0, slashIdx)
-  const alphaPercent = parseInt(raw.slice(slashIdx + 1))
+  const alphaRaw = raw.slice(slashIdx + 1)
+  const bracketed = alphaRaw.match(/^\[(.+)\]$/)
+  if (bracketed) {
+    const alphaValue = parseFloat(bracketed[1])
+    if (Number.isNaN(alphaValue)) return { name: raw, alpha: 1 }
+    return { name, alpha: alphaValue }
+  }
+  const alphaPercent = parseInt(alphaRaw)
   if (Number.isNaN(alphaPercent)) return { name: raw, alpha: 1 }
   return { name, alpha: alphaPercent / 100 }
 }

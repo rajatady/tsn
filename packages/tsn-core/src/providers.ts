@@ -1,3 +1,5 @@
+import type { TSNTextMeasureRequest, TSNTextMeasureResult, TSNTextRole } from './text.js'
+
 export interface LayoutProvider {
   readonly name: string
   computeLayout(treeId: string): void
@@ -5,7 +7,7 @@ export interface LayoutProvider {
 
 export interface MeasureProvider {
   readonly name: string
-  measureText(text: string, fontRole: string, maxWidth: number): { width: number; height: number }
+  measureText(request: TSNTextMeasureRequest): TSNTextMeasureResult
 }
 
 export interface RenderProvider {
@@ -21,7 +23,8 @@ export interface ImageProvider {
 
 export interface TextProvider {
   readonly name: string
-  fontRole(role: string): string
+  supportsAttributedText: boolean
+  fontRole(role: TSNTextRole): string
 }
 
 export interface ScrollProvider {
@@ -37,6 +40,7 @@ export interface WindowProvider {
 export interface InputProvider {
   readonly name: string
   supportsSearchField: boolean
+  supportsMultiline: boolean
 }
 
 export interface AnimationProvider {

@@ -12,6 +12,7 @@ export class CallbackBridge {
       const fnName = expr.text
       if (fnType === 'UIClickFn') return this.wrapForClick(fnName)
       if (fnType === 'UITextChangedFn') return this.wrapForTextChanged(fnName)
+      if (fnType === 'UIBoolChangedFn') return this.wrapForBoolChanged(fnName)
       if (fnType === 'UITableCellFn') return this.wrapForCellFn(fnName)
       return fnName
     }
@@ -29,6 +30,10 @@ export class CallbackBridge {
       if (fnType === 'UITextChangedFn' && paramName) {
         this.ctx.varTypes.set(paramName, 'string')
         prologue = `    Str ${paramName} = str_from(_text, (int)strlen(_text));\n`
+      }
+      if (fnType === 'UIBoolChangedFn' && paramName) {
+        this.ctx.varTypes.set(paramName, 'boolean')
+        prologue = `    bool ${paramName} = _on;\n`
       }
 
       let body: string
@@ -51,6 +56,10 @@ export class CallbackBridge {
       }
       if (fnType === 'UITextChangedFn') {
         this.ctx.lambdas.push(`static void ${name}(const char *_text) {\n${prologue}${body}\n}`)
+        return name
+      }
+      if (fnType === 'UIBoolChangedFn') {
+        this.ctx.lambdas.push(`static void ${name}(bool _on) {\n${prologue}${body}\n}`)
         return name
       }
     }
@@ -88,6 +97,28 @@ export class CallbackBridge {
         `    ${fnName}(str_from(_text, (int)strlen(_text)));\n` +
         `}`
       )
+    }
+    return wrapName
+  }
+
+  private wrapForBoolChanged(fnName: string): string {
+    const wrapName = `_wrap_bool_${fnName}`
+    if (!this.wrappedFns.has(wrapName)) {
+      this.wrappedFns.add(wrapName)
+      const sig = this.ctx.funcSigs.get(fnName)
+      if (sig && sig.params.length >= 1) {
+        this.ctx.lambdas.push(
+          `static void ${wrapName}(bool _on) {\n` +
+          `    ${fnName}(_on);\n` +
+          `}`
+        )
+      } else {
+        this.ctx.lambdas.push(
+          `static void ${wrapName}(bool _on) {\n` +
+          `    ${fnName}();\n` +
+          `}`
+        )
+      }
     }
     return wrapName
   }
