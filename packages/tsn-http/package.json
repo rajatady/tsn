@@ -1,0 +1,5 @@
+{
+  "name": "@tsn/http",
+  "private": true,
+  "type": "module"
+}

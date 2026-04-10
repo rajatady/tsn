@@ -1,0 +1,5 @@
+{
+  "name": "@tsn/fs",
+  "private": true,
+  "type": "module"
+}

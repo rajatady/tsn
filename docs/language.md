@@ -59,8 +59,7 @@ assuming the callee can update the caller's array header in place.
 ### Async Functions
 
 ```typescript
-declare function writeFileAsync(path: string, content: string): Promise<void>
-declare function readFileAsync(path: string): Promise<string>
+import { writeFileAsync, readFileAsync } from "@tsn/fs"
 
 async function load(path: string): Promise<string> {
   await writeFileAsync(path, "hello")
@@ -244,7 +243,7 @@ These features are rejected at validation time with clear error messages:
 | `Proxy` / `Reflect` | No metaprogramming |
 | `with` | Dynamic scoping |
 | Generators / `yield` | Future work |
-| Bare imports (`'lodash'`) | Only relative imports (`./path`) supported |
+| Bare imports (`'lodash'`) | Only relative imports (`./path`) and TSN stdlib imports (`@tsn/fs`, `@tsn/http`) are supported |
 
 Additional async restrictions for now:
 

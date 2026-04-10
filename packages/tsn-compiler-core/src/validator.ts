@@ -6,6 +6,7 @@
  */
 
 import * as ts from 'typescript'
+import { isTSNStdlibModule } from './stdlib-modules.js'
 
 export interface ValidationError {
   pos: number
@@ -275,8 +276,8 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
     // Ban: bare module imports (non-relative)
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text
-      if (!spec.startsWith('.')) {
-        errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path) are supported` })
+      if (!spec.startsWith('.') && !isTSNStdlibModule(spec)) {
+        errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path) and TSN stdlib imports are supported` })
       }
     }
 

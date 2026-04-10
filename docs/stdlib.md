@@ -166,13 +166,14 @@ declare function exec(cmd: string): number
 The current hosted async forms are:
 
 ```typescript
-declare function readFileAsync(path: string): Promise<string>
-declare function writeFileAsync(path: string, content: string): Promise<void>
-declare function appendFileAsync(path: string, content: string): Promise<void>
-declare function fileExistsAsync(path: string): Promise<boolean>
-declare function fileSizeAsync(path: string): Promise<number>
-declare function listDirAsync(path: string): Promise<string[]>
-declare function execAsync(cmd: string): Promise<number>
+import {
+  readFileAsync,
+  writeFileAsync,
+  appendFileAsync,
+  fileExistsAsync,
+  fileSizeAsync,
+  listDirAsync
+} from "@tsn/fs"
 ```
 
 The current hosted timer forms are:
@@ -187,8 +188,10 @@ declare function clearInterval(id: number): void
 The current hosted fetch forms are:
 
 ```typescript
-declare function fetch(url: string): Promise<Response>
-declare function fetch(
+import { fetch, Response } from "@tsn/http"
+
+fetch(url: string): Promise<Response>
+fetch(
   url: string,
   init: { method?: string, body?: string, headers?: { [name: string]: string } }
 ): Promise<Response>
