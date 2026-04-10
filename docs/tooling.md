@@ -38,6 +38,10 @@ tsn build dashboard.tsx --debug
 - Array access uses `ARRAY_GET()` / `ARRAY_SET()` macros
 - Out-of-bounds access reports: file, line, array name, index, length
 - Works with `lldb`: `breakpoint set --file dashboard.tsx --line 160`
+- Hosted async code still uses the same debug path, but it now resumes through generated frame/state-machine functions instead of blocking inside each caller frame
+- Hosted timers use the same libuv loop and stay in the same native process/debugger session, so timer callbacks are debuggable with the same `lldb` and crash-trace workflow
+- Hosted fetch follows the same model too: libcurl runs inside libuv worker jobs, and suspended async frames resume when the result settles
+- Promise misuse now fails loudly instead of drifting into undefined behavior: pending/rejected `.value` access and promise payload mismatches raise a runtime fatal error, which keeps crash traces actionable in debug sessions
 
 ## Dev Server (Watch Mode)
 
@@ -52,6 +56,7 @@ tsn dev dashboard.tsx
 - Shows which file changed and compile time per rebuild
 - Detects crash signals and reports them (SIGSEGV, SIGABRT)
 - For UI apps: saves and restores window geometry across restarts
+- Rebuilds and relinks vendored runtime dependencies like Yoga/libuv through the same compiler package pipeline
 
 Output:
 ```
@@ -119,6 +124,8 @@ Query running UI apps via Unix socket. When a single app is running, the inspect
 The inspector commands are synchronous now: `click` and `type` only return after the main-thread interaction has been applied. This makes screenshot- and state-based verification reliable in automated checks.
 
 The default UI verification path now includes the native gallery app at [conformance/gallery.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/conformance/gallery.tsx). `bash harness/ui-conformance.sh` builds it, launches it, drives it through the inspector, and writes screenshots plus tree dumps to `/tmp/tsn-ui-conformance`.
+
+That matters for debugging too: the inspector path is part of the maintained verification loop, not an extra tool that only works in demos. Release and debug GUI builds go through `bash harness/gui-builds.sh`, and inspector-driven UI verification goes through `bash harness/ui-conformance.sh`.
 
 The repo also has two additional UI verification entrypoints:
 
@@ -194,6 +201,14 @@ lldb build/dashboard
 (lldb) breakpoint set --file dashboard.tsx --line 160
 (lldb) run
 ```
+
+For hosted async code, this still works cleanly in the current model because the compiler now emits explicit resumable frame/state-machine functions. The top-level wait still drives the hosted libuv loop in one native process, so stack traces and source mapping stay readable even though resumed async work no longer blocks each caller frame.
+
+The same is true for the current narrow `try/catch` model: exceptions use lightweight runtime frames, but they still stay close to direct native control flow. That keeps the debugger story much simpler than it would be after full async state-machine suspension lands.
+
+Hosted timers fit the same story right now. Their callbacks run through the shared libuv loop inside the same binary and can still be debugged through normal native breakpoints and crash traces, rather than through a separate inspector-only path. The same is true for the current async edge cases we now support, like immediate `await` on plain values, repeated waits on already-settled promises, and narrow hosted `fetch`: they stay in direct native control flow today.
+
+The newer async failure guards fit that same model too. When a hosted async helper rejects because of an OS/libuv/transport failure, you can catch it in TSN code. When code misuses a promise value directly, the runtime aborts with an explicit fatal message instead of segfaulting from a stray payload read, so the crash handler and debugger still point at a meaningful failure site.
 
 ## Source Maps
 

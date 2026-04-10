@@ -15,6 +15,7 @@ Every value has a known type at compile time. No `any`, no `unknown`, no type as
 | `void` | `void` | 0 | Return type only |
 | `T[]` | `TArr` | 12 bytes | Refcounted dynamic array |
 | `interface T` | `struct T` | Sum of fields | Passed by value |
+| `Promise<T>` | `Promise_*` | runtime struct | Narrow hosted async carrier |
 
 ### Array Type Names
 
@@ -55,6 +56,74 @@ Arrays and structs are passed by value. If a helper may grow an array with
 `push()`, return the updated array and reassign it at the callsite instead of
 assuming the callee can update the caller's array header in place.
 
+### Async Functions
+
+```typescript
+import { writeFileAsync, readFileAsync } from "@tsn/fs"
+
+async function load(path: string): Promise<string> {
+  await writeFileAsync(path, "hello")
+  return await readFileAsync(path)
+}
+```
+
+TSN now supports a narrow async/await model for hosted code:
+
+- `async function` declarations are supported
+- `await` is supported inside async functions
+- async functions return `Promise<T>`
+- `await` on plain values works as an immediate value path
+- already-settled promises can be awaited repeatedly
+- hosted async file/process APIs are supported
+- hosted timer APIs are supported through `setTimeout` / `setInterval`
+- hosted `fetch` is supported in a narrow form
+- hosted async I/O is backed by the TSN hosted runtime on top of libuv
+- promise misuse is guarded at runtime:
+  - reading `.value` from a pending or rejected promise is a runtime error
+  - promise payload mismatches fail loudly instead of becoming undefined memory reads
+
+Current limitation:
+
+- async functions now lower through resumable frame/state-machine code
+- top-level waiting still blocks the native entrypoint while the hosted loop drives pending work
+- timer callbacks are intentionally narrow today:
+  - function identifiers must be zero-argument callbacks
+  - arrow callbacks must be zero-argument and capture-free
+- `fetch` currently supports only:
+  - `fetch(url)`
+  - `fetch(url, { method, body, headers })`
+  - `Response.status`, `Response.statusText`, `Response.ok`, `Response.body`, `response.header(name)`, and `await response.text()`
+- hosted async file/fetch operations reject on real OS or transport failures:
+  - missing files and directories reject instead of silently fabricating values
+  - invalid fetch transports reject and can be caught through `try/catch`
+- headers, cancellation, streaming response bodies, `new Promise(...)`, async arrows, and async methods are not supported yet
+
+### Exceptions
+
+```typescript
+function main(): void {
+  try {
+    throw "boom"
+  } catch (err) {
+    console.log(err)
+  }
+}
+```
+
+TSN now supports a narrow exception model:
+
+- `throw` is supported
+- `try/catch` is supported
+- `finally` is supported in straight-line try/catch flows
+- async rejection can be caught through `await`
+
+Current limitation:
+
+- `finally` currently does not support control-transfer statements in protected blocks:
+  - no `return`, `break`, or `continue` inside try/catch/finally when finally is present
+  - no `throw` inside catch/finally when finally is present
+- thrown values are intentionally narrow today; string-shaped errors are the supported path
+
 ### Interfaces (Structs)
 
 ```typescript
@@ -74,6 +143,24 @@ const emp: Employee = {
 ```
 
 Interfaces compile to C structs. They're passed by value. Only data fields are supported (no methods).
+
+### Classes
+
+```typescript
+class Counter {
+  value: number
+
+  constructor(initial: number) {
+    this.value = initial
+  }
+
+  inc(): void {
+    this.value = this.value + 1
+  }
+}
+```
+
+Classes are supported as reference-like objects with constructors, fields, methods, `this`, and narrow generic-class support. Inheritance, async methods, and a complete visibility model are not fully supported yet.
 
 ### Control Flow
 
@@ -155,21 +242,25 @@ These features are rejected at validation time with clear error messages:
 | `var` | Use `let` or `const` |
 | `Proxy` / `Reflect` | No metaprogramming |
 | `with` | Dynamic scoping |
-| Classes | Use interfaces + functions |
-| `async` / `await` | Future work |
-| `try` / `catch` | Future work |
 | Generators / `yield` | Future work |
-| Bare imports (`'lodash'`) | Only relative imports (`./path`) supported |
+| Bare imports (`'lodash'`) | Only relative imports (`./path`) and TSN stdlib imports (`@tsn/fs`, `@tsn/http`) are supported |
+
+Additional async restrictions for now:
+
+- `new Promise(...)`
+- async arrow functions
+- async function expressions
+- async class/object methods
 
 ## Idioms
 
-### No closures — use parameters
+### General closures are still limited
 
 ```typescript
-// BAD: closure captures variable
+// Still not generally supported:
 // const handler = () => { doSomething(capturedVar) }
 
-// GOOD: pass data via function parameters
+// Good default: pass data via function parameters
 function onDeptClick(tag: number): void {
   deptFilterIdx = tag
   applyFilters()

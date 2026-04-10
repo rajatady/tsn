@@ -6,6 +6,7 @@
  */
 
 import * as ts from 'typescript'
+import { isTSNStdlibModule } from './stdlib-modules.js'
 
 export interface ValidationError {
   pos: number
@@ -14,6 +15,63 @@ export interface ValidationError {
 
 export function validate(sourceFile: ts.SourceFile): ValidationError[] {
   const errors: ValidationError[] = []
+
+  function visitWithoutNestedFunctions(node: ts.Node, fn: (child: ts.Node) => void): void {
+    const visit = (child: ts.Node): void => {
+      if (
+        ts.isFunctionDeclaration(child) ||
+        ts.isFunctionExpression(child) ||
+        ts.isArrowFunction(child) ||
+        ts.isMethodDeclaration(child)
+      ) {
+        return
+      }
+      fn(child)
+      ts.forEachChild(child, visit)
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  function reportFinallyControlFlow(block: ts.Block | undefined, label: string, allowThrow = false): void {
+    if (!block) return
+    visitWithoutNestedFunctions(block, child => {
+      if (ts.isReturnStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support return inside ${label}`,
+        })
+      } else if (ts.isBreakStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support break inside ${label}`,
+        })
+      } else if (ts.isContinueStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support continue inside ${label}`,
+        })
+      } else if (!allowThrow && ts.isThrowStatement(child)) {
+        errors.push({
+          pos: child.getStart(),
+          message: `finally currently does not support throw inside ${label}`,
+        })
+      }
+    })
+  }
+
+  function isInsideAsyncFunction(node: ts.Node): boolean {
+    let current: ts.Node | undefined = node.parent
+    while (current) {
+      if (
+        (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current) || ts.isMethodDeclaration(current)) &&
+        current.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)
+      ) {
+        return true
+      }
+      current = current.parent
+    }
+    return false
+  }
 
   function visit(node: ts.Node): void {
     // Ban: `any` type
@@ -44,6 +102,79 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
     // Ban: new Function()
     if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Function') {
       errors.push({ pos: node.getStart(), message: '"new Function()" is banned' })
+    }
+
+    // Narrow async v1 only supports async function declarations.
+    if (ts.isArrowFunction(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
+      errors.push({ pos: node.getStart(), message: 'async arrow functions are not supported yet' })
+    }
+    if (ts.isFunctionExpression(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
+      errors.push({ pos: node.getStart(), message: 'async function expressions are not supported yet' })
+    }
+    if (ts.isMethodDeclaration(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
+      errors.push({ pos: node.getStart(), message: 'async class/object methods are not supported yet' })
+    }
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Promise') {
+      errors.push({ pos: node.getStart(), message: '"new Promise(...)" is not supported yet — use async functions and hosted async APIs' })
+    }
+
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      (node.expression.text === 'setTimeout' || node.expression.text === 'setInterval')
+    ) {
+      const callback = node.arguments[0]
+      if (!callback) {
+        errors.push({ pos: node.getStart(), message: `${node.expression.text} requires a callback` })
+      } else if (ts.isArrowFunction(callback)) {
+        if (callback.parameters.length > 0) {
+          errors.push({ pos: callback.getStart(), message: `${node.expression.text} arrow callbacks must not declare parameters` })
+        }
+      } else if (!ts.isIdentifier(callback)) {
+        errors.push({
+          pos: callback.getStart(),
+          message: `${node.expression.text} callbacks must be function identifiers or zero-argument arrow functions`,
+        })
+      }
+    }
+
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'fetch') {
+      if (node.arguments.length < 1 || node.arguments.length > 2) {
+        errors.push({ pos: node.getStart(), message: 'fetch currently supports fetch(url) or fetch(url, { method, body, headers })' })
+      }
+      const init = node.arguments[1]
+      if (init && !ts.isObjectLiteralExpression(init)) {
+        errors.push({ pos: init.getStart(), message: 'fetch init must be an object literal for now' })
+      }
+      if (init && ts.isObjectLiteralExpression(init)) {
+        for (const prop of init.properties) {
+          if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) {
+            errors.push({ pos: prop.getStart(), message: 'fetch init only supports plain method/body/headers properties' })
+            continue
+          }
+          if (prop.name.text === 'headers') {
+            if (!ts.isObjectLiteralExpression(prop.initializer)) {
+              errors.push({ pos: prop.initializer.getStart(), message: 'fetch init headers must be an object literal for now' })
+              continue
+            }
+            for (const headerProp of prop.initializer.properties) {
+              if (
+                !ts.isPropertyAssignment(headerProp) ||
+                (!ts.isIdentifier(headerProp.name) && !ts.isStringLiteral(headerProp.name))
+              ) {
+                errors.push({
+                  pos: headerProp.getStart(),
+                  message: 'fetch init headers only support plain string-valued properties',
+                })
+              }
+            }
+            continue
+          }
+          if (prop.name.text !== 'method' && prop.name.text !== 'body') {
+            errors.push({ pos: prop.name.getStart(), message: `fetch init property "${prop.name.text}" is not supported yet` })
+          }
+        }
+      }
     }
 
     // Ban: delete operator
@@ -117,26 +248,36 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: 'Generators are banned (future work)' })
     }
 
-    // Ban: await / async
-    if (node.kind === ts.SyntaxKind.AwaitExpression) {
-      errors.push({ pos: node.getStart(), message: 'async/await is banned (future work)' })
+    if (ts.isAwaitExpression(node) && !isInsideAsyncFunction(node)) {
+      errors.push({ pos: node.getStart(), message: '"await" is only supported inside async functions' })
     }
 
-    // Ban: try/catch
-    if (node.kind === ts.SyntaxKind.TryStatement) {
-      errors.push({ pos: node.getStart(), message: 'try/catch is banned (future work)' })
+    // Async functions are supported in the current narrow lowering path.
+    // For now, explicit async return annotations must be Promise<T>.
+    if (ts.isFunctionDeclaration(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword) && node.type) {
+      if (!ts.isTypeReferenceNode(node.type) || node.type.typeName.getText() !== 'Promise') {
+        errors.push({ pos: node.type.getStart(), message: 'async functions must return Promise<T>' })
+      }
     }
 
-    // Ban: class declarations (for now)
-    if (ts.isClassDeclaration(node)) {
-      errors.push({ pos: node.getStart(), message: 'Classes are banned (future work) — use interfaces + functions' })
+    if (ts.isTryStatement(node)) {
+      if (!node.catchClause) {
+        errors.push({ pos: node.getStart(), message: 'try statements must include a catch block' })
+      }
+      if (node.finallyBlock) {
+        reportFinallyControlFlow(node.tryBlock, 'try blocks when finally is present', true)
+        reportFinallyControlFlow(node.catchClause?.block, 'catch blocks when finally is present', false)
+        reportFinallyControlFlow(node.finallyBlock, 'finally blocks', false)
+      }
     }
+
+    // Classes: now supported via codegen
 
     // Ban: bare module imports (non-relative)
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text
-      if (!spec.startsWith('.')) {
-        errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path) are supported` })
+      if (!spec.startsWith('.') && !isTSNStdlibModule(spec)) {
+        errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path) and TSN stdlib imports are supported` })
       }
     }
 
@@ -144,15 +285,5 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
   }
 
   visit(sourceFile)
-
-  // Filter out errors from import statements (we handle those specially)
-  return errors.filter(e => {
-    const lineText = sourceFile.text.substring(
-      sourceFile.getLineAndCharacterOfPosition(e.pos).character === 0
-        ? e.pos
-        : sourceFile.text.lastIndexOf('\n', e.pos) + 1,
-      sourceFile.text.indexOf('\n', e.pos)
-    )
-    return !lineText.trimStart().startsWith('import')
-  })
+  return errors
 }

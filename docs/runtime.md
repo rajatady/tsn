@@ -1,6 +1,17 @@
 # Runtime Internals
 
-The TSN runtime (`compiler/runtime/runtime.h`) is a single C header providing string handling, arrays, reference counting, and output primitives. Included in every compiled binary.
+The TSN runtime is rooted at [compiler/runtime/runtime.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime.h). It now includes smaller runtime fragments instead of owning every subsystem inline:
+
+- [runtime_loop.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_loop.h) for hosted libuv loop ownership
+- [runtime_async.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_async.h) for promise/await scaffolding
+- [runtime_hosted_io.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_hosted_io.h) for hosted file/process I/O
+- [runtime_fetch.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_fetch.h) for hosted fetch and `Response`
+- [runtime_timers.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_timers.h) for hosted timer handles and callbacks
+- [runtime_exception.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_exception.h) for narrow exception frames
+- [debug.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/debug.h) for bounds checks
+- [crash.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/crash.h) for crash traces
+
+`runtime.h` is still the include used by generated C, but the implementation is no longer one growing blob.
 
 ## Str — 24-byte Value Type
 
@@ -118,6 +129,134 @@ StrArr_release_deep(&arr)   // releases each string's refcount, then the array
 ```
 
 Only releases string elements when the array buffer's refcount reaches 0 (last reference).
+
+## Promise Runtime Scaffolding
+
+Narrow hosted async support uses promise carrier structs generated from macros in [runtime_async.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_async.h).
+
+```c
+DEFINE_PROMISE(Promise_Str, Str)
+DEFINE_PROMISE_VOID(Promise_void)
+```
+
+Current runtime helpers include:
+
+- `TS_AWAIT(Promise_T, expr)` for value-returning awaits
+- `TS_AWAIT_VOID(Promise_void, expr)` for void awaits
+
+Important current limitation:
+
+- these are now event-loop-backed hosted promises
+- async functions resume through heap-backed frame/state machines instead of blocking their caller
+- the native entrypoint still uses a blocking top-level wait for `main`
+- awaiting a plain non-promise value is an immediate pass-through in the current lowering
+- the same settled promise can be awaited repeatedly because the state is shared
+- rejected promises can be caught through `try/catch` around `await`
+- promise `.value` access is guarded:
+  - pending promise reads fail loudly
+  - rejected promise reads fail loudly
+  - payload-size mismatches fail loudly instead of reading arbitrary memory
+- promise continuations now resume suspended async frames when awaited work settles
+- cancellation and richer scheduler policies are still future work
+
+So the runtime promise layer is real now, and async suspension is real in the narrow hosted model. What is still missing is the broader tier: cancellation, richer scheduling, and the larger async surface area.
+
+## Exception Runtime
+
+Narrow `throw` / `try/catch` support now uses lightweight exception frames from [runtime_exception.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_exception.h).
+
+Current model:
+
+- generated `try/catch` pushes a `TSExceptionFrame`
+- `throw` in sync code raises through `ts_exception_throw(...)`
+- `await` inside `try` raises rejected promise errors through the same path
+- uncaught errors still terminate the process
+
+Current limitation:
+
+- `finally` is not implemented
+- exception-path cleanup is still intentionally narrow
+- richer typed error objects are not implemented; string-shaped errors are the supported path
+
+## Hosted File / Process I/O
+
+Hosted sync I/O now lives in [runtime_hosted_io.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_hosted_io.h).
+
+Available sync helpers:
+
+- `ts_readFile`
+- `ts_writeFile`
+- `ts_appendFile`
+- `ts_fileExists`
+- `ts_fileSize`
+- `ts_listDir`
+- `ts_exec`
+
+The compiler currently emits async hosted wrappers on top of these helpers for:
+
+- `readFileAsync`
+- `writeFileAsync`
+- `appendFileAsync`
+- `fileExistsAsync`
+- `fileSizeAsync`
+- `listDirAsync`
+- `execAsync`
+
+Those async wrappers now schedule work on libuv's worker pool and settle shared promise state in the after-work callback. Suspended async frames subscribe to those promise settlements and resume when the work completes.
+
+Current failure behavior:
+
+- `readFileAsync`, `writeFileAsync`, `appendFileAsync`, `fileSizeAsync`, and `listDirAsync` reject on real OS failures
+- `fileExistsAsync` still resolves `false` instead of rejecting
+- `execAsync` resolves the process exit status, but rejects true launcher/runtime failures
+- libuv submission or after-work failures reject with runtime-generated error strings
+
+## Hosted Fetch
+
+Hosted fetch now lives in [runtime_fetch.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_fetch.h).
+
+Current model:
+
+- fetch work is scheduled on libuv's worker pool
+- libcurl performs the actual HTTP request inside the worker job
+- transport failures reject the promise
+- HTTP status codes still resolve a `Response` value, with `ok` derived from the 2xx range
+- `Response.text()` is a narrow helper that resolves the already-buffered body as `Promise<string>`
+- request headers can be passed through the narrow init object
+- response headers are buffered and can be read back through `response.header(name)`
+- `Response.statusText` is synthesized from the numeric status code for the common HTTP cases
+- libuv-side scheduler failures also reject instead of leaving the promise pending
+
+Current limitation:
+
+- only `method`, `body`, and `headers` are supported in the init object
+- body streaming is not supported
+- cancellation and `AbortController` are not supported
+- `Response.json()` and richer metadata are not implemented yet
+
+## Hosted Timers
+
+Hosted timers now live in [runtime_timers.h](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/compiler/runtime/runtime_timers.h).
+
+Available runtime helpers:
+
+- `ts_setTimeout`
+- `ts_setInterval`
+- `ts_clearTimeout`
+- `ts_clearInterval`
+
+Current timer model:
+
+- timers are backed by libuv `uv_timer_t` handles
+- callbacks run as plain `void(void)` native functions
+- timer IDs are numeric handles managed by the TSN runtime
+- `setInterval(..., 0)` is normalized to a real repeating tick instead of a non-repeating zero-delay handle
+- timers share the same hosted loop as async I/O and wake resumable async work correctly
+
+Current limitation:
+
+- captured closures are not supported for timer callbacks
+- timer promises / delay helpers are not implemented
 
 ## Output Functions
 

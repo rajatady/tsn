@@ -227,6 +227,33 @@ tsn build examples/native-gui/dashboard.tsx --debug
 tsn dev examples/native-gui/dashboard.tsx
 ```
 
+## CLI Example: Agent Brief
+
+Located in [examples/agent-brief.ts](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/examples/agent-brief.ts). This is the better current async showcase because it matches the present runtime honestly: a persistent terminal workflow with disk-backed session state, hosted fetch, cache fallbacks, and narrow `finally`.
+
+It does four useful things together:
+
+- fetches a remote release brief with explicit request headers
+- reuses `etag` from disk for cache-aware revalidation
+- falls back to a local cached payload on failure
+- appends a persistent session log so each run resumes with prior context
+
+That makes it much closer to the kind of “coding companion” CLI flow people actually care about. It is persistent across invocations today. A fully interactive TTY agent shell would still need richer stdin / terminal APIs than TSN currently exposes.
+
+It also uses the real TSN stdlib import surface instead of pasted ambient declarations:
+
+```typescript
+import { readFileAsync, writeFileAsync, appendFileAsync } from "@tsn/fs"
+import { fetch, Response } from "@tsn/http"
+```
+
+Build it with:
+
+```bash
+tsn build examples/agent-brief.ts
+tsn build examples/agent-brief.ts --debug
+```
+
 ### Binary Size
 
 | Mode | Size |

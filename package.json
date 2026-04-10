@@ -9,7 +9,11 @@
   "type": "module",
   "scripts": {
     "bench": "bash harness/run-benchmarks.sh",
-    "test": "bash harness/correctness.sh && bash harness/ui-conformance.sh",
+    "test": "npm run test:unit && bash harness/correctness.sh && bash harness/ui-conformance.sh",
+    "test:unit": "npm run test:tailwind && npm run test:compiler",
+    "test:tailwind": "npx tsx --test packages/tsn-tailwind/src/index.test.ts",
+    "test:compiler": "npx tsx --test packages/tsn-compiler-core/test/**/*.test.ts",
+    "test:compiler:coverage": "npx tsx --test --experimental-test-coverage packages/tsn-compiler-core/test/**/*.test.ts",
     "test:cli": "bash harness/correctness.sh",
     "test:ui": "bash harness/ui-conformance.sh",
     "compile": "node --loader ts-node/esm compiler/index.ts"

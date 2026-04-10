@@ -149,6 +149,94 @@ console.log("Total: " + String(count) + " items")
 // prints 3 pieces directly, no intermediate string
 ```
 
+## Hosted File and Process Builtins
+
+The current hosted builtins are available without imports:
+
+```typescript
+declare function readFile(path: string): string
+declare function writeFile(path: string, content: string): void
+declare function appendFile(path: string, content: string): void
+declare function fileExists(path: string): boolean
+declare function fileSize(path: string): number
+declare function listDir(path: string): string[]
+declare function exec(cmd: string): number
+```
+
+The current hosted async forms are:
+
+```typescript
+import {
+  readFileAsync,
+  writeFileAsync,
+  appendFileAsync,
+  fileExistsAsync,
+  fileSizeAsync,
+  listDirAsync
+} from "@tsn/fs"
+```
+
+The current hosted timer forms are:
+
+```typescript
+declare function setTimeout(fn: () => void, ms: number): number
+declare function setInterval(fn: () => void, ms: number): number
+declare function clearTimeout(id: number): void
+declare function clearInterval(id: number): void
+```
+
+The current hosted fetch forms are:
+
+```typescript
+import { fetch, Response } from "@tsn/http"
+
+fetch(url: string): Promise<Response>
+fetch(
+  url: string,
+  init: { method?: string, body?: string, headers?: { [name: string]: string } }
+): Promise<Response>
+```
+
+The current narrow `Response` surface is:
+
+```typescript
+interface Response {
+  status: number
+  statusText: string
+  ok: boolean
+  body: string
+  header(name: string): string
+  text(): Promise<string>
+}
+```
+
+Important limitation:
+
+- the async forms now return pending promises backed by the hosted libuv runtime
+- async functions suspend and resume around them through frame/state-machine lowering
+- the native entrypoint still performs a blocking top-level wait for async `main`
+- `await` on a plain value is immediate in the current narrowing
+- already-settled promises can be awaited again
+- they are real hosted async I/O on the resumable hosted async path
+- promise misuse is guarded at runtime:
+  - pending or rejected `.value` reads fail loudly
+  - promise payload mismatches fail loudly instead of reading garbage memory
+- async file/directory helpers reject on real OS failures instead of silently returning fabricated success values
+- `fileExistsAsync` still resolves `false` for missing paths
+- `execAsync` still resolves process exit status, and child stderr remains plain stderr output
+- timer callbacks are intentionally narrow today:
+  - function identifiers must take no parameters
+  - arrow callbacks must be zero-argument and capture-free
+- fetch is intentionally narrow today:
+  - only `method`, `body`, and `headers` are supported in the init object
+  - transport failures reject
+  - HTTP 4xx/5xx responses resolve with `ok = false`
+  - `Response.statusText` and `response.header(name)` are supported
+  - `Response.text()` is supported
+  - cancellation and streaming bodies are not supported
+
+Rejections from async functions can now be caught with `try/catch` around `await`, and straight-line `finally` now works too. The current error model is still narrow and string-shaped, and `finally` still rejects return/break/continue corners for now.
+
 ## Math
 
 | Method | Signature |

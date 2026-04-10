@@ -12,12 +12,17 @@
 import * as ts from 'typescript'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { isTSNStdlibModule, resolveTSNStdlibModule } from './stdlib-modules.js'
 
 /**
  * Resolve a module specifier relative to the importing file.
  * Tries: .ts, .tsx, /index.ts, /index.tsx
  */
 function resolveSpecifier(specifier: string, fromFile: string): string | null {
+  if (isTSNStdlibModule(specifier)) {
+    return resolveTSNStdlibModule(specifier)
+  }
+
   const dir = path.dirname(fromFile)
   const base = path.resolve(dir, specifier)
 
@@ -87,8 +92,7 @@ export function resolveModules(entryPath: string): ts.SourceFile[] {
       if (!ts.isStringLiteral(specifier)) continue
       const modulePath = specifier.text
 
-      // Skip non-relative imports (they're rejected by validator)
-      if (!modulePath.startsWith('.')) continue
+      if (!modulePath.startsWith('.') && !isTSNStdlibModule(modulePath)) continue
 
       const resolved = resolveSpecifier(modulePath, absolute)
       if (!resolved) {
@@ -107,7 +111,7 @@ export function resolveModules(entryPath: string): ts.SourceFile[] {
       if (!ts.isExportDeclaration(stmt) || !stmt.moduleSpecifier) continue
       if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue
       const modulePath = stmt.moduleSpecifier.text
-      if (!modulePath.startsWith('.')) continue
+      if (!modulePath.startsWith('.') && !isTSNStdlibModule(modulePath)) continue
 
       const resolved = resolveSpecifier(modulePath, absolute)
       if (resolved) visit(resolved, absolute)
