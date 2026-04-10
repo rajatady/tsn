@@ -8,12 +8,10 @@ import { assertIncludesAll, compileAndRunFromText, generateCFromText, validateMe
 // This suite is intentionally testing the async foundation in layers:
 // 1. Promise<T> type/runtime emission
 // 2. Hosted async builtin lowering to promise-returning wrappers
-// 3. The current "await is still banned" boundary
+// 3. Narrow async/await lowering over immediately-resolved promises
 //
 // As async lowering lands, add cases for:
-// - Promise<void> returns through async functions
-// - await on already-resolved promises
-// - sequential vs repeated awaits on the same promise
+// - repeated awaits on the same promise
 // - error/rejection propagation into try/catch
 // - future fetch/timer APIs once those surfaces exist
 test('codegen emits promise runtime types for promise-typed function signatures', () => {
@@ -126,14 +124,62 @@ function main(): void {
   }
 })
 
-test('validator still bans await until async lowering exists', () => {
+test('codegen lowers async functions and await into immediate promise operations', () => {
+  const cCode = generateCFromText(`
+declare function readFileAsync(path: string): Promise<string>
+
+async function load(path: string): Promise<string> {
+  const text: string = await readFileAsync(path)
+  return text
+}
+`)
+
+  assertIncludesAll(cCode, [
+    'Promise_Str load(Str path)',
+    'Str text = TS_AWAIT(Promise_Str, ts_readFileAsync(path));',
+    'return Promise_Str_resolved(text);',
+  ])
+})
+
+test('async functions behave synchronously today in compiled binaries', () => {
+  const tempDir = mkdtempSync(join(tmpdir(), 'tsn-async-await-'))
+  const filePath = join(tempDir, 'await-demo.txt')
+  try {
+    const output = compileAndRunFromText(`
+declare function writeFileAsync(path: string, content: string): Promise<void>
+declare function readFileAsync(path: string): Promise<string>
+
+async function load(path: string): Promise<string> {
+  await writeFileAsync(path, "hello async")
+  const text: string = await readFileAsync(path)
+  return text
+}
+
+function main(): void {
+  const result: Promise<string> = load(${JSON.stringify(filePath)})
+  console.log(String(result.state), result.value)
+}
+`)
+
+    assertIncludesAll(output, [
+      '1',
+      'hello async',
+    ])
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('validator allows await inside async functions now', () => {
   const messages = validateMessages(`
+declare function work(): Promise<void>
+
 async function main(): Promise<void> {
   await work()
 }
 `)
 
-  if (!messages.some(msg => msg.includes('async/await is banned'))) {
-    throw new Error(`expected async ban message, got: ${messages.join('; ')}`)
+  if (messages.length !== 0) {
+    throw new Error(`expected no async validation errors, got: ${messages.join('; ')}`)
   }
 })

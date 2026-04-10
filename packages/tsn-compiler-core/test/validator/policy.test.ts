@@ -95,13 +95,31 @@ function main(obj: { name: string }): void {
   assert.ok(messages.some(msg => msg.includes('"with" is banned')))
 })
 
-test('validator bans await for now', () => {
+test('validator allows await inside async functions', () => {
   const messages = validateMessages(`
 async function main(): Promise<void> {
   await work()
 }
 `)
-  assert.ok(messages.some(msg => msg.includes('async/await is banned')))
+  assert.equal(messages.length, 0)
+})
+
+test('validator rejects await outside async functions', () => {
+  const messages = validateMessages(`
+function main(): void {
+  await work()
+}
+`)
+  assert.ok(messages.some(msg => msg.includes('"await" is only supported inside async functions')))
+})
+
+test('validator requires async functions to return Promise<T> when annotated', () => {
+  const messages = validateMessages(`
+async function main(): number {
+  return 1
+}
+`)
+  assert.ok(messages.some(msg => msg.includes('async functions must return Promise<T>')))
 })
 
 test('validator bans try/catch for now', () => {

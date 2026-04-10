@@ -147,7 +147,7 @@ These are the async edge cases that matter immediately:
 
 #### Async/await v1 checklist
 
-- [ ] Unban `async` / `await` in the validator behind real support, not optimism
+- [x] Unban `async` / `await` in the validator behind real support, not optimism
 - [x] Decide the exact TSN `Promise<T>` runtime contract
 - [x] Decide whether `Promise<T>` is opaque and minimal in v1
 - [ ] Specify the exact unsupported Promise features for v1
@@ -161,7 +161,7 @@ These are the async edge cases that matter immediately:
 - [x] Add async file I/O APIs
 - [ ] Add `fetch`-style network I/O API
 - [ ] Add `try/catch` integration for async rejection flow
-- [ ] Add module-owned tests for async lowering
+- [x] Add module-owned tests for async lowering
 - [ ] Add module-owned tests for timer behavior
 - [x] Add module-owned tests for file async I/O
 - [ ] Add module-owned tests for `fetch`
@@ -188,10 +188,16 @@ What is now implemented:
 - there is now an integration-style test proving current behavior:
   - the hosted async builtins resolve immediately today because they are wrappers over the existing synchronous hosted runtime
 
+What is now implemented beyond the foundation:
+
+- `async function` now compiles in the current narrow hosted model
+- `await` now compiles in the current narrow hosted model
+- async functions return `Promise<T>` and wrap final values correctly
+- `await` unwraps the current promise carrier immediately
+- integration-style tests now prove real end-to-end async function behavior
+
 What is intentionally not implemented yet:
 
-- `async function`
-- `await`
 - real suspension / resumption
 - continuation queues
 - event loop integration
@@ -202,9 +208,9 @@ What is intentionally not implemented yet:
 So the async situation is:
 
 The foundation is real and working.
-The language feature is not done yet.
+The first narrow async language pass is also real and working.
 
-That means TSN currently supports promise-returning hosted I/O wrappers, but it does not yet support user-facing TypeScript async syntax.
+That means TSN now supports user-facing TypeScript async syntax in the synchronous-hosted path, but it does not yet support true event-loop-backed async semantics.
 
 ### 2. `try/catch` and `throw`
 

@@ -1,6 +1,7 @@
 import * as ts from 'typescript'
 
 import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
+import { isAsyncFunction } from './async-lowering.js'
 import type { ParamInfo } from './types.js'
 
 export interface FunctionEmitContext {
@@ -12,6 +13,8 @@ export interface FunctionEmitContext {
   identifierAliases: Map<string, string>
   varTypes: Map<string, string>
   indent: number
+  currentFunctionReturnTsType: string | null
+  currentFunctionIsAsync: boolean
   inferFunctionReturnType(node: ts.FunctionDeclaration): { tsType: string; cType: string }
   describeParameter(p: ts.ParameterDeclaration, index: number): ParamInfo
   withStmtSink<T>(sink: string[], fn: () => T): T
@@ -39,6 +42,7 @@ export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclarat
   const retInfo = ctx.inferFunctionReturnType(node)
   const retCType = retInfo.cType
   const retType = retInfo.tsType
+  const asyncFn = isAsyncFunction(node)
   const params: FuncSig['params'] = []
   const paramStrs: string[] = []
   const paramInfos = node.parameters.map((p, index) => ctx.describeParameter(p, index))
@@ -60,6 +64,8 @@ export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclarat
 
   const body: string[] = []
   ctx.withStmtSink(body, () => {
+    ctx.currentFunctionReturnTsType = retType
+    ctx.currentFunctionIsAsync = asyncFn
     ctx.indent = 1
     for (const info of paramInfos) {
       for (const alias of info.aliases) {
@@ -68,6 +74,8 @@ export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclarat
     }
     for (const s of node.body!.statements) ctx.emitStmt(s, body)
     ctx.indent = 0
+    ctx.currentFunctionReturnTsType = null
+    ctx.currentFunctionIsAsync = false
   })
   const ps = paramStrs.length ? paramStrs.join(', ') : 'void'
   const fnLine = ctx.srcLine(node)

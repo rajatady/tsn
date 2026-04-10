@@ -1,5 +1,6 @@
 import * as ts from 'typescript'
 
+import { isAsyncFunction, unwrapAwaitType } from './async-lowering.js'
 import type { ParamAlias, ParamInfo, StructField } from './types.js'
 
 export interface FunctionPlanningContext {
@@ -19,6 +20,7 @@ export function inferFunctionReturnType(
     return { tsType, cType: ctx.tsTypeNameToC(tsType, 'void') }
   }
 
+  const asyncFn = isAsyncFunction(node)
   let inferred = 'void'
   const visit = (child: ts.Node): void => {
     if (inferred !== 'void') return
@@ -29,11 +31,13 @@ export function inferFunctionReturnType(
         return
       }
       inferred = ctx.exprType(expr) ?? 'void'
+      if (asyncFn) inferred = unwrapAwaitType(inferred) ?? 'void'
       return
     }
     ts.forEachChild(child, visit)
   }
   if (node.body) visit(node.body)
+  if (asyncFn && !inferred.startsWith('Promise<')) inferred = `Promise<${inferred}>`
   return { tsType: inferred, cType: ctx.tsTypeNameToC(inferred, 'void') }
 }
 

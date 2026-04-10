@@ -132,7 +132,7 @@ static void ts_crash_handler(int sig) {
             }
             if (!nl) break;
             line_start = nl + 1;
-        }
+}
         fprintf(stderr, "\n\033[90m  Binary: %s\033[0m\n", g_crash_binary);
         fprintf(stderr, "\033[90m  Debug:  lldb %s\033[0m\n\n", g_crash_binary);
     } else {

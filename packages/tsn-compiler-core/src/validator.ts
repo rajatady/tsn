@@ -15,6 +15,20 @@ export interface ValidationError {
 export function validate(sourceFile: ts.SourceFile): ValidationError[] {
   const errors: ValidationError[] = []
 
+  function isInsideAsyncFunction(node: ts.Node): boolean {
+    let current: ts.Node | undefined = node.parent
+    while (current) {
+      if (
+        (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current) || ts.isMethodDeclaration(current)) &&
+        current.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword)
+      ) {
+        return true
+      }
+      current = current.parent
+    }
+    return false
+  }
+
   function visit(node: ts.Node): void {
     // Ban: `any` type
     if (node.kind === ts.SyntaxKind.AnyKeyword) {
@@ -117,9 +131,16 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: 'Generators are banned (future work)' })
     }
 
-    // Ban: await / async
-    if (node.kind === ts.SyntaxKind.AwaitExpression) {
-      errors.push({ pos: node.getStart(), message: 'async/await is banned (future work)' })
+    if (ts.isAwaitExpression(node) && !isInsideAsyncFunction(node)) {
+      errors.push({ pos: node.getStart(), message: '"await" is only supported inside async functions' })
+    }
+
+    // Async functions are supported in the current narrow lowering path.
+    // For now, explicit async return annotations must be Promise<T>.
+    if (ts.isFunctionDeclaration(node) && node.modifiers?.some(mod => mod.kind === ts.SyntaxKind.AsyncKeyword) && node.type) {
+      if (!ts.isTypeReferenceNode(node.type) || node.type.typeName.getText() !== 'Promise') {
+        errors.push({ pos: node.type.getStart(), message: 'async functions must return Promise<T>' })
+      }
     }
 
     // Ban: try/catch
