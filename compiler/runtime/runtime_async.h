@@ -1,5 +1,5 @@
-#ifndef STRICTTS_RUNTIME_ASYNC_H
-#define STRICTTS_RUNTIME_ASYNC_H
+#ifndef TSN_RUNTIME_ASYNC_H
+#define TSN_RUNTIME_ASYNC_H
 
 /* ─── Minimal Promise Runtime Scaffolding ──────────────────────────
  *
@@ -100,4 +100,4 @@ static inline void ts_promise_panic(Str error) {
         }                                                               \
     })
 
-#endif /* STRICTTS_RUNTIME_ASYNC_H */
+#endif /* TSN_RUNTIME_ASYNC_H */

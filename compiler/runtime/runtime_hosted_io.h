@@ -1,5 +1,5 @@
-#ifndef STRICTTS_RUNTIME_HOSTED_IO_H
-#define STRICTTS_RUNTIME_HOSTED_IO_H
+#ifndef TSN_RUNTIME_HOSTED_IO_H
+#define TSN_RUNTIME_HOSTED_IO_H
 
 /* ─── File I/O ──────────────────────────────────────────────────── */
 
@@ -107,4 +107,4 @@ static inline double ts_exec(Str cmd) {
     return (double)system(cmdbuf);
 }
 
-#endif /* STRICTTS_RUNTIME_HOSTED_IO_H */
+#endif /* TSN_RUNTIME_HOSTED_IO_H */
