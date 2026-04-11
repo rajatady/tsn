@@ -29,7 +29,7 @@ interface ParsedRequest {
   queryParams: QueryParam[];
 }
 
-interface Response {
+interface RouteResponse {
   status: number;
   body: string;
   handler: string;
@@ -202,12 +202,12 @@ function matchRoute(route: Route, req: ParsedRequest): MatchResult {
 
 // ─── Router ─────────────────────────────────────────────────────────
 
-function findRoute(routes: Route[], req: ParsedRequest): Response {
+function findRoute(routes: Route[], req: ParsedRequest): RouteResponse {
   let i: number = 0;
   while (i < routes.length) {
     const result: MatchResult = matchRoute(routes[i], req);
     if (result.matched) {
-      const resp: Response = {
+      const resp: RouteResponse = {
         status: 200,
         body: "OK",
         handler: result.handler,
@@ -219,7 +219,7 @@ function findRoute(routes: Route[], req: ParsedRequest): Response {
     }
     i = i + 1;
   }
-  const notFound: Response = {
+  const notFound: RouteResponse = {
     status: 404,
     body: "Not Found",
     handler: "none",
@@ -230,7 +230,7 @@ function findRoute(routes: Route[], req: ParsedRequest): Response {
   return notFound;
 }
 
-function formatResponse(resp: Response): string {
+function formatResponse(resp: RouteResponse): string {
   let out: string = "HTTP " + String(resp.status) + " | handler: " + resp.handler;
 
   if (resp.params.length > 0) {
@@ -297,7 +297,7 @@ function main(): void {
   while (i < requests.length) {
     const reqLine: string = requests[i];
     const req: ParsedRequest = parseRequest(reqLine);
-    const resp: Response = findRoute(routes, req);
+    const resp: RouteResponse = findRoute(routes, req);
     console.log("REQ: " + reqLine);
     console.log("RES: " + formatResponse(resp));
     console.log("");
@@ -311,7 +311,7 @@ function main(): void {
   while (k < total) {
     const idx: number = k - Math.floor(k / requests.length) * requests.length;
     const req: ParsedRequest = parseRequest(requests[idx]);
-    const resp: Response = findRoute(routes, req);
+    const resp: RouteResponse = findRoute(routes, req);
     if (resp.status === 200) {
       matched = matched + 1;
     }

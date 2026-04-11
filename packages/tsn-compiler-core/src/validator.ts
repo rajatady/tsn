@@ -276,7 +276,7 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
     // Ban: bare module imports (non-relative)
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text
-      if (!spec.startsWith('.') && !isTSNStdlibModule(spec)) {
+      if (!spec.startsWith('.') && !isTSNStdlibModule(spec) && spec !== 'module') {
         errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path) and TSN stdlib imports are supported` })
       }
     }

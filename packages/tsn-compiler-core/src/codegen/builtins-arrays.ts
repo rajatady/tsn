@@ -104,12 +104,17 @@ export function emitArrayMethod(
     if (innerType !== 'string' && innerType !== 'number' && innerType !== 'boolean') return null
     const id = ctx.nextTempId()
     const sep = args.length > 0 ? ctx.emitExpr(args[0]) : 'str_lit(",")'
-    let append = `strbuf_add_str(&_join${id}, ${objExpr}.data[_i${id}])`
-    if (innerType === 'number') append = `strbuf_add_double(&_join${id}, ${objExpr}.data[_i${id}])`
-    if (innerType === 'boolean') append = `strbuf_add_cstr(&_join${id}, ${objExpr}.data[_i${id}] ? "true" : "false")`
-    return `({ STRBUF(_join${id}, 256); for (int _i${id} = 0; _i${id} < ${objExpr}.len; _i${id}++) { ` +
+    // Hoist objExpr to a temp to avoid re-evaluating slice/call expressions in the loop
+    const isSimple = /^[a-zA-Z_]\w*$/.test(objExpr)
+    const arrRef = isSimple ? objExpr : `_jarr${id}`
+    const hoistDecl = isSimple ? '' : `${arrTypeName} ${arrRef} = ${objExpr}; `
+    const hoistRelease = isSimple ? '' : ` ${arrTypeName}_release(&${arrRef});`
+    let append = `strbuf_add_str(&_join${id}, ${arrRef}.data[_i${id}])`
+    if (innerType === 'number') append = `strbuf_add_double(&_join${id}, ${arrRef}.data[_i${id}])`
+    if (innerType === 'boolean') append = `strbuf_add_cstr(&_join${id}, ${arrRef}.data[_i${id}] ? "true" : "false")`
+    return `({ ${hoistDecl}STRBUF(_join${id}, 256); for (int _i${id} = 0; _i${id} < ${arrRef}.len; _i${id}++) { ` +
       `if (_i${id} > 0) strbuf_add_str(&_join${id}, ${sep}); ${append}; } ` +
-      `Str _rjoin${id} = strbuf_to_heap_str(&_join${id}); strbuf_free(&_join${id}); _rjoin${id}; })`
+      `Str _rjoin${id} = strbuf_to_heap_str(&_join${id}); strbuf_free(&_join${id});${hoistRelease} _rjoin${id}; })`
   }
 
   if ((method === 'some' || method === 'every' || method === 'findIndex' || method === 'count') && args.length > 0) {

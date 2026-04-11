@@ -20,6 +20,78 @@ resolve_binary() { python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]
 RUST_FLAGS="-C opt-level=3 -C lto=fat -C codegen-units=1 -C panic=abort -C strip=symbols"
 RUST_SRC="$(pwd)/harness/rust"
 
+# ─── Generate missing test data ────────────────────────────────────
+DATA="harness/test-data"
+N=500000
+
+gen() { local f="$1"; shift; if [ ! -f "$f" ]; then echo "Generating $f..."; python3 -c "$@"; fi; }
+
+gen "$DATA/large.csv" "
+import csv, random; random.seed(42)
+names=['Alice','Bob','Charlie','Diana','Eve','Frank','Grace','Hank','Iris','Jack']
+cities=['NYC','SF','LA','Chicago','Seattle','Austin','Denver','Boston','Miami','Portland']
+w=csv.writer(open('$DATA/large.csv','w')); w.writerow(['name','age','score','city'])
+for i in range($N*2): w.writerow([random.choice(names),random.randint(18,65),round(random.uniform(0,100),2),random.choice(cities)])
+"
+
+gen "$DATA/large-config-audit.env" "
+import random; random.seed(43)
+keys=['APP_ENV','API_BASE_URL','ENABLE_AUDIT_LOG','SESSION_COOKIE_SECURE','FEATURE_FLAGS',
+      'ALLOWED_ORIGINS','DATABASE_URL','CACHE_REDIS_URL','LOG_LEVEL','MAX_POOL_SIZE',
+      'RATE_LIMIT','CORS_ENABLED','TLS_VERSION','SENTRY_DSN','DEPLOY_REGION']
+vals=['production','staging','true','false','https://api.example.com','redis://cache:6379',
+      'postgresql://db:5432/app','1.3','us-east-1','eu-west-1','debug','info','warn']
+f=open('$DATA/large-config-audit.env','w')
+for i in range($N):
+    k=random.choice(keys)+'_'+str(i)
+    f.write(k+' = '+random.choice(vals)+'\n')
+"
+
+gen "$DATA/large-access-log.txt" "
+import random; random.seed(44)
+methods=['GET','GET','GET','POST','PUT','DELETE']
+paths=['/health','/api/orders','/api/users','/checkout','/auth/login','/search','/api/products','/api/cart']
+services=['api','checkout','auth','search','queue','payments']
+statuses=[200,200,200,200,200,502,503,404]
+f=open('$DATA/large-access-log.txt','w')
+for i in range($N):
+    ts='2026-04-05T%02d:%02d:%02dZ'%(i//3600%24,i//60%60,i%60)
+    f.write('%s|%s|%s|%d|%d|%s\n'%(ts,random.choice(methods),random.choice(paths),random.choice(statuses),random.randint(5,980),random.choice(services)))
+"
+
+gen "$DATA/large-log-triage.txt" "
+import random; random.seed(45)
+levels=['ERROR','ERROR','WARN','WARN','WARN','INFO','INFO','INFO','INFO','INFO']
+services=['checkout','auth','search','queue','api','payments','gateway']
+regions=['iad','fra','sin','pdx','lhr']
+msgs=['Payment timeout retry storm on card capture','Token refresh backlog after deploy',
+      'Cache warmed successfully','Queue depth exceeded threshold','Connection pool exhausted',
+      'Request latency spike on /checkout','Auth token validation slow','Search index rebuild in progress',
+      'Rate limiter triggered for IP range','Disk usage warning on shard 3','Memory pressure on worker pool',
+      'TLS handshake timeout to upstream','DNS resolution slow for cache host','Deployment rollback initiated']
+f=open('$DATA/large-log-triage.txt','w')
+for i in range($N):
+    ts='2026-04-05T%02d:%02d:%02dZ'%(i//3600%24,i//60%60,i%60)
+    f.write('%s level=%s service=%s region=%s msg=%s\n'%(ts,random.choice(levels),random.choice(services),random.choice(regions),random.choice(msgs)))
+"
+
+gen "$DATA/large-revenue-rollup.csv" "
+import csv, random; random.seed(46)
+regions=['north','south','west','east','enterprise','apac','emea','latam','central','midwest']
+w=csv.writer(open('$DATA/large-revenue-rollup.csv','w')); w.writerow(['region','revenue','cost','orders'])
+for i in range($N):
+    rev=round(random.uniform(50000,200000),2); cost=round(rev*random.uniform(0.55,0.75),2)
+    w.writerow([random.choice(regions),rev,cost,random.randint(200,600)])
+"
+
+gen "$DATA/large-sla-scorecard.csv" "
+import csv, random; random.seed(47)
+services=['checkout','auth','api','search','queue','payments','gateway','cdn','dns','logging']
+w=csv.writer(open('$DATA/large-sla-scorecard.csv','w')); w.writerow(['service','uptime','error_rate','p95_ms','deploys'])
+for i in range($N):
+    w.writerow([random.choice(services),round(random.uniform(98.0,99.99),2),round(random.uniform(0.05,2.0),2),random.randint(400,1000),random.randint(5,30)])
+"
+
 echo "Binary sizes:"
 echo "  Node runtime:    $(ls -lh "$(resolve_binary "$(which node)")" | awk '{print $5}')"
 if command -v bun &> /dev/null; then
@@ -123,56 +195,56 @@ bench_case() {
 
 bench_case \
     "CSV Tool" \
-    "Process a large CSV, filter age>30, sort by score, output top 20." \
+    "Process 1M CSV rows: filter age>30, sort by score, output top 20." \
     "targets/csv-tool.ts" \
     "./build/csv-tool" \
-    "harness/test-data/large.csv" \
-    "$(record_count_csv harness/test-data/large.csv)" \
+    "$DATA/large.csv" \
+    "$(record_count_csv $DATA/large.csv)" \
     "csv-tool"
 
 bench_case \
     "Config Audit" \
-    "Audit deployment-style env config for risky flags and readiness gaps." \
+    "Audit 500K deployment-style env config entries for risky flags." \
     "examples/config-audit.ts" \
     "./build/config-audit" \
-    "harness/test-data/config-audit.env" \
-    "$(record_count_lines harness/test-data/config-audit.env)" \
+    "$DATA/large-config-audit.env" \
+    "$(record_count_lines $DATA/large-config-audit.env)" \
     "config-audit"
 
 bench_case \
     "Access Log Summary" \
-    "Summarize access logs into health signals and hot paths." \
+    "Summarize 500K access log entries into health signals and hot paths." \
     "examples/access-log-summary.ts" \
     "./build/access-log-summary" \
-    "harness/test-data/access-log.txt" \
-    "$(record_count_lines harness/test-data/access-log.txt)" \
+    "$DATA/large-access-log.txt" \
+    "$(record_count_lines $DATA/large-access-log.txt)" \
     "access-log-summary"
 
 bench_case \
     "Log Triage" \
-    "Normalize production log lines and extract actionable incident counts." \
+    "Triage 500K production log lines and extract actionable incident counts." \
     "examples/log-triage.ts" \
     "./build/log-triage" \
-    "harness/test-data/log-triage.txt" \
-    "$(record_count_lines harness/test-data/log-triage.txt)" \
+    "$DATA/large-log-triage.txt" \
+    "$(record_count_lines $DATA/large-log-triage.txt)" \
     "log-triage"
 
 bench_case \
     "Revenue Rollup" \
-    "Roll up revenue, cost, margin, and top regions from finance CSV data." \
+    "Roll up 500K revenue entries by region with margin and top performers." \
     "examples/revenue-rollup.ts" \
     "./build/revenue-rollup" \
-    "harness/test-data/revenue-rollup.csv" \
-    "$(record_count_csv harness/test-data/revenue-rollup.csv)" \
+    "$DATA/large-revenue-rollup.csv" \
+    "$(record_count_csv $DATA/large-revenue-rollup.csv)" \
     "revenue-rollup"
 
 bench_case \
     "SLA Scorecard" \
-    "Aggregate uptime, latency, and error-rate snapshots into an SLA report." \
+    "Aggregate 500K SLA snapshots into per-service uptime and latency reports." \
     "examples/sla-scorecard.ts" \
     "./build/sla-scorecard" \
-    "harness/test-data/sla-scorecard.csv" \
-    "$(record_count_csv harness/test-data/sla-scorecard.csv)" \
+    "$DATA/large-sla-scorecard.csv" \
+    "$(record_count_csv $DATA/large-sla-scorecard.csv)" \
     "sla-scorecard"
 
 echo ""
