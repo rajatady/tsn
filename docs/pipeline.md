@@ -46,14 +46,11 @@ The resolver (`compiler/resolver.ts`) follows `import` declarations recursively:
 
 1. Parse the entry file
 2. For each `import ... from './path'`: resolve to absolute path (tries `.ts`, `.tsx`, `/index.ts`)
-3. For each `import ... from 'pkg-name'`: resolve native package from `node_modules` (reads `package.json` `tsn` field)
-4. Recursively resolve that file's imports (depth-first)
-5. Track visited files to prevent cycles
-6. Return all files in dependency order (leaves first, entry last), plus native C files and include paths
+3. Recursively resolve that file's imports (depth-first)
+4. Track visited files to prevent cycles
+5. Return all files in dependency order (leaves first, entry last)
 
 All resolved files are merged into a single C output. The `export` keyword is stripped — C has a flat namespace.
-
-Native packages contribute their TS entry file to the source file list (for type info and `declare function` signatures) and their C files to the linker command.
 
 ```
 dashboard.tsx → lib/data.ts → lib/types.ts (leaf)
@@ -86,10 +83,9 @@ Generates forward declarations:
 ```c
 Str getName(double id);
 void onSearch(Str text);
-double _dt_now(void);      // from native package
 ```
 
-Both defined functions (with bodies) and `declare function` statements (no body, e.g. from native FFI packages) are collected. This ensures calls to native functions resolve correctly during codegen.
+Skips `declare function` (ambient declarations with no body).
 
 ### Pass 2: Functions
 
@@ -154,13 +150,6 @@ clang -O2 -o build/app build/app.c -lm -I compiler/runtime
 ### Debug Build
 ```bash
 clang -O0 -g -DTSN_DEBUG -o build/app build/app.c -lm -I compiler/runtime
-```
-
-### With Native FFI Packages
-```bash
-# Native C files from packages are appended to the clang command:
-clang -O2 -o build/app build/app.c node_modules/tsn-datetime/src/datetime.c \
-  -lm -I compiler/runtime -I node_modules/tsn-datetime
 ```
 
 ### UI App (Release)

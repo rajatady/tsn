@@ -101,14 +101,6 @@ examples/native-gui/
 2. Add the C implementation in `compiler/runtime/runtime.h`
 3. Document in `docs/stdlib.md`
 
-### Creating a native FFI package
-
-1. Create a directory with `package.json` containing `"tsn": { "entry": "src/index.ts", "native": ["src/mylib.c"] }`
-2. Write `declare function` declarations in the TS entry file for each C function
-3. Implement the C functions (can `#include "runtime.h"` for `Str` type)
-4. Publish to npm — consumers `import { fn } from "pkg-name"` and the compiler links the C automatically
-5. Document in `docs/language.md` "Native FFI Packages" section
-
 ### Adding a new validator rule
 
 1. Add the check in `packages/tsn-compiler-core/src/validator.ts` or the compatibility wrapper it forwards to
