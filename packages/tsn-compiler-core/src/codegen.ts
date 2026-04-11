@@ -109,7 +109,6 @@ class CodeGen {
   private funcLocalVars: Map<string, string> = new Map()
   private funcTopLevelVars: Set<string> = new Set()
   private funcDeclaredSoFar: Set<string> = new Set()  // tracks declaration order for return cleanup
-  pendingStringReleases: string[] = []
   activeTryFrames: string[] = []
   currentFunctionReturnTsType: string | null = null
   currentFunctionIsAsync = false
