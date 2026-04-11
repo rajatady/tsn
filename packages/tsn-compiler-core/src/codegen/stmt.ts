@@ -43,14 +43,6 @@ export interface StatementEmitterContext {
   nextTempId(): number
   wrapAsyncReturn(expr: ts.Expression | null): string
   wrapAsyncThrow(errorExpr: string): string
-  pendingStringReleases: string[]
-}
-
-function flushStringReleases(ctx: StatementEmitterContext, out: string[]): void {
-  for (const tmp of ctx.pendingStringReleases) {
-    out.push(ctx.pad() + `str_release(&${tmp});`)
-  }
-  ctx.pendingStringReleases.length = 0
 }
 
 export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: string[]): void {
@@ -59,7 +51,6 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
 
   if (ts.isVariableStatement(node)) {
     for (const d of node.declarationList.declarations) emitVarDecl(ctx, d, out)
-    flushStringReleases(ctx, out)
     return
   }
 
@@ -163,7 +154,6 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
 
     const expr = ctx.emitExpr(node.expression)
     out.push(ctx.pad() + expr + ';')
-    flushStringReleases(ctx, out)
     return
   }
 

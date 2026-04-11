@@ -7,7 +7,6 @@ export interface BuiltinEmitterContext {
   arrayTypeName(innerTsType: string): string
   emitPredicateCallback(fn: ts.Expression, paramType: string): { paramName: string; body: string } | null
   nextTempId(): number
-  pendingStringReleases: string[]
 }
 
 export type StdlibEmitterContext = BuiltinEmitterContext
