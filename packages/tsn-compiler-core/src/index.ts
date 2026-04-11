@@ -1,4 +1,5 @@
 export { buildTSN } from './build.js'
 export { generateC, generateCSingle } from './codegen.js'
 export { resolveModules } from './resolver.js'
+export type { ResolveResult } from './resolver.js'
 export { validate } from './validator.js'

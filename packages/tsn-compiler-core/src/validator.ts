@@ -13,7 +13,7 @@ export interface ValidationError {
   message: string
 }
 
-export function validate(sourceFile: ts.SourceFile): ValidationError[] {
+export function validate(sourceFile: ts.SourceFile, allowedExternalModules?: Set<string>): ValidationError[] {
   const errors: ValidationError[] = []
 
   function visitWithoutNestedFunctions(node: ts.Node, fn: (child: ts.Node) => void): void {
@@ -273,11 +273,11 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
 
     // Classes: now supported via codegen
 
-    // Ban: bare module imports (non-relative)
+    // Ban: bare module imports (non-relative) unless they are resolved native packages
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text
-      if (!spec.startsWith('.') && !isTSNStdlibModule(spec) && spec !== 'module') {
-        errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path) and TSN stdlib imports are supported` })
+      if (!spec.startsWith('.') && !isTSNStdlibModule(spec) && spec !== 'module' && !allowedExternalModules?.has(spec)) {
+        errors.push({ pos: node.getStart(), message: `Cannot import "${spec}" — only relative imports (./path), TSN stdlib imports, and native packages are supported` })
       }
     }
 

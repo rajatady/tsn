@@ -15,13 +15,16 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
   const baseName = path.basename(inputPath, ext)
 
   console.log(`[1/4] Parsing ${baseName}${ext}...`)
-  const sourceFiles = resolveModules(absolutePath)
+  const { sourceFiles, nativeFiles, nativeIncludes, externalModules } = resolveModules(absolutePath)
   if (sourceFiles.length > 1) console.log(`  → ${sourceFiles.length} files resolved`)
+  if (nativeFiles.length > 0) {
+    console.log(`  → ${nativeFiles.length} native C file(s) from ${externalModules.size || 'local'} package(s)`)
+  }
 
   console.log('[2/4] Validating (rejecting banned features)...')
   let totalErrors = 0
   for (const sf of sourceFiles) {
-    const errors = validate(sf)
+    const errors = validate(sf, externalModules)
     if (errors.length > 0) {
       const relPath = path.relative(process.cwd(), sf.fileName)
       for (const err of errors) {
@@ -53,6 +56,10 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
   const libuvInclude = path.join('vendor', 'libuv', 'include')
   const libcurlFlags = getLibcurlShellFlags()
 
+  // Native package C files and include paths
+  const nativeSources = nativeFiles.join(' ')
+  const nativeIncludeFlags = nativeIncludes.map(d => `-I ${d}`).join(' ')
+
   try {
     if (hasUi) {
       const runtimeDir = path.join('compiler', 'runtime')
@@ -60,13 +67,13 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
       const yogaInclude = 'vendor'
       execSync(
         `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
+        `${cPath} ${appKitSourcePath} ${nativeSources} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ${nativeIncludeFlags} ` +
         `-lc++ -o ${binaryPath}`,
         { stdio: 'inherit' }
       )
     } else {
       execSync(
-        `clang ${optFlag} -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
+        `clang ${optFlag} -o ${binaryPath} ${cPath} ${nativeSources} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude} ${nativeIncludeFlags}`,
         { stdio: 'inherit' },
       )
     }

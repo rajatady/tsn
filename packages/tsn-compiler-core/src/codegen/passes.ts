@@ -50,7 +50,10 @@ export function runCompilationPasses(
 
   for (const sf of sourceFiles) {
     for (const s of sf.statements) {
-      if (ts.isFunctionDeclaration(s) && s.name && s.body) {
+      if (ts.isFunctionDeclaration(s) && s.name) {
+        // Collect signatures for both defined functions and declare functions.
+        // declare functions (no body) from native packages get registered here
+        // so that calls to them are resolved during codegen.
         const name = s.name.text
         const retInfo = ctx.inferFunctionReturnType(s)
         const params = s.parameters.map((p, index) => {

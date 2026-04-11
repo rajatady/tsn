@@ -243,7 +243,7 @@ These features are rejected at validation time with clear error messages:
 | `Proxy` / `Reflect` | No metaprogramming |
 | `with` | Dynamic scoping |
 | Generators / `yield` | Future work |
-| Bare imports (`'lodash'`) | Only relative imports (`./path`) and TSN stdlib imports (`@tsn/fs`, `@tsn/http`) are supported |
+| Bare imports (`'lodash'`) | Only relative imports (`./path`), TSN stdlib (`@tsn/fs`), and native TSN packages are supported |
 
 Additional async restrictions for now:
 
@@ -315,11 +315,107 @@ import { findEmployee } from './lib/search'
 ```
 
 **Rules:**
-- Only relative imports (`./path`, `../path`) — bare imports like `'lodash'` are rejected
-- Resolution tries: `.ts`, `.tsx`, `/index.ts`, `/index.tsx`
+- Relative imports (`./path`, `../path`) — resolution tries: `.ts`, `.tsx`, `/index.ts`, `/index.tsx`
+- TSN stdlib imports (`@tsn/fs`, `@tsn/http`)
+- Native TSN packages from `node_modules` (see [Native FFI Packages](#native-ffi-packages) below)
 - Circular imports are detected and rejected with a clear error
 - `export` keyword is stripped — C has a flat namespace, everything is visible
 - Re-exports work: `export { X } from './other'`
+
+### Native FFI Packages
+
+TSN supports importing native packages that ship C source files alongside TypeScript type declarations. This is the FFI boundary — it lets package authors provide native functionality without modifying the compiler.
+
+#### Package author side
+
+```
+tsn-datetime/
+  package.json
+  src/
+    index.ts          # TS surface (types + declare function)
+    datetime.c        # native C implementation
+```
+
+**package.json:**
+```json
+{
+  "name": "tsn-datetime",
+  "version": "0.1.0",
+  "tsn": {
+    "entry": "src/index.ts",
+    "native": ["src/datetime.c"]
+  }
+}
+```
+
+**src/index.ts** — TypeScript declarations for the C functions:
+```typescript
+export declare function _dt_now(): number
+export declare function _dt_format(ts: number): string
+```
+
+**src/datetime.c** — C implementations (can `#include "runtime.h"` for `Str`):
+```c
+#include <time.h>
+#include "runtime.h"
+
+double _dt_now(void) {
+    return (double)time(NULL);
+}
+
+Str _dt_format(double ts) {
+    time_t t = (time_t)ts;
+    struct tm *tm = localtime(&t);
+    char buf[32];
+    int len = snprintf(buf, sizeof(buf), "%04d-%02d-%02d", 
+        tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
+    return str_from(buf, len);
+}
+```
+
+#### Consumer side
+
+```bash
+npm install tsn-datetime
+```
+
+```typescript
+import { _dt_now, _dt_format } from "tsn-datetime"
+
+function main(): void {
+  const now = _dt_now()
+  console.log("Today: " + _dt_format(now))
+}
+```
+
+```bash
+tsn build app.ts
+```
+
+The compiler reads `tsn-datetime` from `node_modules`, pulls in `index.ts` for type checking and codegen, and passes `datetime.c` to the linker. One binary. No runtime.
+
+#### Local native files
+
+For project-level native C files (not in a package), create `tsn.config.json` in the project root:
+
+```json
+{
+  "native": ["src/mylib.c"]
+}
+```
+
+The compiler will link these files into the binary. Use `declare function` in your TypeScript to declare the C functions.
+
+#### Alternatively: `tsn.config.json` in the package
+
+Instead of the `"tsn"` field in `package.json`, packages can ship a standalone `tsn.config.json`:
+
+```json
+{
+  "entry": "src/index.ts",
+  "native": ["src/datetime.c"]
+}
+```
 
 ### Semicolons before JSX
 
