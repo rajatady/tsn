@@ -14,7 +14,7 @@ This file is the Phase 1 language catalogue. It records what a normal profession
 | `if` / `else` / ternary | Type | Yes | Done | `codegen/stmt.ts` / `codegen/expr.ts` | `test/stmt/control-flow.test.ts` | Existing behavior should be frozen. |
 | `while` / `for` | Type | Yes | Done | `codegen/stmt.ts` | `test/stmt/control-flow.test.ts` | Add edge cases around nested loops and cleanup. |
 | `for...of` on arrays | Type | Yes | Done | `codegen/stmt.ts` | `test/stmt/for-of.test.ts` | Keep array-only semantics for now. |
-| `switch` | Type | Yes | Not done | `codegen/stmt.ts` | `test/stmt/switch.test.ts` | Missing Phase 1 feature. |
+| `switch` | Type | Yes | Done | `codegen/stmt.ts` | `test/stmt/switch.test.ts` | Lowered to native C switch with numeric discrimination. |
 | `break` / `continue` | Type | Yes | Done | `codegen/stmt.ts` | `test/stmt/control-flow.test.ts` | Add nested-loop coverage. |
 | Interfaces as plain data | Type | Yes | Done | `codegen/types.ts` + `codegen/expr.ts` | `test/types/interfaces.test.ts` | Keep value semantics explicit. |
 | Classes | Type | Yes | Partial | `codegen/classes.ts` | `test/classes/classes.test.ts` | Must freeze current constructor/field/method behavior before refactor. |
@@ -33,9 +33,9 @@ This file is the Phase 1 language catalogue. It records what a normal profession
 | `number` | Type | Yes | Partial | `codegen/types.ts` | `test/types/primitives.test.ts` | Current semantics are “all doubles.” Freeze that explicitly. |
 | `string` | Memory | Yes | Done | `codegen/builtins-strings.ts` + runtime | `test/strings/strings.test.ts` | One of the strongest current areas. |
 | `boolean` | Type | Yes | Done | `codegen/types.ts` | `test/types/primitives.test.ts` | Add mixed expression cases. |
-| `null` / `undefined` / optionality | Type | Yes | Not done | `codegen/types.ts` + validator policy | `test/types/nullability.test.ts` | Missing Phase 1 feature. |
-| Optional chaining `?.` | Type | Yes | Not done | `codegen/expr.ts` | `test/types/nullability.test.ts` | Missing. |
-| Nullish coalescing `??` | Type | Yes | Not done | `codegen/expr.ts` | `test/types/nullability.test.ts` | Missing. |
+| `null` / `undefined` / optionality | Type | Yes | Partial | `codegen/types.ts` + validator policy | `test/types/nullability.test.ts` | Narrow nullable unions now work for `string`, arrays, and same-file class references. |
+| Optional chaining `?.` | Type | Yes | Partial | `codegen/expr.ts` | `test/types/nullability.test.ts` | Narrow property optional chaining now works for nullable class references when the result stays in the nullable-capable subset. Optional call chaining is still not supported. |
+| Nullish coalescing `??` | Type | Yes | Partial | `codegen/expr.ts` | `test/types/nullability.test.ts` | Narrow nullish coalescing now works for the supported nullable subset. |
 | Integer-style library types (`i32`, `u64`) | Type | Yes | Not done | Later separate package | `test/types/int-types.test.ts` | Phase 1-worthy, but not to be mixed into current cleanup. |
 | Arrays | Memory | Yes | Done | `codegen/types.ts` + `codegen/builtins-arrays.ts` | `test/arrays/arrays.test.ts` | Add tests for ownership-sensitive cases. |
 | Array indexing | Memory | Yes | Done | `codegen/expr.ts` / `codegen/stmt.ts` | `test/arrays/indexing.test.ts` | Cover get/set/compound assignment. |
@@ -61,7 +61,7 @@ This file is the Phase 1 language catalogue. It records what a normal profession
 | `async` / `await` / `Promise` | Effect | Yes | Partial | `async-lowering.ts` + `async-state-machine.ts` + hosted runtime | `test/effects/async.test.ts` and `test/effects/async-errors.test.ts` | Real hosted async now uses resumable frame/state-machine lowering, including direct-value await, repeated awaits on shared promise state, guarded promise value access, and catchable OS/libuv failures. Remaining async gaps are broader surface/features, not basic suspension. |
 | Timer APIs (`setTimeout` / `setInterval`) | Effect | Yes | Partial | `builtins-timers.ts` + `runtime_timers.h` | `test/effects/timers.test.ts` | Hosted timers are libuv-backed now, but callback forms are intentionally narrow and timer promises are not implemented yet. |
 | `fetch` / `Response` | Effect | Yes | Partial | `builtins-hosted.ts` + `runtime_fetch.h` | `test/effects/fetch.test.ts` | Hosted fetch now supports request headers, `Response.statusText`, `response.header(name)`, and explicit transport/libuv rejection paths. Remaining gaps are cancellation, streaming, `Response.json()`, and richer metadata. |
-| Bare package imports | Effect | Yes | Not done | resolver + validator | `test/effects/modules.test.ts` | Current validator bug should be fixed after behavior freeze. |
+| Bare package imports | Effect | Yes | Partial | resolver + validator | `test/effects/modules.test.ts` | General package imports are still not supported, but TSN stdlib imports like `@tsn/fs` and `@tsn/http` now work. |
 
 ## Validator Never-Allow Policy
 

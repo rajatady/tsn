@@ -80,6 +80,7 @@ import { HookRegistry } from './hooks.js'
 import {
   arrayCElemType as arrayCElemTypeFor,
   arrayTypeName as arrayTypeNameFor,
+  zeroValueForTsType as zeroValueForTsTypeFor,
   tsTypeName as tsTypeNameFor,
   tsTypeNameToC as tsTypeNameToCFor,
   tsTypeToC as tsTypeToCFor,
@@ -201,6 +202,14 @@ class CodeGen {
     return registerPromiseTypeFor({ promiseTypes: this.promiseTypes }, valueCType)
   }
 
+  zeroValueForTsType(tsType: string): string {
+    return zeroValueForTsTypeFor(tsType, {
+      arrayTypes: this.arrayTypes,
+      promiseTypes: this.promiseTypes,
+      hasClassType: (name: string) => this.classDefs.has(name),
+    })
+  }
+
   emitPredicateCallback(fnExpr: ts.Expression, paramType: string): { paramName: string; body: string } | null {
     return emitPredicateCallbackFor(fnExpr, paramType, {
       emitExpr: (node: ts.Node) => this.emitExpr(node),
@@ -246,8 +255,16 @@ class CodeGen {
 
     if (node.kind === ts.SyntaxKind.TrueKeyword) return 'true'
     if (node.kind === ts.SyntaxKind.FalseKeyword) return 'false'
+    if (node.kind === ts.SyntaxKind.NullKeyword) {
+      if (this.currentFunctionReturnTsType) return this.zeroValueForTsType(this.currentFunctionReturnTsType)
+      return '0'
+    }
 
     if (ts.isIdentifier(node)) {
+      if (node.text === 'undefined') {
+        if (this.currentFunctionReturnTsType) return this.zeroValueForTsType(this.currentFunctionReturnTsType)
+        return '0'
+      }
       // If this var is a builder, emit a zero-alloc view of the builder content
       if (this.builderVars.has(node.text)) {
         return `strbuf_to_str(&_b_${node.text})`
@@ -260,7 +277,7 @@ class CodeGen {
     if (ts.isParenthesizedExpression(node))
       return `(${this.emitExpr(node.expression)})`
 
-    if (ts.isPropertyAccessExpression(node))
+    if (ts.isPropertyAccessExpression(node) || ts.isPropertyAccessChain(node))
       return emitPropAccessFor(this, node)
 
     if (ts.isElementAccessExpression(node)) {

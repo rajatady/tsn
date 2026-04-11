@@ -28,7 +28,7 @@ These are the smallest additional capabilities that make TSN feel like something
 Why it matters:
 
 - normal TS developers expect it immediately for I/O and app code
-- it is currently banned in the validator
+- it was originally one of the biggest missing modern-TS gaps
 - without it, the language feels cut off from normal modern TS usage
 
 Release bar:
@@ -78,14 +78,7 @@ The current shape is:
 - already-settled promises can be awaited repeatedly through shared runtime state
 - completion settles the shared promise state and the waiting frame continues
 
-This is intentionally an intermediate step. It gives TSN real hosted async behavior now, while deferring the larger compiler work for resumable state machines.
-
-The next runtime shape is still:
-
-- compiler lowers each `async function` into a resumable state machine
-- runtime owns continuation queues
-- `await` suspends instead of blocking the current frame
-- completion resumes the state machine
+This is no longer just an intermediate placeholder. TSN now has resumable async frame/state-machine lowering in the supported async-function-declaration path, and hosted completions resume suspended frames through shared promise state.
 
 libuv is now the hosted runtime substrate because it gives TSN:
 
@@ -163,7 +156,7 @@ These are the async edge cases that matter immediately:
 - [x] Specify the exact unsupported Promise features for v1
 - [x] Add an async design doc for lowering and runtime behavior
 - [x] Split compiler async work into dedicated files instead of one blob
-- [ ] Implement compiler lowering of `async function` into resumable state machines
+- [x] Implement compiler lowering of `async function` into resumable state machines
 - [x] Implement blocking hosted `await` semantics over the runtime event loop
 - [x] Implement runtime promise/task object
 - [x] Implement event-loop integration for hosted async runtime
@@ -296,13 +289,19 @@ Release bar:
 Why it matters:
 
 - normal TS developers expect imports to feel normal
-- today, only relative imports are supported
+- today, the general package story is still narrow
 - that makes the language feel more experimental than it needs to
 
 Release bar:
 
 - enough module ergonomics that code organization feels normal
 - if full package resolution is not ready, there must be a clear supported story that does not feel broken
+
+Current status:
+
+- relative imports work
+- TSN stdlib imports like `@tsn/fs` and `@tsn/http` work
+- general third-party bare imports are still unsupported
 
 ## Strong Next Priority After The Minimum
 
@@ -316,10 +315,13 @@ This means:
 - optional chaining `?.`
 - nullish coalescing `??`
 
-Why it matters:
+Current status:
 
-- this is part of ordinary TS thinking
-- without it, normal TS code still hits avoidable friction
+- narrow nullable unions now work for `string`, arrays, and same-file class references
+- narrow `??` now works for that supported nullable subset
+- narrow property `?.` now works for nullable class references when the result also stays in the nullable-capable subset
+- optional call chaining is still intentionally unsupported
+- numeric/boolean nullable unions are still intentionally unsupported
 
 ## Important But Not Release-Blocking For The First Test Release
 
@@ -354,9 +356,14 @@ Before a meaningful public test release, TSN should have:
 2. `try/catch` and `throw`
 3. closure behavior that is good enough for normal callback-based TS code
 4. a sane import/module story
+5. at least narrow nullability support
 
-Immediately after that, the next pressure point is:
+Status right now:
 
-5. nullability support
+- `async/await`: done in the narrow hosted model
+- `try/catch` and `throw`: done in the narrow hosted model
+- closure behavior: still partial
+- import/module story: partial via relative imports plus TSN stdlib imports
+- nullability: partial via the narrow supported subset
 
 Everything else can follow in later releases.

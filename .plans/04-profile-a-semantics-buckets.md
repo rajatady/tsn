@@ -117,7 +117,7 @@ These Phase 1 rows from the support matrix are primarily type semantics:
 | `if` / `else` / ternary | Done | Stable. |
 | `while` / `for` | Done | Stable. |
 | `for...of` on arrays | Done | Stable for arrays. |
-| `switch` | Not done | Missing Phase 1 feature. |
+| `switch` | Done | Lowered in the statement emitter now. |
 | `break` / `continue` | Done | Stable. |
 | Interfaces as plain data | Done | Good fit. |
 | Classes | Partial | Real support exists, but semantics still need hardening. |
@@ -135,9 +135,9 @@ These Phase 1 rows from the support matrix are primarily type semantics:
 | Enums | Not done | Later. |
 | `number` | Partial | Current reality is “all doubles.” |
 | `boolean` | Done | Stable. |
-| `null` / `undefined` / optionality | Not done | Missing. |
-| Optional chaining `?.` | Not done | Missing. |
-| Nullish coalescing `??` | Not done | Missing. |
+| `null` / `undefined` / optionality | Partial | Narrow nullable unions now work for `string`, arrays, and same-file class references. |
+| Optional chaining `?.` | Partial | Narrow property optional chaining works for nullable class references when the result stays in the supported subset. |
+| Nullish coalescing `??` | Partial | Narrow nullish coalescing works for the supported nullable subset. |
 | Integer-style library types (`i32`, `u64`) | Not done | Important, but not part of current cleanup. |
 | Array literals | Partial | Empty/non-empty semantics need explicit coverage. |
 | Object literals | Done | Good core support. |
@@ -219,7 +219,7 @@ The validator should continue to do three jobs:
    Example: `any`, `eval`, fake assertions, `Proxy`, `Reflect`, `var`.
 
 2. Reject not-yet-supported syntax clearly.
-   Example: `try/catch`, `async/await`, `switch`, nullability features.
+   Example: broader async forms, unsupported nullable shapes, broad unions, unsupported closure patterns.
 
 3. Teach the supported subset early.
    Diagnostics should tell a normal TS developer what TSN supports, not just what it hates.
@@ -240,12 +240,10 @@ The next implementation pass should follow this order:
 4. JSON/file builtins
    keep the default effect surface coherent before adding more features
 
-Only after that should the compiler move into clearly new Phase 1 features:
+Only after that should the compiler move into the next clearly new Phase 1 features:
 
-- `switch`
-- `try/catch`
-- `throw`
-- `async/await`
-- nullability / `?.` / `??`
 - `Map` / `Set`
 - broader generics
+- richer unions
+- broader nullable semantics
+- broader async surface

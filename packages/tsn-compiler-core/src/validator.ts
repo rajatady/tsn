@@ -15,6 +15,25 @@ export interface ValidationError {
 
 export function validate(sourceFile: ts.SourceFile): ValidationError[] {
   const errors: ValidationError[] = []
+  const classNames = new Set<string>()
+  const scanClasses = (node: ts.Node): void => {
+    if (ts.isClassDeclaration(node) && node.name) classNames.add(node.name.text)
+    ts.forEachChild(node, scanClasses)
+  }
+  scanClasses(sourceFile)
+
+  function isNullishTypeNode(node: ts.TypeNode): boolean {
+    if (node.kind === ts.SyntaxKind.UndefinedKeyword) return true
+    if (node.kind === ts.SyntaxKind.NullKeyword) return true
+    return ts.isLiteralTypeNode(node) && node.literal.kind === ts.SyntaxKind.NullKeyword
+  }
+
+  function isSupportedNullableBaseTypeNode(node: ts.TypeNode): boolean {
+    if (node.kind === ts.SyntaxKind.StringKeyword) return true
+    if (ts.isArrayTypeNode(node)) return true
+    if (ts.isTypeReferenceNode(node)) return classNames.has(node.typeName.getText())
+    return false
+  }
 
   function visitWithoutNestedFunctions(node: ts.Node, fn: (child: ts.Node) => void): void {
     const visit = (child: ts.Node): void => {
@@ -82,6 +101,17 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
     // Ban: `unknown` type
     if (node.kind === ts.SyntaxKind.UnknownKeyword) {
       errors.push({ pos: node.getStart(), message: 'Type "unknown" is banned' })
+    }
+
+    if (ts.isUnionTypeNode(node)) {
+      const nonNullishMembers = node.types.filter(member => !isNullishTypeNode(member))
+      const hasNullish = nonNullishMembers.length !== node.types.length
+      if (hasNullish && (nonNullishMembers.length !== 1 || !isSupportedNullableBaseTypeNode(nonNullishMembers[0]))) {
+        errors.push({
+          pos: node.getStart(),
+          message: 'Nullable unions currently only support string, arrays, and same-file class references',
+        })
+      }
     }
 
     // Ban: type assertions (as)
@@ -175,6 +205,10 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
           }
         }
       }
+    }
+
+    if (ts.isCallChain(node)) {
+      errors.push({ pos: node.getStart(), message: 'Optional call chaining is not supported yet — use property optional chaining plus an explicit null check' })
     }
 
     // Ban: delete operator

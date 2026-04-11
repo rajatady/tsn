@@ -4,6 +4,7 @@ import { emitArrayMethod } from './builtins-arrays.js'
 import { emitHostedBuiltinCall } from './builtins-hosted.js'
 import { emitStringMethod } from './builtins-strings.js'
 import type { ClassDef, StructDef } from './types.js'
+import { isNullableCapableTypeName, makeNullableType, nullableBaseType } from './types.js'
 
 export interface ExprEmitterContext {
   hooks: {
@@ -21,6 +22,7 @@ export interface ExprEmitterContext {
   arrayTypeName(innerTsType: string): string
   emitPredicateCallback(fnExpr: ts.Expression, paramType: string): { paramName: string; body: string } | null
   tsTypeNameToC(tsType: string, fallback?: string): string
+  zeroValueForTsType(tsType: string): string
   nextTempId(): number
   registerPromiseType(valueCType: string): string
   varTypes: Map<string, string>
@@ -29,19 +31,53 @@ export interface ExprEmitterContext {
   lambdas: string[]
 }
 
-export function emitPropAccess(ctx: ExprEmitterContext, node: ts.PropertyAccessExpression): string {
+function nullishCheck(ctx: ExprEmitterContext, expr: string, tsType: string): string {
+  const base = nullableBaseType(tsType) ?? tsType
+  if (base === 'string') return `${expr}.data == NULL`
+  if (base.endsWith('[]')) return `${expr}.data == NULL`
+  return `${expr} == NULL`
+}
+
+export function emitPropAccess(ctx: ExprEmitterContext, node: ts.PropertyAccessExpression | ts.PropertyAccessChain): string {
   const prop = node.name.text
+  const isOptional = ts.isPropertyAccessChain(node)
   if (ts.isIdentifier(node.expression)) {
     if (node.expression.text === 'console') return `console_${prop}`
     if (node.expression.text === 'Math') return `ts_math_${prop}`
     if (node.expression.text === 'JSON') return `json_${prop}`
   }
 
-  if (prop === 'length' && ts.isIdentifier(node.expression) && ctx.builderVars.has(node.expression.text)) {
+  if (!isOptional && prop === 'length' && ts.isIdentifier(node.expression) && ctx.builderVars.has(node.expression.text)) {
     return `_b_${node.expression.text}.len`
   }
 
   const objType = ctx.exprType(node.expression)
+  const nullableObjType = objType ? nullableBaseType(objType) : null
+  if (isOptional && nullableObjType) {
+    const objExpr = ctx.emitExpr(node.expression)
+    const objCType = ctx.tsTypeNameToC(objType ?? nullableObjType, 'void')
+    const tempId = ctx.nextTempId()
+    const tempName = `_opt${tempId}`
+    let accessExpr = ''
+    let resultTsType: string | undefined
+
+    if (ctx.classDefs.has(nullableObjType)) {
+      const cls = ctx.classDefs.get(nullableObjType)
+      const classField = cls?.fields.find(x => x.name === prop)
+      if (classField) {
+        resultTsType = classField.tsType
+        accessExpr = `${tempName}->${prop}`
+      }
+    }
+
+    if (!resultTsType || !accessExpr) return `/* UNSUPPORTED: OptionalPropertyAccess:${prop} */0`
+    if (!isNullableCapableTypeName(resultTsType, { hasClassType: name => ctx.classDefs.has(name) })) {
+      return `/* UNSUPPORTED: OptionalPropertyAccess:${prop} */0`
+    }
+    const nullableResultTsType = makeNullableType(resultTsType)
+    const zero = ctx.zeroValueForTsType(nullableResultTsType)
+    return `({ ${objCType} ${tempName} = ${objExpr}; ${nullishCheck(ctx, tempName, objType)} ? ${zero} : ${accessExpr}; })`
+  }
   if (objType?.startsWith('Promise<')) {
     const promiseCType = ctx.tsTypeNameToC(objType, 'Promise_void')
     const obj = ctx.emitExpr(node.expression)
@@ -230,6 +266,16 @@ export function emitBinary(ctx: ExprEmitterContext, node: ts.BinaryExpression): 
   const left = ctx.emitExpr(node.left)
   const right = ctx.emitExpr(node.right)
 
+  if (op === ts.SyntaxKind.QuestionQuestionToken && lt) {
+    const base = nullableBaseType(lt)
+    if (base) {
+      const tmpId = ctx.nextTempId()
+      const tmpName = `_coalesce${tmpId}`
+      const leftCType = ctx.tsTypeNameToC(lt, 'void')
+      return `({ ${leftCType} ${tmpName} = ${left}; ${nullishCheck(ctx, tmpName, lt)} ? ${right} : ${tmpName}; })`
+    }
+  }
+
   if (op === ts.SyntaxKind.PlusToken && (lt === 'string' || rt === 'string')) {
     const pieces: Array<{ expr: string; type: string }> = []
     flattenConcat(ctx, node, pieces)
@@ -253,6 +299,23 @@ export function emitBinary(ctx: ExprEmitterContext, node: ts.BinaryExpression): 
     return `!str_eq(${left}, ${right})`
   }
 
+  if (
+    (op === ts.SyntaxKind.EqualsEqualsEqualsToken || op === ts.SyntaxKind.EqualsEqualsToken ||
+      op === ts.SyntaxKind.ExclamationEqualsEqualsToken || op === ts.SyntaxKind.ExclamationEqualsToken) &&
+    ((node.left.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(node.left) && node.left.text === 'undefined')) ||
+      (node.right.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(node.right) && node.right.text === 'undefined')))
+  ) {
+    const compareNode = node.left.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(node.left) && node.left.text === 'undefined')
+      ? node.right
+      : node.left
+    const compareType = ctx.exprType(compareNode)
+    if (compareType && nullableBaseType(compareType)) {
+      const check = nullishCheck(ctx, ctx.emitExpr(compareNode), compareType)
+      const positive = op === ts.SyntaxKind.EqualsEqualsEqualsToken || op === ts.SyntaxKind.EqualsEqualsToken
+      return positive ? `(${check})` : `!(${check})`
+    }
+  }
+
   if (op === ts.SyntaxKind.EqualsToken) {
     if (ts.isElementAccessExpression(node.left)) {
       const arr = ctx.emitExpr(node.left.expression)
@@ -262,6 +325,12 @@ export function emitBinary(ctx: ExprEmitterContext, node: ts.BinaryExpression): 
       const file = ctx.sourceFileName || 'unknown'
       const line = sl ? sl.line + 1 : 0
       return `ARRAY_SET(${arr}, ${idx}, ${right}, "${arrName}", "${file}", ${line})`
+    }
+    if (node.right.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(node.right) && node.right.text === 'undefined')) {
+      const leftType = ctx.exprType(node.left)
+      if (leftType && nullableBaseType(leftType)) {
+        return `${left} = ${ctx.zeroValueForTsType(leftType)}`
+      }
     }
     return `${left} = ${right}`
   }

@@ -56,8 +56,37 @@ export interface TypeResolutionContext {
   hasClassType(name: string): boolean
 }
 
+export function isNullishTypeName(tsType: string): boolean {
+  return tsType === 'null' || tsType === 'undefined'
+}
+
+export function nullableBaseType(tsType: string): string | null {
+  return tsType.endsWith('?') ? tsType.slice(0, -1) : null
+}
+
+export function makeNullableType(tsType: string): string {
+  return nullableBaseType(tsType) ? tsType : `${tsType}?`
+}
+
+export function isNullableCapableTypeName(tsType: string, ctx?: Pick<TypeResolutionContext, 'hasClassType'>): boolean {
+  const base = nullableBaseType(tsType) ?? tsType
+  if (base === 'string') return true
+  if (base.endsWith('[]')) return true
+  if (ctx?.hasClassType(base)) return true
+  return false
+}
+
 export function tsTypeName(typeNode: ts.TypeNode | undefined): string {
   if (!typeNode) return 'number'
+  if (ts.isUnionTypeNode(typeNode)) {
+    const memberNames = typeNode.types.map(member => tsTypeName(member))
+    const nonNullish = memberNames.filter(name => !isNullishTypeName(name))
+    const hasNullish = nonNullish.length !== memberNames.length
+    if (hasNullish && nonNullish.length === 1) {
+      return makeNullableType(nonNullish[0])
+    }
+    return memberNames.join(' | ')
+  }
   if (ts.isTypeReferenceNode(typeNode)) {
     const name = typeNode.typeName.getText()
     if (name === 'Array' && typeNode.typeArguments?.length) {
@@ -111,6 +140,8 @@ export function arrayCElemType(tsType: string): string {
 }
 
 export function tsTypeNameToC(tsType: string, ctx: TypeResolutionContext, fallback = 'double'): string {
+  const nullableBase = nullableBaseType(tsType)
+  if (nullableBase) return tsTypeNameToC(nullableBase, ctx, fallback)
   const promisedInner = promiseInnerType(tsType)
   if (promisedInner) {
     const valueCType = tsTypeNameToC(promisedInner, ctx)
@@ -142,4 +173,14 @@ export function tsTypeNameToC(tsType: string, ctx: TypeResolutionContext, fallba
 export function tsTypeToC(typeNode: ts.TypeNode | undefined, ctx: TypeResolutionContext, fallback = 'double'): string {
   if (!typeNode) return fallback
   return tsTypeNameToC(tsTypeName(typeNode), ctx, fallback)
+}
+
+export function zeroValueForTsType(tsType: string, ctx: TypeResolutionContext): string {
+  const base = nullableBaseType(tsType) ?? tsType
+  if (base === 'number') return '0'
+  if (base === 'boolean') return 'false'
+  if (base === 'string') return '(Str){0}'
+  if (base.endsWith('[]')) return `(${tsTypeNameToC(base, ctx)}){0}`
+  if (ctx.hasClassType(base)) return 'NULL'
+  return `(${tsTypeNameToC(base, ctx)}){0}`
 }

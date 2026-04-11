@@ -43,6 +43,7 @@ export interface StatementEmitterContext {
   nextTempId(): number
   wrapAsyncReturn(expr: ts.Expression | null): string
   wrapAsyncThrow(errorExpr: string): string
+  zeroValueForTsType(tsType: string): string
 }
 
 export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: string[]): void {
@@ -204,9 +205,13 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
 
   if (ts.isReturnStatement(node)) {
     const returnedVar = node.expression && ts.isIdentifier(node.expression) ? node.expression.text : null
+    const nullishReturn = !!node.expression &&
+      (node.expression.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'undefined'))
     const returnedExpr = ctx.currentFunctionIsAsync
       ? ctx.wrapAsyncReturn(node.expression ?? null)
-      : (node.expression ? ctx.emitExpr(node.expression) : null)
+      : (nullishReturn && ctx.currentFunctionReturnTsType
+          ? ctx.zeroValueForTsType(ctx.currentFunctionReturnTsType)
+          : (node.expression ? ctx.emitExpr(node.expression) : null))
     for (let i = ctx.activeTryFrames.length - 1; i >= 0; i--) {
       out.push(ctx.pad() + `ts_exception_pop(&${ctx.activeTryFrames[i]});`)
     }
@@ -342,6 +347,19 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  if (ts.isSwitchStatement(node)) {
+    out.push(ctx.pad() + `switch ((int)(${ctx.emitExpr(node.expression)})) {`)
+    ctx.indent++
+    for (const clause of node.caseBlock.clauses) {
+      if (ts.isCaseClause(clause)) out.push(ctx.pad() + `case ${ctx.emitExpr(clause.expression)}: ;`)
+      else out.push(ctx.pad() + 'default: ;')
+      for (const stmt of clause.statements) emitStmt(ctx, stmt, out)
+    }
+    ctx.indent--
+    out.push(ctx.pad() + `}`)
+    return
+  }
+
   out.push(ctx.pad() + `/* UNSUPPORTED: ${ts.SyntaxKind[node.kind]} */`)
 }
 
@@ -407,10 +425,13 @@ export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDecla
   }
 
   if (!decl.initializer) {
-    if (cType === 'Str') out.push(ctx.pad() + `Str ${name} = str_lit("");`)
+    if (tsType.endsWith('?')) out.push(ctx.pad() + `${cType} ${name} = ${ctx.zeroValueForTsType(tsType)};`)
+    else if (cType === 'Str') out.push(ctx.pad() + `Str ${name} = str_lit("");`)
     else if (cType === 'double') out.push(ctx.pad() + `double ${name} = 0;`)
     else if (cType === 'bool') out.push(ctx.pad() + `bool ${name} = false;`)
     else out.push(ctx.pad() + `${cType} ${name} = {0};`)
+  } else if (decl.initializer.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(decl.initializer) && decl.initializer.text === 'undefined')) {
+    out.push(ctx.pad() + `${cType} ${name} = ${ctx.zeroValueForTsType(tsType)};`)
   } else {
     out.push(ctx.pad() + `${cType} ${name} = ${ctx.emitExpr(decl.initializer)};`)
   }

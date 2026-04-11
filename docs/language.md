@@ -185,7 +185,45 @@ while (i < arr.length) {
 for (let i = 0; i < 10; i++) {
   console.log(String(i))
 }
+
+switch (status) {
+  case 200:
+    console.log("ok")
+    break
+  default:
+    console.log("other")
+}
 ```
+
+### Nullability
+
+```typescript
+class User {
+  name: string
+
+  constructor(name: string) {
+    this.name = name
+  }
+}
+
+function label(user: User | null): string {
+  return user?.name ?? "anonymous"
+}
+```
+
+TSN now supports a narrow nullability model:
+
+- `string | null` and `string | undefined`
+- `T[] | null` and `T[] | undefined`
+- same-file class references like `User | null`
+- nullish coalescing `??`
+- narrow property optional chaining `?.` on nullable class references
+
+Current limitation:
+
+- numeric and boolean nullable unions are not supported yet
+- optional call chaining like `obj?.method()` is not supported yet
+- optional chaining currently stays in the supported nullable-capable subset
 
 ### Operators
 
@@ -234,7 +272,7 @@ These features are rejected at validation time with clear error messages:
 |---------|-----|
 | `any` / `unknown` types | Every value must have a known type |
 | Type assertions (`as`) | They lie to the compiler |
-| Non-null assertions (`!`) | No nullable types |
+| Non-null assertions (`!`) | TSN supports only a narrow nullable subset and does not allow assertion-based escape hatches |
 | `eval()` | No runtime code generation |
 | `new Function()` | No runtime code generation |
 | `delete` | Objects cannot change shape |
@@ -315,7 +353,9 @@ import { findEmployee } from './lib/search'
 ```
 
 **Rules:**
-- Only relative imports (`./path`, `../path`) — bare imports like `'lodash'` are rejected
+- Relative imports (`./path`, `../path`) are supported
+- TSN stdlib imports like `@tsn/fs` and `@tsn/http` are supported
+- General bare imports like `'lodash'` are still rejected
 - Resolution tries: `.ts`, `.tsx`, `/index.ts`, `/index.tsx`
 - Circular imports are detected and rejected with a clear error
 - `export` keyword is stripped — C has a flat namespace, everything is visible

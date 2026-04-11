@@ -3,6 +3,7 @@ import * as ts from 'typescript'
 import { unwrapAwaitType } from './async-lowering.js'
 import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
 import type { ClassDef, StructDef, StructField } from './types.js'
+import { isNullableCapableTypeName, makeNullableType, nullableBaseType } from './types.js'
 
 export interface InferenceContext {
   structs: StructDef[]
@@ -112,8 +113,12 @@ export function exprType(
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node)) return 'string'
   if (ts.isNumericLiteral(node)) return 'number'
   if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword) return 'boolean'
+  if (node.kind === ts.SyntaxKind.NullKeyword) return 'null'
   if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return 'JSX.Element'
-  if (ts.isIdentifier(node)) return ctx.varTypes.get(node.text)
+  if (ts.isIdentifier(node)) {
+    if (node.text === 'undefined') return 'undefined'
+    return ctx.varTypes.get(node.text)
+  }
   if (ts.isAwaitExpression(node)) return unwrapAwaitType(ctx.exprType(node.expression))
 
   if (node.kind === ts.SyntaxKind.ThisKeyword && ctx.currentClass) return ctx.currentClass
@@ -207,9 +212,11 @@ export function exprType(
     }
   }
 
-  if (ts.isPropertyAccessExpression(node)) {
+  if (ts.isPropertyAccessExpression(node) || ts.isPropertyAccessChain(node)) {
+    const isOptional = ts.isPropertyAccessChain(node)
     if (node.name.text === 'length') return 'number'
     const objectType = ctx.exprType(node.expression)
+    const nullableObjectType = objectType ? nullableBaseType(objectType) : null
     if (objectType?.startsWith('Promise<')) {
       if (node.name.text === 'state') return 'number'
       if (node.name.text === 'error') return 'string'
@@ -222,12 +229,18 @@ export function exprType(
       if (node.name.text === 'statusText') return 'string'
     }
     if (objectType) {
-      if (ctx.classDefs.has(objectType)) {
-        const cls = ctx.classDefs.get(objectType)
+      const lookupType = nullableObjectType ?? objectType
+      if (ctx.classDefs.has(lookupType)) {
+        const cls = ctx.classDefs.get(lookupType)
         const classField = cls?.fields.find(x => x.name === node.name.text)
-        if (classField) return classField.tsType
+        if (classField) {
+          if (isOptional && isNullableCapableTypeName(classField.tsType, { hasClassType: name => ctx.classDefs.has(name) })) {
+            return makeNullableType(classField.tsType)
+          }
+          return classField.tsType
+        }
       }
-      const struct = ctx.structs.find(x => x.name === objectType)
+      const struct = ctx.structs.find(x => x.name === lookupType)
       if (struct) {
         const field = struct.fields.find(x => x.name === node.name.text)
         if (field) return field.tsType
@@ -241,8 +254,23 @@ export function exprType(
       if (ctx.exprType(node.left) === 'string' || ctx.exprType(node.right) === 'string') return 'string'
       return 'number'
     }
+    if (op === ts.SyntaxKind.QuestionQuestionToken) {
+      const leftType = ctx.exprType(node.left)
+      const base = leftType ? nullableBaseType(leftType) : null
+      if (base) return base
+      return ctx.exprType(node.right)
+    }
     if ([ts.SyntaxKind.MinusToken, ts.SyntaxKind.AsteriskToken, ts.SyntaxKind.SlashToken, ts.SyntaxKind.PercentToken].includes(op)) return 'number'
-    if ([ts.SyntaxKind.LessThanToken, ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanEqualsToken, ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(op)) return 'boolean'
+    if ([
+      ts.SyntaxKind.LessThanToken,
+      ts.SyntaxKind.GreaterThanToken,
+      ts.SyntaxKind.LessThanEqualsToken,
+      ts.SyntaxKind.GreaterThanEqualsToken,
+      ts.SyntaxKind.EqualsEqualsEqualsToken,
+      ts.SyntaxKind.ExclamationEqualsEqualsToken,
+      ts.SyntaxKind.EqualsEqualsToken,
+      ts.SyntaxKind.ExclamationEqualsToken,
+    ].includes(op)) return 'boolean'
   }
 
   if (ts.isElementAccessExpression(node)) {
