@@ -31,7 +31,7 @@ export interface ProgramAssemblyContext {
   inferVarType(decl: ts.VariableDeclaration): string
   inferVarTsType(decl: ts.VariableDeclaration): string
   tsTypeName(typeNode: ts.TypeNode | undefined): string
-  emitObjLit(node: ts.ObjectLiteralExpression): string
+  emitObjLit(node: ts.ObjectLiteralExpression, targetStructName?: string): string
   emitExpr(node: ts.Node): string
 }
 
@@ -161,8 +161,9 @@ export function assembleProgram(
           if (d.initializer && ts.isIdentifier(d.name)) {
             const name = d.name.getText()
             const cType = d.type ? ctx.tsTypeToC(d.type) : ctx.inferVarType(d)
+            const tsType = d.type ? ctx.tsTypeName(d.type) : ctx.inferVarTsType(d)
             const val = ts.isObjectLiteralExpression(d.initializer)
-              ? `(${cType})${ctx.emitObjLit(d.initializer)}`
+              ? `(${cType})${ctx.emitObjLit(d.initializer, tsType)}`
               : ctx.emitExpr(d.initializer)
             initLines.push(`    ${name} = ${val};`)
           }
@@ -178,8 +179,9 @@ export function assembleProgram(
         if (d.initializer && ts.isIdentifier(d.name)) {
           const name = d.name.getText()
           const cType = d.type ? ctx.tsTypeToC(d.type) : ctx.inferVarType(d)
+          const tsType = d.type ? ctx.tsTypeName(d.type) : ctx.inferVarTsType(d)
           const val = ts.isObjectLiteralExpression(d.initializer)
-            ? `(${cType})${ctx.emitObjLit(d.initializer)}`
+            ? `(${cType})${ctx.emitObjLit(d.initializer, tsType)}`
             : ctx.emitExpr(d.initializer)
           initLines.push(`    ${name} = ${val};`)
         }

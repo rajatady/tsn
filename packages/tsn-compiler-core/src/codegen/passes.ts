@@ -25,7 +25,7 @@ export interface PassOrchestrationContext {
   withStmtSink<T>(sink: string[], fn: () => T): T
   pad(): string
   emitExpr(node: ts.Node): string
-  emitObjLit(node: ts.ObjectLiteralExpression): string
+  emitObjLit(node: ts.ObjectLiteralExpression, targetStructName?: string): string
 }
 
 export function runCompilationPasses(
@@ -144,8 +144,9 @@ export function runCompilationPasses(
             if (d.initializer && ts.isIdentifier(d.name)) {
               const name = d.name.getText()
               const cType = d.type ? ctx.tsTypeToC(d.type) : ctx.inferVarType(d)
+              const tsType = d.type ? ctx.tsTypeName(d.type) : ctx.inferVarTsType(d)
               const val = ts.isObjectLiteralExpression(d.initializer)
-                ? `(${cType})${ctx.emitObjLit(d.initializer)}`
+                ? `(${cType})${ctx.emitObjLit(d.initializer, tsType)}`
                 : ctx.emitExpr(d.initializer)
               ctx.jsxBootStmts.push(ctx.pad() + `${name} = ${val};`)
             }
@@ -163,8 +164,9 @@ export function runCompilationPasses(
             if (d.initializer && ts.isIdentifier(d.name)) {
               const name = d.name.getText()
               const cType = d.type ? ctx.tsTypeToC(d.type) : ctx.inferVarType(d)
+              const tsType = d.type ? ctx.tsTypeName(d.type) : ctx.inferVarTsType(d)
               const val = ts.isObjectLiteralExpression(d.initializer)
-                ? `(${cType})${ctx.emitObjLit(d.initializer)}`
+                ? `(${cType})${ctx.emitObjLit(d.initializer, tsType)}`
                 : ctx.emitExpr(d.initializer)
               ctx.jsxBootStmts.push(ctx.pad() + `${name} = ${val};`)
             }

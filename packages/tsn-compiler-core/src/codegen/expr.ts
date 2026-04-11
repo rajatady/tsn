@@ -556,31 +556,74 @@ export function emitSort(ctx: ExprEmitterContext, call: ts.CallExpression, objEx
   return `({ qsort(${objExpr}.data, ${objExpr}.len, sizeof(${elemCType}), ${cmpName}); ${objExpr}; })`
 }
 
-export function emitObjLit(ctx: ExprEmitterContext, node: ts.ObjectLiteralExpression): string {
+function inferObjectStruct(ctx: ExprEmitterContext, node: ts.ObjectLiteralExpression): StructDef | null {
+  const props = node.properties.filter(ts.isPropertyAssignment).map(p => p.name!.getText())
+  if (props.length === 0) return null
+
+  const exact = ctx.structs.filter(s =>
+    s.fields.length === props.length &&
+    props.every(name => s.fields.some(f => f.name === name))
+  )
+  if (exact.length === 1) return exact[0]
+
+  const partial = ctx.structs.filter(s =>
+    props.every(name => s.fields.some(f => f.name === name))
+  )
+  if (partial.length === 1) return partial[0]
+
+  return null
+}
+
+export function emitObjLit(ctx: ExprEmitterContext, node: ts.ObjectLiteralExpression, targetStructName?: string): string {
+  const targetStruct = targetStructName
+    ? ctx.structs.find(s => s.name === targetStructName) ?? inferObjectStruct(ctx, node)
+    : inferObjectStruct(ctx, node)
+
   const fields = node.properties
     .filter(ts.isPropertyAssignment)
     .map(p => {
       const name = p.name!.getText()
       let val = ctx.emitExpr(p.initializer)
+      const field = targetStruct?.fields.find(x => x.name === name)
 
+      // Empty array in object context
       if (ts.isArrayLiteralExpression(p.initializer) && p.initializer.elements.length === 0) {
-        for (const s of ctx.structs) {
-          const f = s.fields.find(x => x.name === name)
-          if (f && f.tsType.endsWith('[]')) {
-            val = `${ctx.arrayTypeName(f.tsType.replace('[]', ''))}_new()`
-            break
+        if (field && field.tsType.endsWith('[]')) {
+          val = `${ctx.arrayTypeName(field.tsType.replace('[]', ''))}_new()`
+        } else {
+          for (const s of ctx.structs) {
+            const f = s.fields.find(x => x.name === name)
+            if (f && f.tsType.endsWith('[]')) {
+              val = `${ctx.arrayTypeName(f.tsType.replace('[]', ''))}_new()`
+              break
+            }
           }
         }
       }
 
-      for (const s of ctx.structs) {
-        const f = s.fields.find(x => x.name === name)
-        if (f && f.tsType.endsWith('[]') && !ts.isArrayLiteralExpression(p.initializer) && !val.includes('_new()')) {
-          const inner = f.tsType.replace('[]', '')
+      // Retain array/string fields being copied into structs (shared ownership)
+      if (field) {
+        if (field.tsType.endsWith('[]') && !ts.isArrayLiteralExpression(p.initializer)
+            && !val.includes('_new()')) {
+          const inner = field.tsType.replace('[]', '')
           val = `${ctx.arrayTypeName(inner)}_retain(${val})`
         }
-        if (f && f.tsType === 'string' && ts.isIdentifier(p.initializer)) {
+        if (field.tsType === 'string' && ts.isIdentifier(p.initializer)) {
           val = `str_retain(${val})`
+        }
+      } else {
+        for (const s of ctx.structs) {
+          const f = s.fields.find(x => x.name === name)
+          if (f && f.tsType.endsWith('[]') && !ts.isArrayLiteralExpression(p.initializer)
+              && !val.includes('_new()')) {
+            const inner = f.tsType.replace('[]', '')
+            val = `${ctx.arrayTypeName(inner)}_retain(${val})`
+            break
+          }
+          if (f && f.tsType === 'string' && ts.isIdentifier(p.initializer)) {
+            val = `str_retain(${val})`
+            break
+          }
         }
       }
 

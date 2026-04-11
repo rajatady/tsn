@@ -109,6 +109,7 @@ class CodeGen {
   private funcLocalVars: Map<string, string> = new Map()
   private funcTopLevelVars: Set<string> = new Set()
   private funcDeclaredSoFar: Set<string> = new Set()  // tracks declaration order for return cleanup
+  pendingStringReleases: string[] = []
   activeTryFrames: string[] = []
   currentFunctionReturnTsType: string | null = null
   currentFunctionIsAsync = false
@@ -339,8 +340,8 @@ class CodeGen {
     return extractCharSliceFor(this, node)
   }
 
-  private emitObjLit(node: ts.ObjectLiteralExpression): string {
-    return emitObjLitFor(this, node)
+  private emitObjLit(node: ts.ObjectLiteralExpression, targetStructName?: string): string {
+    return emitObjLitFor(this, node, targetStructName)
   }
 
   private emitTemplate(node: ts.TemplateExpression): string {

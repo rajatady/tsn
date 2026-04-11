@@ -30,7 +30,7 @@ export interface StatementEmitterContext {
   inferVarType(decl: ts.VariableDeclaration): string
   inferVarTsType(decl: ts.VariableDeclaration): string
   emitExpr(node: ts.Node): string
-  emitObjLit(node: ts.ObjectLiteralExpression): string
+  emitObjLit(node: ts.ObjectLiteralExpression, targetStructName?: string): string
   emitScopeCleanup(varsBefore: Set<string>, out: string[], block?: ts.Block): void
   getReleaseForType(varName: string, tsType: string): string[]
   detectBuilders(block: ts.Block): string[]
@@ -43,6 +43,14 @@ export interface StatementEmitterContext {
   nextTempId(): number
   wrapAsyncReturn(expr: ts.Expression | null): string
   wrapAsyncThrow(errorExpr: string): string
+  pendingStringReleases: string[]
+}
+
+function flushStringReleases(ctx: StatementEmitterContext, out: string[]): void {
+  for (const tmp of ctx.pendingStringReleases) {
+    out.push(ctx.pad() + `str_release(&${tmp});`)
+  }
+  ctx.pendingStringReleases.length = 0
 }
 
 export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: string[]): void {
@@ -51,6 +59,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
 
   if (ts.isVariableStatement(node)) {
     for (const d of node.declarationList.declarations) emitVarDecl(ctx, d, out)
+    flushStringReleases(ctx, out)
     return
   }
 
@@ -154,6 +163,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
 
     const expr = ctx.emitExpr(node.expression)
     out.push(ctx.pad() + expr + ';')
+    flushStringReleases(ctx, out)
     return
   }
 
@@ -395,14 +405,14 @@ export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDecla
     const elemCType = ctx.arrayCElemType(tsType)
     out.push(ctx.pad() + `${arrTypeName} ${name} = ${arrTypeName}_new();`)
     for (const el of decl.initializer.elements) {
-      const val = ts.isObjectLiteralExpression(el) ? `(${elemCType})${ctx.emitObjLit(el)}` : ctx.emitExpr(el)
+      const val = ts.isObjectLiteralExpression(el) ? `(${elemCType})${ctx.emitObjLit(el, inner)}` : ctx.emitExpr(el)
       out.push(ctx.pad() + `${arrTypeName}_push(&${name}, ${val});`)
     }
     return
   }
 
   if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
-    out.push(ctx.pad() + `${cType} ${name} = (${cType})${ctx.emitObjLit(decl.initializer)};`)
+    out.push(ctx.pad() + `${cType} ${name} = (${cType})${ctx.emitObjLit(decl.initializer, tsType)};`)
     return
   }
 

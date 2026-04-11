@@ -124,6 +124,78 @@ bench_case() {
     fi
 }
 
+# ─── Generate missing test data ────────────────────────────────────
+DATA="harness/test-data"
+N=500000
+
+gen() { local f="$1"; shift; if [ ! -f "$f" ]; then echo "Generating $f..."; python3 -c "$@"; fi; }
+
+gen "$DATA/large.csv" "
+import csv, random; random.seed(42)
+names=['Alice','Bob','Charlie','Diana','Eve','Frank','Grace','Hank','Iris','Jack']
+cities=['NYC','SF','LA','Chicago','Seattle','Austin','Denver','Boston','Miami','Portland']
+w=csv.writer(open('$DATA/large.csv','w')); w.writerow(['name','age','score','city'])
+for i in range($N*2): w.writerow([random.choice(names),random.randint(18,65),round(random.uniform(0,100),2),random.choice(cities)])
+"
+
+gen "$DATA/large-config-audit.env" "
+import random; random.seed(43)
+keys=['APP_ENV','API_BASE_URL','ENABLE_AUDIT_LOG','SESSION_COOKIE_SECURE','FEATURE_FLAGS',
+      'ALLOWED_ORIGINS','DATABASE_URL','CACHE_REDIS_URL','LOG_LEVEL','MAX_POOL_SIZE',
+      'RATE_LIMIT','CORS_ENABLED','TLS_VERSION','SENTRY_DSN','DEPLOY_REGION']
+vals=['production','staging','true','false','https://api.example.com','redis://cache:6379',
+      'postgresql://db:5432/app','1.3','us-east-1','eu-west-1','debug','info','warn']
+f=open('$DATA/large-config-audit.env','w')
+for i in range($N):
+    k=random.choice(keys)+'_'+str(i)
+    f.write(k+' = '+random.choice(vals)+'\n')
+"
+
+gen "$DATA/large-access-log.txt" "
+import random; random.seed(44)
+methods=['GET','GET','GET','POST','PUT','DELETE']
+paths=['/health','/api/orders','/api/users','/checkout','/auth/login','/search','/api/products','/api/cart']
+services=['api','checkout','auth','search','queue','payments']
+statuses=[200,200,200,200,200,502,503,404]
+f=open('$DATA/large-access-log.txt','w')
+for i in range($N):
+    ts='2026-04-05T%02d:%02d:%02dZ'%(i//3600%24,i//60%60,i%60)
+    f.write('%s|%s|%s|%d|%d|%s\n'%(ts,random.choice(methods),random.choice(paths),random.choice(statuses),random.randint(5,980),random.choice(services)))
+"
+
+gen "$DATA/large-log-triage.txt" "
+import random; random.seed(45)
+levels=['ERROR','ERROR','WARN','WARN','WARN','INFO','INFO','INFO','INFO','INFO']
+services=['checkout','auth','search','queue','api','payments','gateway']
+regions=['iad','fra','sin','pdx','lhr']
+msgs=['Payment timeout retry storm on card capture','Token refresh backlog after deploy',
+      'Cache warmed successfully','Queue depth exceeded threshold','Connection pool exhausted',
+      'Request latency spike on /checkout','Auth token validation slow','Search index rebuild in progress',
+      'Rate limiter triggered for IP range','Disk usage warning on shard 3','Memory pressure on worker pool',
+      'TLS handshake timeout to upstream','DNS resolution slow for cache host','Deployment rollback initiated']
+f=open('$DATA/large-log-triage.txt','w')
+for i in range($N):
+    ts='2026-04-05T%02d:%02d:%02dZ'%(i//3600%24,i//60%60,i%60)
+    f.write('%s level=%s service=%s region=%s msg=%s\n'%(ts,random.choice(levels),random.choice(services),random.choice(regions),random.choice(msgs)))
+"
+
+gen "$DATA/large-revenue-rollup.csv" "
+import csv, random; random.seed(46)
+regions=['north','south','west','east','enterprise','apac','emea','latam','central','midwest']
+w=csv.writer(open('$DATA/large-revenue-rollup.csv','w')); w.writerow(['region','revenue','cost','orders'])
+for i in range($N):
+    rev=round(random.uniform(50000,200000),2); cost=round(rev*random.uniform(0.55,0.75),2)
+    w.writerow([random.choice(regions),rev,cost,random.randint(200,600)])
+"
+
+gen "$DATA/large-sla-scorecard.csv" "
+import csv, random; random.seed(47)
+services=['checkout','auth','api','search','queue','payments','gateway','cdn','dns','logging']
+w=csv.writer(open('$DATA/large-sla-scorecard.csv','w')); w.writerow(['service','uptime','error_rate','p95_ms','deploys'])
+for i in range($N):
+    w.writerow([random.choice(services),round(random.uniform(98.0,99.99),2),round(random.uniform(0.05,2.0),2),random.randint(400,1000),random.randint(5,30)])
+"
+
 echo "╔═══════════════════════════════════════════════════════╗"
 echo "║  TSN → Native: Benchmarks                       ║"
 echo "║  ${ITERATIONS} iterations, median, nanosecond precision          ║"
@@ -134,15 +206,15 @@ echo "Core targets"
 bench_case "json-pipeline" "targets/json-pipeline.ts" "harness/test-data/large-dataset.json" "json-pipeline" "./build/baseline-json-pipeline"
 bench_case "http-router" "targets/http-router.ts" "" "http-router" "./build/baseline-http-router"
 bench_case "markdown-parser" "targets/markdown-parser.ts" "harness/test-data/sample.md" "markdown-parser" "./build/baseline-markdown-parser"
-bench_case "csv-tool" "targets/csv-tool.ts" "harness/test-data/large.csv" "csv-tool" ""
+bench_case "csv-tool" "targets/csv-tool.ts" "$DATA/large.csv" "csv-tool" ""
 
 echo ""
 echo "Real-world CLI examples"
-bench_case "config-audit" "examples/config-audit.ts" "harness/test-data/config-audit.env" "config-audit" ""
-bench_case "access-log-summary" "examples/access-log-summary.ts" "harness/test-data/access-log.txt" "access-log-summary" ""
-bench_case "log-triage" "examples/log-triage.ts" "harness/test-data/log-triage.txt" "log-triage" ""
-bench_case "revenue-rollup" "examples/revenue-rollup.ts" "harness/test-data/revenue-rollup.csv" "revenue-rollup" ""
-bench_case "sla-scorecard" "examples/sla-scorecard.ts" "harness/test-data/sla-scorecard.csv" "sla-scorecard" ""
+bench_case "config-audit" "examples/config-audit.ts" "$DATA/large-config-audit.env" "config-audit" ""
+bench_case "access-log-summary" "examples/access-log-summary.ts" "$DATA/large-access-log.txt" "access-log-summary" ""
+bench_case "log-triage" "examples/log-triage.ts" "$DATA/large-log-triage.txt" "log-triage" ""
+bench_case "revenue-rollup" "examples/revenue-rollup.ts" "$DATA/large-revenue-rollup.csv" "revenue-rollup" ""
+bench_case "sla-scorecard" "examples/sla-scorecard.ts" "$DATA/large-sla-scorecard.csv" "sla-scorecard" ""
 
 echo ""
 echo "Done."

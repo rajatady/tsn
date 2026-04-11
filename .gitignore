@@ -1,4 +1,4 @@
 node_modules/
 build/
 .idea
-harness/test-data/large.csv
+harness/test-data/large*
