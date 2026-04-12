@@ -223,3 +223,18 @@ function main(): void {
 `)
   assert.equal(messages.length, 0)
 })
+
+test('validator allows switch statements now', () => {
+  const messages = validateMessages(`
+function main(): void {
+  switch (1) {
+    case 1:
+      console.log("one")
+      break
+    default:
+      console.log("other")
+  }
+}
+`)
+  assert.equal(messages.length, 0)
+})

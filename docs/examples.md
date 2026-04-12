@@ -229,7 +229,7 @@ tsn dev examples/native-gui/dashboard.tsx
 
 ## CLI Example: Agent Brief
 
-Located in [examples/agent-brief.ts](/Users/kumardivyarajat/.codex/worktrees/94d7/vite/examples/agent-brief.ts). This is the better current async showcase because it matches the present runtime honestly: a persistent terminal workflow with disk-backed session state, hosted fetch, cache fallbacks, and narrow `finally`.
+Located in [examples/agent-brief.ts](../examples/agent-brief.ts). This is the better current async showcase because it matches the present runtime honestly: a persistent terminal workflow with disk-backed session state, hosted fetch, cache fallbacks, and narrow `finally`.
 
 It does four useful things together:
 

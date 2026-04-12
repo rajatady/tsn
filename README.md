@@ -203,7 +203,7 @@ TSN supports everything you use in strict TypeScript: primitives, typed arrays, 
 
 What's banned is what you already ban — `any`, `unknown`, type assertions, `eval`, `var`, `delete`, `Proxy`, computed property access, prototype mutation. If your linter already flags these, your code is close to TSN-compatible.
 
-Full spec: [SPEC.md](SPEC.md)
+Full language reference: [docs/language.md](docs/language.md)
 
 ## Project Status
 

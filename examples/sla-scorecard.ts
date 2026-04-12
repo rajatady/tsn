@@ -2,11 +2,6 @@
  * TSN SLA Scorecard
  *
  * Reads service SLA snapshots from stdin and prints a reliability scorecard.
- * Exercises:
- *   - parseFloat() / parseInt() for numeric parsing
- *   - count() for SLA breach counting
- *   - sum(), min(), max() for numeric reductions
- *   - some(), every(), join() for summary checks
  */
 
 interface ServiceSnapshot {
@@ -26,20 +21,13 @@ function readStdin(): string {
 }
 
 function parseSnapshots(raw: string): ServiceSnapshot[] {
-  const lines: string[] = raw.split("\n")
   const rows: ServiceSnapshot[] = []
-  let i = 1
-  while (i < lines.length) {
+  const lines: string[] = raw.split("\n")
+  for (let i: number = 1; i < lines.length; i = i + 1) {
     const line: string = lines[i].trim()
-    if (line.length === 0) {
-      i = i + 1
-      continue
-    }
+    if (line.length === 0) continue
     const parts: string[] = line.split(",")
-    if (parts.length < 5) {
-      i = i + 1
-      continue
-    }
+    if (parts.length < 5) continue
     const row: ServiceSnapshot = {
       service: parts[0].trim().toLowerCase(),
       uptime: parseFloat(parts[1].trim()),
@@ -48,23 +36,8 @@ function parseSnapshots(raw: string): ServiceSnapshot[] {
       deploys: parseInt(parts[4].trim()),
     }
     rows.push(row)
-    i = i + 1
   }
   return rows
-}
-
-function collectMetric(rows: ServiceSnapshot[], field: string): number[] {
-  const values: number[] = []
-  let i = 0
-  while (i < rows.length) {
-    const row: ServiceSnapshot = rows[i]
-    if (field === "uptime") values.push(row.uptime)
-    else if (field === "errorRate") values.push(row.errorRate)
-    else if (field === "p95ms") values.push(row.p95ms)
-    else values.push(row.deploys)
-    i = i + 1
-  }
-  return values
 }
 
 function boolText(value: boolean): string {
@@ -73,30 +46,23 @@ function boolText(value: boolean): string {
 
 function main(): void {
   const rows: ServiceSnapshot[] = parseSnapshots(readStdin())
-  const uptimes: number[] = collectMetric(rows, "uptime")
-  const errorRates: number[] = collectMetric(rows, "errorRate")
-  const p95s: number[] = collectMetric(rows, "p95ms")
-  const deploys: number[] = collectMetric(rows, "deploys")
+  const p95s: number[] = rows.map((row: ServiceSnapshot): number => row.p95ms)
+  const uptimes: number[] = rows.map((row: ServiceSnapshot): number => row.uptime)
+  const deploys: number[] = rows.map((row: ServiceSnapshot): number => row.deploys)
+
   const breachCount: number = rows.count((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650)
   const anyCriticalErrors: boolean = rows.some((row: ServiceSnapshot): boolean => row.errorRate >= 1.5)
   const allStable: boolean = rows.every((row: ServiceSnapshot): boolean => row.uptime >= 99 && row.p95ms < 900)
-  const worstLatency: number = p95s.max()
-  const bestLatency: number = p95s.min()
-  const lowestUptime: number = uptimes.min()
-  const totalDeploys: number = deploys.sum()
-  const hotServices: string[] = []
-  let i = 0
-  while (i < rows.length) {
-    if (rows[i].errorRate > 0.5 || rows[i].p95ms > 650) hotServices.push(rows[i].service)
-    i = i + 1
-  }
+  const hotServices: string[] = rows
+    .filter((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650)
+    .map((row: ServiceSnapshot): string => row.service)
 
   console.log("=== SLA SCORECARD ===")
   console.log("Services: " + String(rows.length))
-  console.log("Worst p95 ms: " + String(worstLatency))
-  console.log("Best p95 ms: " + String(bestLatency))
-  console.log("Lowest uptime: " + String(lowestUptime))
-  console.log("Total deploys: " + String(totalDeploys))
+  console.log("Worst p95 ms: " + String(p95s.max()))
+  console.log("Best p95 ms: " + String(p95s.min()))
+  console.log("Lowest uptime: " + String(uptimes.min()))
+  console.log("Total deploys: " + String(deploys.sum()))
   console.log("SLA breaches: " + String(breachCount))
   console.log("Any critical errors: " + boolText(anyCriticalErrors))
   console.log("All services stable: " + boolText(allStable))

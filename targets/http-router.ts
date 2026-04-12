@@ -40,118 +40,50 @@ interface RouteResponse {
 
 // ─── Query String Parser ────────────────────────────────────────────
 
-function parseQueryString(qs: string): QueryParam[] {
-  const params: QueryParam[] = [];
-  if (qs.length === 0) {
-    return params;
+function parseOneParam(s: string): QueryParam {
+  const eq: number = s.indexOf("=");
+  if (eq === -1) {
+    const kOnly: QueryParam = { key: s, value: "" };
+    return kOnly;
   }
-  // Split on &
-  let current: string = "";
-  let i: number = 0;
-  while (i < qs.length) {
-    const ch: string = qs.slice(i, i + 1);
-    if (ch === "&") {
-      if (current.length > 0) {
-        const parsed: QueryParam = parseOneParam(current);
-        params.push(parsed);
-      }
-      current = "";
-    } else {
-      current = current + ch;
-    }
-    i = i + 1;
-  }
-  if (current.length > 0) {
-    const parsed: QueryParam = parseOneParam(current);
-    params.push(parsed);
-  }
-  return params;
+  const result: QueryParam = { key: s.slice(0, eq), value: s.slice(eq + 1) };
+  return result;
 }
 
-function parseOneParam(s: string): QueryParam {
-  let key: string = "";
-  let value: string = "";
-  let foundEq: boolean = false;
-  let i: number = 0;
-  while (i < s.length) {
-    const ch: string = s.slice(i, i + 1);
-    if (ch === "=" && !foundEq) {
-      foundEq = true;
-    } else if (foundEq) {
-      value = value + ch;
-    } else {
-      key = key + ch;
-    }
-    i = i + 1;
+function parseQueryString(qs: string): QueryParam[] {
+  const params: QueryParam[] = [];
+  if (qs.length === 0) return params;
+  for (const segment of qs.split("&")) {
+    if (segment.length === 0) continue;
+    params.push(parseOneParam(segment));
   }
-  const result: QueryParam = { key: key, value: value };
-  return result;
+  return params;
 }
 
 // ─── URL Parser ─────────────────────────────────────────────────────
 
 function parseRequest(line: string): ParsedRequest {
   // Format: "GET /users/42/posts?page=2&limit=10"
-  let method: string = "";
-  let rest: string = "";
-  let foundSpace: boolean = false;
-  let i: number = 0;
-  while (i < line.length) {
-    const ch: string = line.slice(i, i + 1);
-    if (ch === " " && !foundSpace) {
-      foundSpace = true;
-    } else if (!foundSpace) {
-      method = method + ch;
-    } else {
-      rest = rest + ch;
-    }
-    i = i + 1;
-  }
+  const space: number = line.indexOf(" ");
+  const method: string = space === -1 ? line : line.slice(0, space);
+  const rest: string = space === -1 ? "" : line.slice(space + 1);
 
-  // Split path and query
-  let path: string = "";
-  let qs: string = "";
-  let foundQ: boolean = false;
-  let j: number = 0;
-  while (j < rest.length) {
-    const ch: string = rest.slice(j, j + 1);
-    if (ch === "?" && !foundQ) {
-      foundQ = true;
-    } else if (foundQ) {
-      qs = qs + ch;
-    } else {
-      path = path + ch;
-    }
-    j = j + 1;
-  }
+  const qmark: number = rest.indexOf("?");
+  const path: string = qmark === -1 ? rest : rest.slice(0, qmark);
+  const qs: string = qmark === -1 ? "" : rest.slice(qmark + 1);
 
-  const queryParams: QueryParam[] = parseQueryString(qs);
-  const req: ParsedRequest = { method: method, path: path, queryParams: queryParams };
+  const req: ParsedRequest = {
+    method: method,
+    path: path,
+    queryParams: parseQueryString(qs),
+  };
   return req;
 }
 
 // ─── Route Matching ─────────────────────────────────────────────────
 
 function splitPath(path: string): string[] {
-  const parts: string[] = [];
-  let current: string = "";
-  let i: number = 0;
-  while (i < path.length) {
-    const ch: string = path.slice(i, i + 1);
-    if (ch === "/") {
-      if (current.length > 0) {
-        parts.push(current);
-        current = "";
-      }
-    } else {
-      current = current + ch;
-    }
-    i = i + 1;
-  }
-  if (current.length > 0) {
-    parts.push(current);
-  }
-  return parts;
+  return path.split("/").filter((p: string): boolean => p.length > 0);
 }
 
 function matchRoute(route: Route, req: ParsedRequest): MatchResult {
@@ -162,33 +94,24 @@ function matchRoute(route: Route, req: ParsedRequest): MatchResult {
     paramValues: [],
   };
 
-  if (route.method !== req.method) {
-    return noMatch;
-  }
+  if (route.method !== req.method) return noMatch;
 
   const patternParts: string[] = splitPath(route.pattern);
   const pathParts: string[] = splitPath(req.path);
-
-  if (patternParts.length !== pathParts.length) {
-    return noMatch;
-  }
+  if (patternParts.length !== pathParts.length) return noMatch;
 
   const params: string[] = [];
   const paramValues: string[] = [];
 
-  let i: number = 0;
-  while (i < patternParts.length) {
+  for (let i: number = 0; i < patternParts.length; i = i + 1) {
     const pp: string = patternParts[i];
     const rp: string = pathParts[i];
-
     if (pp.slice(0, 1) === ":") {
-      // This is a parameter segment
       params.push(pp.slice(1));
       paramValues.push(rp);
     } else if (pp !== rp) {
       return noMatch;
     }
-    i = i + 1;
   }
 
   const result: MatchResult = {
@@ -203,9 +126,8 @@ function matchRoute(route: Route, req: ParsedRequest): MatchResult {
 // ─── Router ─────────────────────────────────────────────────────────
 
 function findRoute(routes: Route[], req: ParsedRequest): RouteResponse {
-  let i: number = 0;
-  while (i < routes.length) {
-    const result: MatchResult = matchRoute(routes[i], req);
+  for (const route of routes) {
+    const result: MatchResult = matchRoute(route, req);
     if (result.matched) {
       const resp: RouteResponse = {
         status: 200,
@@ -217,7 +139,6 @@ function findRoute(routes: Route[], req: ParsedRequest): RouteResponse {
       };
       return resp;
     }
-    i = i + 1;
   }
   const notFound: RouteResponse = {
     status: 404,
@@ -234,27 +155,18 @@ function formatResponse(resp: RouteResponse): string {
   let out: string = "HTTP " + String(resp.status) + " | handler: " + resp.handler;
 
   if (resp.params.length > 0) {
-    out = out + " | params: ";
-    let i: number = 0;
-    while (i < resp.params.length) {
-      if (i > 0) {
-        out = out + ", ";
-      }
-      out = out + resp.params[i] + "=" + resp.paramValues[i];
-      i = i + 1;
+    const pairs: string[] = [];
+    for (let i: number = 0; i < resp.params.length; i = i + 1) {
+      pairs.push(resp.params[i] + "=" + resp.paramValues[i]);
     }
+    out = out + " | params: " + pairs.join(", ");
   }
 
   if (resp.queryParams.length > 0) {
-    out = out + " | query: ";
-    let i: number = 0;
-    while (i < resp.queryParams.length) {
-      if (i > 0) {
-        out = out + ", ";
-      }
-      out = out + resp.queryParams[i].key + "=" + resp.queryParams[i].value;
-      i = i + 1;
-    }
+    const pairs: string[] = resp.queryParams.map(
+      (qp: QueryParam): string => qp.key + "=" + qp.value,
+    );
+    out = out + " | query: " + pairs.join(", ");
   }
 
   return out;
@@ -293,29 +205,22 @@ function main(): void {
   console.log("=== HTTP ROUTER TEST ===");
   console.log("");
 
-  let i: number = 0;
-  while (i < requests.length) {
-    const reqLine: string = requests[i];
+  for (const reqLine of requests) {
     const req: ParsedRequest = parseRequest(reqLine);
     const resp: RouteResponse = findRoute(routes, req);
     console.log("REQ: " + reqLine);
     console.log("RES: " + formatResponse(resp));
     console.log("");
-    i = i + 1;
   }
 
   // Benchmark: match many routes
   const total: number = 100000;
   let matched: number = 0;
-  let k: number = 0;
-  while (k < total) {
+  for (let k: number = 0; k < total; k = k + 1) {
     const idx: number = k - Math.floor(k / requests.length) * requests.length;
     const req: ParsedRequest = parseRequest(requests[idx]);
     const resp: RouteResponse = findRoute(routes, req);
-    if (resp.status === 200) {
-      matched = matched + 1;
-    }
-    k = k + 1;
+    if (resp.status === 200) matched = matched + 1;
   }
   console.log("Benchmark: " + String(total) + " route matches, " + String(matched) + " matched");
 }

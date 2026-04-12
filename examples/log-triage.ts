@@ -2,13 +2,8 @@
  * TSN Log Triage
  *
  * Reads structured-ish log lines from stdin and prints an actionable summary.
- * Exercises:
- *   - trim() to normalize input lines and message values
- *   - includes() to classify incidents and detect actionable errors
- *   - indexOf() to parse key=value fields efficiently
- *   - join() to render tag lists and service summaries
  *
- * Compile: npx tsx compiler/index.ts examples/log-triage.ts
+ * Compile: tsn build examples/log-triage.ts
  * Run:     ./build/log-triage < sample.log
  */
 
@@ -33,31 +28,12 @@ function readStdin(): string {
   return fs.readFileSync("/dev/stdin", "utf-8");
 }
 
-function splitLines(input: string): string[] {
-  const lines: string[] = [];
-  let current: string = "";
-  let i = 0;
-  while (i < input.length) {
-    const ch: string = input.slice(i, i + 1);
-    if (ch === "\n") {
-      lines.push(current);
-      current = "";
-    } else {
-      current = current + ch;
-    }
-    i = i + 1;
-  }
-  if (current.length > 0) lines.push(current);
-  return lines;
-}
-
 function fieldValue(line: string, key: string): string {
   const start: number = line.indexOf(key);
   if (start === -1) return "";
-  const valueStart: number = start + key.length;
-  const rest: string = line.slice(valueStart);
-  let end: number = rest.indexOf(" ");
-  if (end === -1) end = rest.length;
+  const rest: string = line.slice(start + key.length);
+  const end: number = rest.indexOf(" ");
+  if (end === -1) return rest.trim();
   return rest.slice(0, end).trim();
 }
 
@@ -87,13 +63,12 @@ function parseEntry(line: string): LogEntry {
   const region: string = fieldValue(clean, "region=");
   const message: string = messageValue(clean);
   const tags: string[] = classifyTags(level, service, message);
-  const tagLabel: string = tags.join(", ");
   const entry: LogEntry = {
     level: level,
     service: service,
     region: region,
     message: message,
-    tagLabel: tagLabel,
+    tagLabel: tags.join(", "),
   };
   return entry;
 }
@@ -105,69 +80,41 @@ function isActionable(entry: LogEntry): boolean {
   return false;
 }
 
-function addServiceCount(stats: ServiceStat[], service: string): ServiceStat[] {
+function bumpService(stats: ServiceStat[], service: string): ServiceStat[] {
   const next: ServiceStat[] = stats.slice(0);
-  let i = 0;
-  while (i < next.length) {
-    if (next[i].service === service) {
-      const current: ServiceStat = next[i];
-      const updated: ServiceStat = {
-        service: current.service,
-        count: current.count + 1,
-      };
-      next[i] = updated;
-      return next;
-    }
-    i = i + 1;
+  const idx: number = next.findIndex((s: ServiceStat): boolean => s.service === service);
+  if (idx === -1) {
+    const stat: ServiceStat = { service: service, count: 1 };
+    next.push(stat);
+    return next;
   }
-  const stat: ServiceStat = { service: service, count: 1 };
-  next.push(stat);
+  const current: ServiceStat = next[idx];
+  const updated: ServiceStat = { service: current.service, count: current.count + 1 };
+  next[idx] = updated;
   return next;
 }
 
-function sortStatsDescending(stats: ServiceStat[]): ServiceStat[] {
-  const copy: ServiceStat[] = stats.slice(0);
-  copy.sort((a: ServiceStat, b: ServiceStat): number => b.count - a.count);
-  return copy;
-}
-
 function parseEntries(raw: string): LogEntry[] {
-  const lines: string[] = splitLines(raw);
   const entries: LogEntry[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line: string = lines[i].trim();
-    if (line.length > 0) entries.push(parseEntry(line));
-    i = i + 1;
+  for (const line of raw.split("\n")) {
+    const clean: string = line.trim();
+    if (clean.length > 0) entries.push(parseEntry(clean));
   }
   return entries;
 }
 
 function printSummary(entries: LogEntry[]): void {
-  const actionable: LogEntry[] = [];
+  const actionable: LogEntry[] = entries.filter((e: LogEntry): boolean => isActionable(e));
+  const errorCount: number = entries.count((e: LogEntry): boolean => e.level === "ERROR");
+  const warnCount: number = entries.count((e: LogEntry): boolean => e.level === "WARN");
+
   let serviceStats: ServiceStat[] = [];
-  const serviceNames: string[] = [];
-  let errorCount = 0;
-  let warnCount = 0;
-  let i = 0;
-
-  while (i < entries.length) {
-    const entry: LogEntry = entries[i];
-    if (entry.level === "ERROR") errorCount = errorCount + 1;
-    if (entry.level === "WARN") warnCount = warnCount + 1;
-    if (isActionable(entry)) {
-      actionable.push(entry);
-      serviceStats = addServiceCount(serviceStats, entry.service);
-    }
-    i = i + 1;
+  for (const entry of actionable) {
+    serviceStats = bumpService(serviceStats, entry.service);
   }
+  serviceStats.sort((a: ServiceStat, b: ServiceStat): number => b.count - a.count);
 
-  const ranked: ServiceStat[] = sortStatsDescending(serviceStats);
-  let s = 0;
-  while (s < ranked.length) {
-    serviceNames.push(ranked[s].service);
-    s = s + 1;
-  }
+  const serviceNames: string[] = serviceStats.map((s: ServiceStat): string => s.service);
 
   console.log("=== LOG TRIAGE ===");
   console.log("Total lines: " + String(entries.length));
@@ -178,18 +125,14 @@ function printSummary(entries: LogEntry[]): void {
   console.log("Hot services: " + serviceNames.join(", "));
   console.log("");
 
-  let j = 0;
-  while (j < actionable.length) {
-    const entry: LogEntry = actionable[j];
+  for (const entry of actionable) {
     const label: string = "[" + entry.level + "] " + entry.service + "@" + entry.region;
     console.log(label + " :: " + entry.message + " :: " + entry.tagLabel);
-    j = j + 1;
   }
 }
 
 function main(): void {
-  const raw: string = readStdin();
-  const entries: LogEntry[] = parseEntries(raw);
+  const entries: LogEntry[] = parseEntries(readStdin());
   printSummary(entries);
 }
 

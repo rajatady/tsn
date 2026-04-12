@@ -19,7 +19,14 @@ All string operations are zero-allocation when possible (slices share the source
 | `s.trimEnd()` | `() => string` | Trims trailing ASCII whitespace |
 | `s.toLowerCase()` | `() => string` | ASCII lowercasing |
 | `s.toUpperCase()` | `() => string` | ASCII uppercasing |
+| `s.charCodeAt(i)` | `(number) => number` | Returns the numeric code at byte offset `i` |
 | `s.length` | `number` (property) | Direct field access, O(1) |
+
+### Building strings from codes
+
+```typescript
+const ch: string = String.fromCharCode(65)  // "A"
+```
 
 ### String Concatenation
 
@@ -70,7 +77,10 @@ zero. For invalid input, both return `0`.
 |--------|-----------|-------|
 | `arr.push(element)` | `(T) => void` | Amortized O(1), auto-grows |
 | `arr.slice(start, end?)` | `(number, number?) => T[]` | Creates new array (copies elements) |
+| `arr.map(fn)` | `((T) => U) => U[]` | Arrow predicate only |
 | `arr.filter(fn)` | `((T) => boolean) => T[]` | Inline loop, new array |
+| `arr.reduce(fn, init)` | `((acc, T) => U, U) => U` | Initial value required |
+| `arr.forEach(fn)` | `((T) => void) => void` | No return, side effects only |
 | `arr.sort(fn)` | `((T, T) => number) => T[]` | In-place via C qsort |
 | `arr.indexOf(value)` | `(T) => number` | Inline scan, string-aware equality |
 | `arr.includes(value)` | `(T) => boolean` | Inline scan, early exit |
@@ -84,6 +94,8 @@ zero. For invalid input, both return `0`.
 | `arr.join(sep?)` | `(?string) => string` | Stack `StrBuf`, heap finalization |
 | `arr.length` | `number` (property) | Direct field access, O(1) |
 | `arr[i]` | `T` | Bounds-checked in debug mode |
+
+**Predicate/callback rules:** `map`, `filter`, `sort`, `reduce`, `forEach`, `some`, `every`, `findIndex`, `count` accept **arrow functions** only (`(x) => x.field > 0`), not function identifiers. This keeps callbacks inlinable with no closure allocation.
 
 Because array headers are passed by value, helpers that call `push()` should
 return the updated array and let the caller rebind it.
