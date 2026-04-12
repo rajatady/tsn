@@ -186,6 +186,11 @@ for (let i = 0; i < 10; i++) {
   console.log(String(i))
 }
 
+// For-of over arrays
+for (const name of names) {
+  console.log(name)
+}
+
 switch (status) {
   case 200:
     console.log("ok")
@@ -292,18 +297,23 @@ Additional async restrictions for now:
 
 ## Idioms
 
-### General closures are still limited
+### Closures
+
+Arrow functions passed to array methods (`map`, `filter`, `sort`, `reduce`, `some`, `every`, `findIndex`, `count`, `forEach`) can capture outer variables — they're inlined at the callsite.
 
 ```typescript
-// Still not generally supported:
-// const handler = () => { doSomething(capturedVar) }
-
-// Good default: pass data via function parameters
-function onDeptClick(tag: number): void {
-  deptFilterIdx = tag
-  applyFilters()
-}
+const threshold: number = 500
+const hot = services.filter((s: Service): boolean => s.errorRate > threshold)
 ```
+
+Free-standing closures stored in variables aren't supported yet:
+
+```typescript
+// Not supported — no closure allocation
+// const handler = () => { doSomething(capturedVar) }
+```
+
+Timer callbacks (`setTimeout`, `setInterval`) reject captures — they must be a bare function identifier or a zero-argument arrow that captures nothing.
 
 ### No array literals in function calls — build separately
 
