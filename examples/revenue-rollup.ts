@@ -50,9 +50,8 @@ function main(): void {
   const highRevenueCount: number = rows.count((row: SaleRow): boolean => row.revenue >= 120000)
   const bestIdx: number = rows.findIndex((row: SaleRow): boolean => row.revenue === topRevenue)
   const topRegion: string = bestIdx === -1 ? "" : rows[bestIdx].region
-  const summaryRegions: string[] = rows
-    .filter((row: SaleRow): boolean => row.revenue >= 120000)
-    .map((row: SaleRow): string => row.region)
+  const highRows: SaleRow[] = rows.filter((row: SaleRow): boolean => row.revenue >= 120000)
+  const summaryRegions: string[] = highRows.map((row: SaleRow): string => row.region)
 
   console.log("=== REVENUE ROLLUP ===")
   console.log("Rows: " + String(rows.length))

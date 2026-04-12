@@ -315,9 +315,11 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
         ctx.varTypes.set(n, ctx.tsTypeName(d.type))
       }
     }
+    const varsBefore = new Set(ctx.varTypes.keys())
     out.push(ctx.pad() + `for (${init}; ${node.condition ? ctx.emitExpr(node.condition) : ''}; ${node.incrementor ? ctx.emitExpr(node.incrementor) : ''}) {`)
     ctx.indent++
     if (node.statement) emitBlock(ctx, node.statement, out)
+    ctx.emitScopeCleanup(varsBefore, out, node.statement && ts.isBlock(node.statement) ? node.statement : undefined)
     ctx.indent--
     out.push(ctx.pad() + `}`)
     return
@@ -347,10 +349,12 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     if (!isSimple) {
       out.push(ctx.pad() + `${arrTypeC} ${arrRef} = ${arrExpr};`)
     }
+    const varsBefore = new Set(ctx.varTypes.keys())
     out.push(ctx.pad() + `for (int _i${id} = 0; _i${id} < ${arrRef}.len; _i${id}++) {`)
     ctx.indent++
     out.push(ctx.pad() + `${elemCType} ${varName} = ${arrRef}.data[_i${id}];`)
     emitBlock(ctx, node.statement, out)
+    ctx.emitScopeCleanup(varsBefore, out, ts.isBlock(node.statement) ? node.statement : undefined)
     ctx.indent--
     out.push(ctx.pad() + `}`)
     if (!isSimple && innerType === 'string') {
