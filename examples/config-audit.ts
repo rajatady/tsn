@@ -2,11 +2,7 @@
  * TSN Config Audit
  *
  * Reads deployment-style key/value config from stdin and prints a readiness
- * summary. Exercises:
- *   - split() for line and key/value parsing
- *   - toUpperCase() / toLowerCase() for normalization
- *   - some() / every() / findIndex() for rule checks
- *   - join() for concise summary output
+ * summary.
  */
 
 interface Entry {
@@ -23,25 +19,17 @@ function readStdin(): string {
 }
 
 function parseEntries(raw: string): Entry[] {
-  const lines: string[] = raw.split("\n")
   const entries: Entry[] = []
-  let i = 0
-  while (i < lines.length) {
-    const line: string = lines[i].trim()
-    if (line.length === 0 || line.startsWith("#")) {
-      i = i + 1
-      continue
+  for (const rawLine of raw.split("\n")) {
+    const line: string = rawLine.trim()
+    if (line.length === 0 || line.startsWith("#")) continue
+    const eq: number = line.indexOf("=")
+    if (eq === -1) continue
+    const entry: Entry = {
+      key: line.slice(0, eq).trim().toUpperCase(),
+      value: line.slice(eq + 1).trim(),
     }
-    const parts: string[] = line.split("=")
-    if (parts.length < 2) {
-      i = i + 1
-      continue
-    }
-    const key: string = parts[0].trim().toUpperCase()
-    const value: string = parts.slice(1).join("=").trim()
-    const entry: Entry = { key: key, value: value }
     entries.push(entry)
-    i = i + 1
   }
   return entries
 }
@@ -55,13 +43,10 @@ function valueFor(entries: Entry[], key: string): string {
 function csvValues(raw: string): string[] {
   const trimmed: string = raw.trim()
   if (trimmed.length === 0) return []
-  const parts: string[] = trimmed.split(",")
   const values: string[] = []
-  let i = 0
-  while (i < parts.length) {
-    const value: string = parts[i].trim().toLowerCase()
+  for (const part of trimmed.split(",")) {
+    const value: string = part.trim().toLowerCase()
     if (value.length > 0) values.push(value)
-    i = i + 1
   }
   return values
 }

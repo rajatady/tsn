@@ -2,11 +2,7 @@
  * TSN Access Log Summary
  *
  * Reads pipe-delimited access logs from stdin and prints an operational
- * summary. Exercises:
- *   - split() for parsing records and fields
- *   - toUpperCase() / toLowerCase() for normalization
- *   - some() / every() / findIndex() for health checks
- *   - join() for top-path summaries
+ * summary.
  */
 
 interface RequestLog {
@@ -26,20 +22,12 @@ function readStdin(): string {
 }
 
 function parseLogs(raw: string): RequestLog[] {
-  const lines: string[] = raw.split("\n")
   const logs: RequestLog[] = []
-  let i = 0
-  while (i < lines.length) {
-    const line: string = lines[i].trim()
-    if (line.length === 0 || line.startsWith("#")) {
-      i = i + 1
-      continue
-    }
+  for (const rawLine of raw.split("\n")) {
+    const line: string = rawLine.trim()
+    if (line.length === 0 || line.startsWith("#")) continue
     const parts: string[] = line.split("|")
-    if (parts.length < 6) {
-      i = i + 1
-      continue
-    }
+    if (parts.length < 6) continue
     const log: RequestLog = {
       method: parts[1].trim().toUpperCase(),
       path: parts[2].trim().toLowerCase(),
@@ -48,56 +36,40 @@ function parseLogs(raw: string): RequestLog[] {
       service: parts[5].trim().toLowerCase(),
     }
     logs.push(log)
-    i = i + 1
   }
   return logs
 }
 
 function serviceErrorCount(logs: RequestLog[], service: string): number {
-  let count = 0
-  let i = 0
-  while (i < logs.length) {
-    const log: RequestLog = logs[i]
-    if (log.service === service && log.status >= 500) count = count + 1
-    i = i + 1
-  }
-  return count
+  return logs.count((log: RequestLog): boolean => log.service === service && log.status >= 500)
 }
 
 function topPaths(logs: RequestLog[]): string[] {
   const paths: string[] = []
   const counts: number[] = []
-  let i = 0
-  while (i < logs.length) {
-    const path: string = logs[i].path
-    const idx: number = paths.findIndex((value: string): boolean => value === path)
+  for (const log of logs) {
+    const idx: number = paths.findIndex((value: string): boolean => value === log.path)
     if (idx === -1) {
-      paths.push(path)
+      paths.push(log.path)
       counts.push(1)
     } else {
       counts[idx] = counts[idx] + 1
     }
-    i = i + 1
   }
 
   const result: string[] = []
-  let picks = 0
-  while (picks < 3 && picks < paths.length) {
-    let bestIdx = -1
-    let bestCount = -1
-    let j = 0
-    while (j < paths.length) {
+  for (let picks: number = 0; picks < 3 && picks < paths.length; picks = picks + 1) {
+    let bestIdx: number = -1
+    let bestCount: number = -1
+    for (let j: number = 0; j < paths.length; j = j + 1) {
       if (counts[j] > bestCount) {
         bestIdx = j
         bestCount = counts[j]
       }
-      j = j + 1
     }
-    if (bestIdx !== -1) {
-      result.push(paths[bestIdx])
-      counts[bestIdx] = -1
-    }
-    picks = picks + 1
+    if (bestIdx === -1) break
+    result.push(paths[bestIdx])
+    counts[bestIdx] = -1
   }
   return result
 }
