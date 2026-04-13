@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 
-import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
+import type { FuncSig } from './func_sig.js'
 import { emitAsyncFunction } from './async-state-machine.js'
 import { isAsyncFunction } from './async-lowering.js'
 import type { ParamInfo } from './types.js'

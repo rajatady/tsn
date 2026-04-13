@@ -1,176 +1,35 @@
-# Compilation Pipeline
+# TSN Compilation Pipeline
 
-## Overview
+The simplified compiler turns `.ts` files into native binaries through four stages:
 
-```
-.ts/.tsx source
-    │
-    ▼
-[1] Resolve ── Follow imports recursively (compiler/resolver.ts compatibility wrapper)
-    │           implementation lives in packages/tsn-compiler-core
-    ▼
-[2] Parse ──── TypeScript API creates AST for each resolved file
-    ▼
-[3] Validate ─ Reject banned features in ALL resolved files
-    ▼
-[4] Codegen ── Emit C code with #line directives
-    │           core codegen in packages/tsn-compiler-core
-    │           JSX planning + lowering in packages/tsn-compiler-ui
-    │           Tailwind lowering in packages/tsn-tailwind
-    │           canonical UI contracts in tsn-core / tsn-layout / tsn-style / tsn-ui
-    ▼
-[5] Compile ── clang with platform-specific flags
-    │           CLI links only runtime headers
-    │           UI links packages/tsn-host-appkit/src/ui.m
-    ▼
-    Native binary
+```text
+.ts source
+  -> module resolution
+  -> validation of the strict subset
+  -> C code generation
+  -> clang + TSN runtime
 ```
 
-## Pass Details
+## Stages
 
-### Package Boundaries
+### Resolution
 
-The compiler is now organized as TSN packages:
+`packages/tsn-compiler-core/src/resolver.ts` follows relative imports and TSN stdlib modules, returning source files in dependency order. `.tsx` is rejected up front.
 
-- `packages/tsn-compiler-core` owns build orchestration, validation, resolver flow, and core codegen
-- `packages/tsn-compiler-ui` owns JSX lowering and hook/store UI codegen support
-- `packages/tsn-tailwind` owns compile-time Tailwind parsing
-- `packages/tsn-core`, `packages/tsn-layout`, and `packages/tsn-style` own the host-independent UI contracts used by the newer planning path
-- `packages/tsn-ui` owns the primitive catalog and helper layer exposed to TSX authors
-- `packages/tsn-host-appkit` owns the macOS host runtime
-- `compiler/` remains as compatibility and CLI-facing entrypoints
+### Validation
 
-### Module Resolution
+`packages/tsn-compiler-core/src/validator.ts` enforces the language subset before code generation. This is where banned features such as `any`, `unknown`, type assertions, `var`, and JSX are rejected.
 
-The resolver (`compiler/resolver.ts`) follows `import` declarations recursively:
+### Code Generation
 
-1. Parse the entry file
-2. For each `import ... from './path'`: resolve to absolute path (tries `.ts`, `.tsx`, `/index.ts`)
-3. Recursively resolve that file's imports (depth-first)
-4. Track visited files to prevent cycles
-5. Return all files in dependency order (leaves first, entry last)
+`packages/tsn-compiler-core/src/codegen.ts` and its submodules lower the resolved TypeScript program into C. The generated program links only against the TSN runtime and hosted support libraries.
 
-All resolved files are merged into a single C output. The `export` keyword is stripped — C has a flat namespace.
+### Native Compilation
 
-```
-dashboard.tsx → lib/data.ts → lib/types.ts (leaf)
-                             → lib/rand.ts (leaf)
-                             → lib/lookups.ts (leaf)
-              → lib/search.ts (leaf)
+`packages/tsn-compiler-core/src/build.ts` writes `build/<name>.c` and invokes clang with the TSN runtime headers plus the hosted support libraries used by the current compiler.
 
-Resolution order: types.ts → rand.ts → lookups.ts → data.ts → search.ts → dashboard.tsx
-```
+## Entry Behavior
 
-### Pass 1: Interfaces
+If the user program defines `main`, TSN emits a native `main(argc, argv)` wrapper that installs the crash handler, initializes globals, and calls `ts_main()`.
 
-Every `interface` declaration from ALL files becomes a C `typedef struct`:
-
-```typescript
-interface Employee { name: string; salary: number }
-```
-
-```c
-typedef struct { Str name; double salary; } Employee;
-```
-
-Ordering: simple structs first, then `DEFINE_ARRAY` macros, then structs with array fields.
-
-### Pass 1.5: Function Signatures
-
-Pre-collect all function signatures for forward references. This allows functions to call each other regardless of declaration order.
-
-Generates forward declarations:
-```c
-Str getName(double id);
-void onSearch(Str text);
-```
-
-Skips `declare function` (ambient declarations with no body).
-
-### Pass 2: Functions
-
-Each function declaration emits a C function. The compiler:
-1. Maps parameter types (number→double, string→Str, etc.)
-2. Pre-scans function body for variable declarations
-3. Emits statements with `#line` directives
-4. Inserts `str_release()` / array release before returns
-
-A function named `main` is renamed to `ts_main` to avoid conflicting with the C `main` wrapper.
-
-### Pass 3: Top-Level Statements
-
-**CLI mode** (no JSX):
-- Top-level variable declarations and expressions go into `void main(void)`
-- Wrapped by `int main(int argc, char **argv) { ts_install_crash_handler(argv[0]); ts_main(); }`
-
-**JSX mode** (has `<Window>` etc.):
-- Top-level variables become C globals (declaration before functions, initialization in `main()`)
-- `main()` calls `ui_init()`, initializes globals, emits the JSX tree, captures the root `UIHandle`, then calls `ui_run()` once
-- hook/store state is emitted through generated apply helpers from `packages/tsn-compiler-core/src/hooks.ts`
-- JSX elements first build a planner-side primitive/style intent, then emit `ui_*()` calls accumulated in `jsxStmts`
-
-### Output Assembly
-
-Final C file structure:
-```c
-/* Generated by TSN Compiler v3 */
-#include "runtime.h"
-#include "ui.h"           // only if JSX
-
-typedef struct { ... } Employee;       // structs
-DEFINE_ARRAY(EmployeeArr, Employee)    // array types
-
-Employee employees;                     // globals (JSX mode)
-
-Str getName(double id);                // forward declarations
-
-static int _cmp_0(...) { ... }         // lifted lambdas (sort comparators, callbacks)
-static void _wrap_click_onDeptClick(int _tag) { ... }  // callback wrappers
-
-Str getName(double id) { ... }         // functions
-
-int main(int argc, char **argv) {      // entry point
-    ts_install_crash_handler(argv[0]);
-    ui_init();
-    employees = generateEmployees(50000);
-    UIHandle _j0 = ui_window("App", 1200, 780, true);
-    // ... JSX tree ...
-    ui_run(_j0);
-    return 0;
-}
-```
-
-## Clang Flags
-
-### Release Build
-```bash
-clang -O2 -o build/app build/app.c -lm -I compiler/runtime
-```
-
-### Debug Build
-```bash
-clang -O0 -g -DTSN_DEBUG -o build/app build/app.c -lm -I compiler/runtime
-```
-
-### UI App (Release)
-```bash
-clang -O2 -fobjc-arc -framework Cocoa -framework QuartzCore \
-  build/app.c packages/tsn-host-appkit/src/ui.m \
-  -I packages/tsn-host-appkit/src -I compiler/runtime \
-  -o build/app
-```
-
-### UI App (Debug)
-```bash
-clang -O0 -g -DTSN_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore \
-  build/app.c packages/tsn-host-appkit/src/ui.m \
-  -I packages/tsn-host-appkit/src -I compiler/runtime \
-  -o build/app
-```
-
-## UI Detection
-
-The compiler detects UI mode by checking if the generated C contains `#include "ui.h"`. This is set when JSX elements are encountered (`hasJsx` flag in codegen). UI mode triggers:
-- Linking with `packages/tsn-host-appkit/src/ui.m` and Cocoa/QuartzCore frameworks
-- `-fobjc-arc` for Objective-C ARC
-- Include paths for both framework and runtime directories
+If the entrypoint is `.tsx`, or if JSX syntax appears inside a `.ts` file, the compiler fails early with `TSX/JSX is not supported in this simplified TSN compiler`.

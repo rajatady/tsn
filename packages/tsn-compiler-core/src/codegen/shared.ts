@@ -18,5 +18,5 @@ export interface HostedBuiltinEmitterContext {
   nextTempId(): number
   lambdas: string[]
   varTypes: Map<string, string>
-  funcSigs: Map<string, import('../../tsn-compiler-ui/src/types.js').FuncSig>
+  funcSigs: Map<string, import('./func_sig.js').FuncSig>
 }

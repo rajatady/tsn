@@ -14,9 +14,17 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { isTSNStdlibModule, resolveTSNStdlibModule } from './stdlib-modules.js'
 
+export const TSX_UNSUPPORTED_MESSAGE = 'TSX/JSX is not supported in this simplified TSN compiler'
+
+function assertSupportedSourcePath(filePath: string): void {
+  if (path.extname(filePath) === '.tsx') {
+    throw new Error(`${TSX_UNSUPPORTED_MESSAGE}: ${path.relative(process.cwd(), filePath)}`)
+  }
+}
+
 /**
  * Resolve a module specifier relative to the importing file.
- * Tries: .ts, .tsx, /index.ts, /index.tsx
+ * Tries: .ts, /index.ts
  */
 function resolveSpecifier(specifier: string, fromFile: string): string | null {
   if (isTSNStdlibModule(specifier)) {
@@ -26,17 +34,21 @@ function resolveSpecifier(specifier: string, fromFile: string): string | null {
   const dir = path.dirname(fromFile)
   const base = path.resolve(dir, specifier)
 
-  // Try exact extensions
-  for (const ext of ['.ts', '.tsx']) {
-    const p = base + ext
-    if (fs.existsSync(p)) return p
+  if (path.extname(specifier) === '.tsx') {
+    assertSupportedSourcePath(base)
   }
 
-  // Try index file (barrel)
-  for (const ext of ['.ts', '.tsx']) {
-    const p = path.join(base, 'index' + ext)
-    if (fs.existsSync(p)) return p
-  }
+  const exactTs = base + '.ts'
+  if (fs.existsSync(exactTs)) return exactTs
+
+  const exactTsx = base + '.tsx'
+  if (fs.existsSync(exactTsx)) assertSupportedSourcePath(exactTsx)
+
+  const indexTs = path.join(base, 'index.ts')
+  if (fs.existsSync(indexTs)) return indexTs
+
+  const indexTsx = path.join(base, 'index.tsx')
+  if (fs.existsSync(indexTsx)) assertSupportedSourcePath(indexTsx)
 
   return null
 }
@@ -47,6 +59,7 @@ function resolveSpecifier(specifier: string, fromFile: string): string | null {
  */
 export function resolveModules(entryPath: string): ts.SourceFile[] {
   const absoluteEntry = path.resolve(entryPath)
+  assertSupportedSourcePath(absoluteEntry)
   const visited = new Set<string>()
   const result: ts.SourceFile[] = []
   const visiting = new Set<string>() // for cycle detection
@@ -78,11 +91,7 @@ export function resolveModules(entryPath: string): ts.SourceFile[] {
     }
 
     const source = fs.readFileSync(absolute, 'utf-8')
-    const ext = path.extname(absolute)
-    const sf = ts.createSourceFile(
-      absolute, source, ts.ScriptTarget.Latest, true,
-      ext === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-    )
+    const sf = ts.createSourceFile(absolute, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
 
     // Follow imports (depth-first so dependencies come first)
     for (const stmt of sf.statements) {

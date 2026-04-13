@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { validateMessages } from '../helpers.js'
+import { TSX_UNSUPPORTED_MESSAGE } from '../../src/resolver.js'
 
 test('validator bans any', () => {
   const messages = validateMessages('const value: any = 1\n')
@@ -209,19 +210,16 @@ function main(): void {
   console.log(String(a + b))
 }
 `)
-  assert.ok(messages.some(msg => msg.includes('Array destructuring is only supported')))
+  assert.ok(messages.some(msg => msg.includes('Array destructuring is not supported yet')))
 })
 
-test('validator allows hook-shaped array destructuring', () => {
+test('validator rejects JSX syntax in .ts files with a clear message', () => {
   const messages = validateMessages(`
-declare function useState<T>(initial: T): [T, (next: T) => void]
-
 function main(): void {
-  const [count, setCount] = useState<number>(0)
-  setCount(count + 1)
+  return <Widget />
 }
 `)
-  assert.equal(messages.length, 0)
+  assert.ok(messages.some(msg => msg.includes(TSX_UNSUPPORTED_MESSAGE)))
 })
 
 test('validator allows switch statements now', () => {

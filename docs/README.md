@@ -1,49 +1,30 @@
 # TSN Documentation
 
-TSN compiles a strict subset of TypeScript to native ARM64 binaries via C. No JavaScript runtime. No Electron.
-
-The compiler remains general-purpose first. The UI stack is a packaged subsystem layered on top of the same compiler pipeline, not a separate product.
+TSN compiles a strict subset of TypeScript to native binaries via C. The simplified compiler is intentionally focused on non-UI programs.
 
 ## Contents
 
 | Document | What it covers |
 |----------|---------------|
-| [Language Reference](./language.md) | The TSN subset: what's allowed, what's banned, type mappings, imports |
-| [Standard Library](./stdlib.md) | String methods, array methods, Math, console.log, JSON.parse |
-| [JSX & Components](./jsx.md) | TSX syntax, component catalog, props, callbacks, Tailwind classes |
-| [Runtime Internals](./runtime.md) | Str type, reference counting, StrBuf, DEFINE_ARRAY |
-| [Native UI Framework](./ui-framework.md) | Complete C API for macOS AppKit components |
-| [Tooling](./tooling.md) | CLI commands, dev server, inspector, error overlay, debugging |
-| [Compilation Pipeline](./pipeline.md) | How .ts/.tsx becomes a native binary |
-| [Examples](./examples.md) | Walkthrough of the dashboard app and CLI targets |
+| [Language Reference](./language.md) | Allowed syntax, banned features, type mappings, imports |
+| [Standard Library](./stdlib.md) | Strings, arrays, Math, console, JSON, hosted APIs |
+| [Runtime Internals](./runtime.md) | `Str`, arrays, refcounting, `StrBuf`, runtime helpers |
+| [Tooling](./tooling.md) | CLI commands, watch mode, debug builds, crash traces |
+| [Compilation Pipeline](./pipeline.md) | How `.ts` files become native binaries |
+| [Examples](./examples.md) | Maintained CLI and systems-flavored example targets |
 
 ## Current Package Layout
 
-The implementation now lives behind `packages/tsn-*` boundaries:
-
-- `packages/tsn-compiler-core` owns build orchestration and core codegen.
-- `packages/tsn-compiler-ui` owns JSX lowering and hook/store UI codegen support.
-- `packages/tsn-tailwind` owns compile-time Tailwind parsing.
-- `packages/tsn-host-appkit` owns the macOS AppKit host runtime.
-- `packages/tsn-ui` owns the developer-facing primitive catalog and helper layer.
-- `packages/tsn-core`, `packages/tsn-layout`, and `packages/tsn-style` own the canonical host-independent UI contracts.
-- `compiler/` remains as compatibility entrypoints and CLI-facing wrappers.
+- `packages/tsn-compiler-core` owns resolution, validation, codegen, and clang orchestration.
+- `packages/tsn-core` owns shared platform and provider contracts that remain relevant outside UI.
+- `packages/tsn-fs` and `packages/tsn-http` own hosted stdlib modules.
+- `compiler/` remains as CLI-facing entrypoints and compatibility wrappers.
 
 ## Quick Start
 
 ```bash
-# Compile a TypeScript file to native binary
-./tsn build targets/http-router.ts
-
-# Compile a TSX UI app
-./tsn build examples/native-gui/dashboard.tsx
-
-# Watch mode with auto-recompile
-./tsn dev examples/native-gui/dashboard.tsx
-
-# Compile and run
-./tsn run targets/json-pipeline.ts
-
-# Debug build (bounds checking + source maps)
-./tsn build examples/native-gui/dashboard.tsx --debug
+./tsn build examples/access-log-summary.ts
+./tsn dev examples/config-audit.ts
+./tsn run examples/revenue-rollup.ts
+./tsn build examples/log-triage.ts --debug
 ```

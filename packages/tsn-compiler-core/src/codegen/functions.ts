@@ -26,10 +26,6 @@ export function inferFunctionReturnType(
     if (inferred !== 'void') return
     if (ts.isReturnStatement(child) && child.expression) {
       const expr = ctx.unwrapParens(child.expression)
-      if (ts.isJsxElement(expr) || ts.isJsxSelfClosingElement(expr) || ts.isJsxFragment(expr)) {
-        inferred = 'JSX.Element'
-        return
-      }
       inferred = ctx.exprType(expr) ?? 'void'
       if (asyncFn) inferred = unwrapAwaitType(inferred) ?? 'void'
       return
