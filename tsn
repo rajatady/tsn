@@ -2,10 +2,10 @@
 # TSN CLI — compile TypeScript to native code
 #
 # Usage:
-#   tsn build <file.ts|.tsx>         — optimized binary (-O2)
+#   tsn build <file.ts>              — optimized binary (-O2)
 #   tsn build <file> --debug         — debug binary (-O0 -g, source maps)
-#   tsn dev <file.ts|.tsx>           — watch mode, auto-recompile + relaunch
-#   tsn run <file.ts|.tsx>           — compile + run once
+#   tsn dev <file.ts>                — watch mode, auto-recompile + relaunch
+#   tsn run <file.ts>                — compile + run once
 
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -28,24 +28,14 @@ case "${1:-}" in
     BINARY="build/$BASE"
     "./$BINARY"
     ;;
-  inspect)
-    shift
-    npx tsx "$DIR/compiler/inspect.ts" "$@"
-    ;;
   *)
     echo "TSN — TypeScript Native compiler"
     echo ""
     echo "Usage:"
-    echo "  tsn build <file.ts|.tsx>               Compile to optimized binary"
+    echo "  tsn build <file.ts>                    Compile to optimized binary"
     echo "  tsn build <file> --debug               Compile with debug symbols + bounds checking"
-    echo "  tsn dev <file.ts|.tsx>                 Watch mode with auto-recompile"
-    echo "  tsn run <file.ts|.tsx>                 Compile and run"
-    echo "  tsn inspect tree                       Dump view hierarchy of running app"
-    echo "  tsn inspect find <text>                Find elements containing text"
-    echo "  tsn inspect get <id> [prop]            Get element property"
-    echo "  tsn inspect screenshot                 Save screenshot to /tmp"
-    echo "  tsn inspect click <label>              Click a button"
-    echo "  tsn inspect type <text>                Type into search field"
+    echo "  tsn dev <file.ts>                      Watch mode with auto-recompile"
+    echo "  tsn run <file.ts>                      Compile and run"
     echo ""
     ;;
 esac

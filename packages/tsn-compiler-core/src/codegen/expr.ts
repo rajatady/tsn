@@ -7,9 +7,6 @@ import type { ClassDef, StructDef } from './types.js'
 import { isNullableCapableTypeName, makeNullableType, nullableBaseType } from './types.js'
 
 export interface ExprEmitterContext {
-  hooks: {
-    emitSetterCall(name: string, args: ts.NodeArray<ts.Expression>): string | null
-  }
   builderVars: Set<string>
   identifierAliases: Map<string, string>
   classDefs: Map<string, ClassDef>
@@ -103,11 +100,6 @@ export function emitPropAccess(ctx: ExprEmitterContext, node: ts.PropertyAccessE
 }
 
 export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): string {
-  if (ts.isIdentifier(node.expression)) {
-    const hookCall = ctx.hooks.emitSetterCall(node.expression.text, node.arguments)
-    if (hookCall) return hookCall
-  }
-
   if (ts.isPropertyAccessExpression(node.expression)) {
     const obj = node.expression.expression
     const method = node.expression.name.text

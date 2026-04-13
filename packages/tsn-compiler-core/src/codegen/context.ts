@@ -7,10 +7,6 @@ export interface PredicateEmitterDeps {
   varTypes: Map<string, string>
 }
 
-export function pushJsxStmt(activeStmtSink: string[] | null, jsxStmts: string[], line: string): void {
-  ;(activeStmtSink ?? jsxStmts).push(line)
-}
-
 export function getStructFields(structs: StructDef[], name: string): StructField[] | undefined {
   return structs.find(s => s.name === name)?.fields
 }

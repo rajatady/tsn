@@ -6,7 +6,9 @@
  */
 
 import * as ts from 'typescript'
+import * as path from 'node:path'
 import { isTSNStdlibModule } from './stdlib-modules.js'
+import { TSX_UNSUPPORTED_MESSAGE } from './resolver.js'
 
 export interface ValidationError {
   pos: number
@@ -16,11 +18,38 @@ export interface ValidationError {
 export function validate(sourceFile: ts.SourceFile): ValidationError[] {
   const errors: ValidationError[] = []
   const classNames = new Set<string>()
+  let reportedUnsupportedJsx = false
   const scanClasses = (node: ts.Node): void => {
     if (ts.isClassDeclaration(node) && node.name) classNames.add(node.name.text)
     ts.forEachChild(node, scanClasses)
   }
   scanClasses(sourceFile)
+
+  function reportUnsupportedJsx(pos: number): void {
+    if (reportedUnsupportedJsx) return
+    errors.push({ pos, message: TSX_UNSUPPORTED_MESSAGE })
+    reportedUnsupportedJsx = true
+  }
+
+  function findJsxSyntaxInTsFile(): number | null {
+    if (path.extname(sourceFile.fileName) !== '.ts') return null
+    if (sourceFile.parseDiagnostics.length === 0) return null
+    const reparsed = ts.createSourceFile(sourceFile.fileName, sourceFile.text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    let found: number | null = null
+    const visit = (node: ts.Node): void => {
+      if (found !== null) return
+      if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) {
+        found = node.getStart()
+        return
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(reparsed)
+    return found
+  }
+
+  const jsxPos = findJsxSyntaxInTsFile()
+  if (jsxPos !== null) reportUnsupportedJsx(jsxPos)
 
   function isNullishTypeNode(node: ts.TypeNode): boolean {
     if (node.kind === ts.SyntaxKind.UndefinedKeyword) return true
@@ -94,6 +123,10 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
 
   function visit(node: ts.Node): void {
     // Ban: `any` type
+    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) {
+      reportUnsupportedJsx(node.getStart())
+    }
+
     if (node.kind === ts.SyntaxKind.AnyKeyword) {
       errors.push({ pos: node.getStart(), message: 'Type "any" is banned — every value must have a known type' })
     }
@@ -226,34 +259,12 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: '"var" is banned — use "let" or "const"' })
     }
 
-    // Ban: arbitrary array destructuring. The only supported tuple destructuring
-    // shape right now is React-style hooks like const [state, setState] = useState(...)
+    // Ban: arbitrary array destructuring.
     if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name)) {
-      const ok =
-        !!node.initializer &&
-        ts.isCallExpression(node.initializer) &&
-        ts.isIdentifier(node.initializer.expression) &&
-        (node.initializer.expression.text === 'useState' || node.initializer.expression.text === 'useRoute' || node.initializer.expression.text === 'useStore')
-      if (!ok) {
-        errors.push({
-          pos: node.getStart(),
-          message: 'Array destructuring is only supported for hooks like const [state, setState] = useState(...)',
-        })
-      }
-    }
-
-    if (
-      ts.isCallExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === 'useStore'
-    ) {
-      const key = node.arguments[0]
-      if (!key || !ts.isStringLiteral(key)) {
-        errors.push({
-          pos: node.getStart(),
-          message: 'useStore(key, initial) requires a string literal key',
-        })
-      }
+      errors.push({
+        pos: node.getStart(),
+        message: 'Array destructuring is not supported yet',
+      })
     }
 
     // Ban: computed property access with non-literal key

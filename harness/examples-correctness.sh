@@ -41,7 +41,6 @@ run_case() {
   local binary
 
   base="$(basename "$source")"
-  base="${base%.tsx}"
   base="${base%.ts}"
   binary="build/$base"
 

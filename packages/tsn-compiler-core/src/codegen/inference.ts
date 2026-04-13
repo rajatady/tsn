@@ -1,7 +1,7 @@
 import * as ts from 'typescript'
 
 import { unwrapAwaitType } from './async-lowering.js'
-import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
+import type { FuncSig } from './func_sig.js'
 import type { ClassDef, StructDef, StructField } from './types.js'
 import { isNullableCapableTypeName, makeNullableType, nullableBaseType } from './types.js'
 
@@ -114,7 +114,6 @@ export function exprType(
   if (ts.isNumericLiteral(node)) return 'number'
   if (node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword) return 'boolean'
   if (node.kind === ts.SyntaxKind.NullKeyword) return 'null'
-  if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return 'JSX.Element'
   if (ts.isIdentifier(node)) {
     if (node.text === 'undefined') return 'undefined'
     return ctx.varTypes.get(node.text)

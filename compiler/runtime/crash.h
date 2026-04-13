@@ -3,9 +3,7 @@
  *
  * Uses macOS backtrace() + atos for symbolication.
  * The #line directives in generated C create DWARF mappings,
- * so atos resolves directly to .tsx source lines.
- *
- * In UI apps, shows a red error overlay (like Next.js) before exiting.
+ * so atos resolves directly to .ts source lines.
  */
 
 #ifndef TSN_CRASH_H
@@ -77,25 +75,23 @@ static void ts_crash_handler(int sig) {
     char stack_buf[4096] = {0};
     int stack_frames = ts_build_stack_trace(frames, count, stack_buf, sizeof(stack_buf));
 
-    /* Extract first .ts/.tsx file:line from stack trace for overlay */
+    /* Extract first .ts file:line from stack trace for diagnostics */
     char crash_file[512] = {0};
     int crash_line = 0;
     if (stack_frames > 0) {
-        /* Scan stack_buf for first .ts: or .tsx: */
+        /* Scan stack_buf for first .ts: */
         const char *p = stack_buf;
         while (*p) {
             const char *ts_ext = strstr(p, ".ts:");
-            if (!ts_ext) ts_ext = strstr(p, ".tsx:");
             if (ts_ext) {
                 /* Walk backwards to find start of path (after '(' or space) */
                 const char *path_start = ts_ext;
                 while (path_start > p && *(path_start - 1) != '(' && *(path_start - 1) != ' ')
                     path_start--;
-                /* Find the colon after .ts/.tsx */
+                /* Find the colon after .ts */
                 const char *colon = strstr(ts_ext, ".ts:");
-                if (!colon) colon = strstr(ts_ext, ".tsx:");
                 if (colon) {
-                    colon = strchr(colon + 3, ':'); /* skip past .ts or .tsx */
+                    colon = strchr(colon + 3, ':'); /* skip past .ts */
                     if (!colon) colon = strchr(ts_ext + 3, ':');
                 }
                 if (colon) {
@@ -125,7 +121,7 @@ static void ts_crash_handler(int sig) {
             const char *nl = strchr(line_start, '\n');
             int line_len = nl ? (int)(nl - line_start) : (int)strlen(line_start);
 
-            if (strstr(line_start, ".ts:") || strstr(line_start, ".tsx:")) {
+            if (strstr(line_start, ".ts:")) {
                 fprintf(stderr, "  \033[36m%.*s\033[0m\n", line_len, line_start);
             } else {
                 fprintf(stderr, "  \033[90m%.*s\033[0m\n", line_len, line_start);
@@ -146,9 +142,9 @@ static void ts_crash_handler(int sig) {
         }
     }
 
-    /* UI overlay (if available — set by ui_init).
-     * Don't show overlay for SIGABRT caused by bounds check — the bounds
-     * error handler already shows the overlay before calling abort(). */
+    /* If a hosted runtime has registered an overlay callback, let it render.
+     * Don't show the overlay for SIGABRT caused by bounds checking — the
+     * bounds error handler already handled that path before abort(). */
     if (g_error_overlay_fn && sig != SIGABRT) {
         char title[128];
         snprintf(title, sizeof(title), "%s", name);
