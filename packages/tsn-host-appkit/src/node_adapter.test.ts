@@ -100,3 +100,15 @@ test('adaptNodeToAppKitPlan maps view position and border styles to host calls',
   assert.ok(hostPlan.styleCalls.includes('ui_set_border_width(_view, 1);'))
   assert.ok(hostPlan.styleCalls.includes('ui_set_border_color(_view, 1, 1, 1, 0.2);'))
 })
+
+test('adaptNodeToAppKitPlan emits responsive style wrappers for breakpoint variants', () => {
+  const plan = buildPrimitivePlan('VStack', '_responsive', 'px-4 md:px-8 md:gap-6', {}, parseTailwind('px-4 md:px-8 md:gap-6', '_responsive'))
+
+  const hostPlan = adaptNodeToAppKitPlan(plan.node)
+
+  assert.ok(hostPlan.styleCalls.includes('ui_set_padding(_responsive, 0, 16, 0, 16);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_variant_begin_min_width(_responsive, 768);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_set_padding(_responsive, 0, 32, 0, 32);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_set_spacing(_responsive, 24);'))
+  assert.ok(hostPlan.styleCalls.includes('ui_variant_end(_responsive);'))
+})

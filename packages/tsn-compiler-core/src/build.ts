@@ -1,15 +1,20 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync } from 'node:child_process'
+import { parseCompilerArgs } from './argv.js'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
 import { getLibcurlShellFlags } from './libcurl.js'
 import { ensureLibuvStaticLibrary } from './libuv.js'
 import { ensureYogaStaticLibrary } from './yoga.js'
-import { appKitHostRoot, appKitSourcePath } from '../../tsn-host-appkit/src/index.js'
+import { resolveUIHostTarget } from './ui_targets.js'
+import type { BuildArtifact } from './artifact.js'
+import { buildIOSSimulatorBundle } from './ios_bundle.js'
 
-export function buildTSN(inputPath: string, argv: string[] = []): void {
+export function buildTSN(inputPath: string, argv: string[] = []): BuildArtifact {
+  const options = parseCompilerArgs(argv)
+  const uiHostTarget = resolveUIHostTarget(options.platform)
   const absolutePath = path.resolve(inputPath)
   const ext = path.extname(inputPath)
   const baseName = path.basename(inputPath, ext)
@@ -38,33 +43,51 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
   console.log('  ✓ No banned features found')
 
   console.log('[3/4] Generating C code...')
-  const cCode = generateC(sourceFiles, baseName)
+  const cCode = generateC(sourceFiles, baseName, uiHostTarget)
   const cPath = path.join('build', `${baseName}.c`)
   fs.mkdirSync('build', { recursive: true })
   fs.writeFileSync(cPath, cCode)
   console.log(`  → ${cPath} (${cCode.length} bytes)`)
 
-  const isDebug = argv.includes('--debug') || argv.includes('-g')
+  const isDebug = options.debug
   const optFlag = isDebug ? '-O0 -g -DTSN_DEBUG' : '-O2'
   console.log(`[4/4] Compiling with clang${isDebug ? ' (debug)' : ''}...`)
   const binaryPath = path.join('build', baseName)
-  const hasUi = cCode.includes('#include "ui.h"')
-  const libuvLib = ensureLibuvStaticLibrary()
-  const libuvInclude = path.join('vendor', 'libuv', 'include')
-  const libcurlFlags = getLibcurlShellFlags()
+  const hasUi = cCode.includes(`#include "${uiHostTarget.headerInclude}"`)
 
   try {
     if (hasUi) {
+      if (uiHostTarget.buildKind === 'xcode-app' && uiHostTarget.platform === 'ios') {
+        const artifact = buildIOSSimulatorBundle(baseName, cPath, cCode, uiHostTarget, isDebug)
+        const size = fs.statSync(path.join(artifact.path, artifact.executableName)).size
+        const sizeStr = size > 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${(size / 1024).toFixed(0)} KB`
+        console.log(`  → ${artifact.path} (${sizeStr}, bundle ${artifact.bundleId})`)
+        console.log(`\nDone! Run: ./tsn run ${inputPath} --platform ios`)
+        return artifact
+      }
+
+      if (uiHostTarget.buildKind !== 'native-binary') {
+        console.error(`${uiHostTarget.displayName} packaging is not implemented yet. Generated C is available at ${cPath}.`)
+        process.exit(1)
+      }
+
       const runtimeDir = path.join('compiler', 'runtime')
       const yogaLib = ensureYogaStaticLibrary()
       const yogaInclude = 'vendor'
+      const libuvLib = ensureLibuvStaticLibrary()
+      const libuvInclude = path.join('vendor', 'libuv', 'include')
+      const libcurlFlags = getLibcurlShellFlags()
+      const frameworks = uiHostTarget.frameworkFlags.join(' ')
       execSync(
-        `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
+        `clang ${optFlag} -fobjc-arc ${frameworks} ` +
+        `${cPath} ${uiHostTarget.runtimeSource} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${uiHostTarget.runtimeRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
         `-lc++ -o ${binaryPath}`,
         { stdio: 'inherit' }
       )
     } else {
+      const libuvLib = ensureLibuvStaticLibrary()
+      const libuvInclude = path.join('vendor', 'libuv', 'include')
+      const libcurlFlags = getLibcurlShellFlags()
       execSync(
         `clang ${optFlag} -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
         { stdio: 'inherit' },
@@ -75,6 +98,11 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
     const sizeStr = size > 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${(size / 1024).toFixed(0)} KB`
     console.log(`  → ${binaryPath} (${sizeStr})`)
     console.log(`\nDone! Run: ./${binaryPath}`)
+    return {
+      kind: 'native-binary',
+      platform: options.platform,
+      path: binaryPath,
+    }
   } catch {
     console.error('Compilation failed. Check the generated C code in build/')
     process.exit(1)

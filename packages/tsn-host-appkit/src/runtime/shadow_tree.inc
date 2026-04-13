@@ -312,6 +312,7 @@ static void tsn_apply_layout_recursive(TSNShadowNode *node, YGNodeRef parentYoga
 
 static void tsn_commit_root_layout(TSNShadowNode *node, NSSize size) {
     if (!node || !node.yogaNode) return;
+    tsn_apply_responsive_layout_tree(node, size.width);
     YGNodeCalculateLayout(node.yogaNode, size.width, size.height, YGDirectionLTR);
     tsn_apply_layout_recursive(node, node.yogaNode);
 }

@@ -72,3 +72,13 @@ test('buildPrimitivePlan distinguishes host primitives from higher-level compone
   assert.equal(stackPlan.primitive?.layer, 'primitive')
   assert.equal(stackPlan.primitive?.kind, 'stack')
 })
+
+test('buildPrimitivePlan carries responsive style variants from static className tokens', () => {
+  const plan = buildPrimitivePlan('VStack', '_responsive', 'px-4 md:px-8 md:gap-6', {}, parseTailwind('px-4 md:px-8 md:gap-6', '_responsive'))
+
+  assert.equal(plan.node.layoutStyle.paddingLeft, 16)
+  assert.equal(plan.node.responsiveVariants?.length, 1)
+  assert.equal(plan.node.responsiveVariants?.[0]?.selector.minWidth, 768)
+  assert.equal(plan.node.responsiveVariants?.[0]?.layoutStyle.paddingLeft, 32)
+  assert.equal(plan.node.responsiveVariants?.[0]?.layoutStyle.gap, 24)
+})

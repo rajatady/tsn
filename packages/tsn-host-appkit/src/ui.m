@@ -364,7 +364,6 @@ static CGImageRef capture_window_image(CGWindowID windowID) {
     return fn(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, kCGWindowImageNominalResolution);
 }
 
-#include "runtime/layout_style.inc"
 #include "runtime/layout.inc"
 
 /* ─── Bar Chart View ─────────────────────────────────────────────── */

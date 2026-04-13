@@ -1,11 +1,11 @@
 import type { TSNNode, TSNPropValue } from '@tsn/core'
 
-import { adaptNodeToAppKitPlan, type AppKitNodePlan } from '../../tsn-host-appkit/src/index.js'
+import type { HostNodePlan, UIHostTarget } from './host_target.js'
 import { emitHandleCreate, emitRuntimeCalls, type HostLineEmitter } from './host_adapter.js'
 
 export interface HostPlanEmission {
   node: TSNNode
-  hostPlan: AppKitNodePlan
+  hostPlan: HostNodePlan
 }
 
 export interface HostPlanOverrides {
@@ -15,6 +15,7 @@ export interface HostPlanOverrides {
 
 export function buildHostPlanEmission(
   node: TSNNode,
+  hostTarget: UIHostTarget,
   overrides: HostPlanOverrides = {},
 ): HostPlanEmission {
   const plannedNode: TSNNode = {
@@ -25,7 +26,7 @@ export function buildHostPlanEmission(
     },
   }
 
-  const hostPlan = adaptNodeToAppKitPlan(plannedNode)
+  const hostPlan = hostTarget.adaptNode(plannedNode)
   const rawValue = overrides.rawCStringProps?.value
   if (rawValue && (plannedNode.sourceTag ?? plannedNode.ref.kind) === 'Text') {
     const text = resolveTextPresentation(plannedNode.textStyle)

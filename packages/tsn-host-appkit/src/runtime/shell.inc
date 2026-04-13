@@ -92,14 +92,10 @@ void ui_scroll_set_axis(UIHandle s, int axis) {
     NSScrollView *sv = (__bridge NSScrollView *)s;
     if (![sv isKindOfClass:[NSScrollView class]]) return;
     TSNShadowNode *node = tsn_shadow_node_for_obj(sv);
-    if (node) node.scrollAxis = axis;
-    if (axis == 1) {
-        sv.hasHorizontalScroller = YES;
-        sv.hasVerticalScroller = NO;
-    } else {
-        sv.hasHorizontalScroller = NO;
-        sv.hasVerticalScroller = YES;
-    }
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(sv, YES);
+    style->hasScrollAxis = YES;
+    style->scrollAxis = axis;
+    if (!tsn_is_recording_responsive_variant(sv) && node) tsn_apply_layout_style(node, style);
 }
 
 /* ─── Tab View ───────────────────────────────────────────────────── */

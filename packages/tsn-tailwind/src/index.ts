@@ -9,7 +9,15 @@
 
 import { parseArbitraryColor, parseArbitraryValue, parseColorAlpha, tokenizeClassName } from './parser.js'
 import { BG_COLORS, px, TEXT_SIZES, TEXT_SYSTEM_COLORS } from './scales.js'
-import type { LengthValue, TailwindOp, TailwindResult } from './types.js'
+import type { LengthValue, TailwindOp, TailwindResponsiveVariant, TailwindResult } from './types.js'
+
+const RESPONSIVE_BREAKPOINTS: Record<string, number> = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  '2xl': 1536,
+}
 
 function point(value: number): LengthValue {
   return { unit: 'point', value }
@@ -285,8 +293,8 @@ function rgbOp(kind: 'background-rgb' | 'text-color-rgb', r: number, g: number, 
   return { kind, r, g, b, a }
 }
 
-export function parseTailwind(className: string, handle: string): TailwindResult {
-  const result: TailwindResult = {
+function createTailwindResult(): TailwindResult {
+  return {
     ops: [],
     calls: [],
     stylePatch: {
@@ -295,6 +303,7 @@ export function parseTailwind(className: string, handle: string): TailwindResult
       textStyle: {},
       behavior: {},
     },
+    responsiveVariants: [],
     textSize: 0,
     textBold: false,
     textWeight: -1,
@@ -307,8 +316,40 @@ export function parseTailwind(className: string, handle: string): TailwindResult
     widthValue: null,
     heightValue: null,
   }
+}
 
-  const classes = tokenizeClassName(className)
+function isResponsiveLayoutClass(cls: string): boolean {
+  if (cls === 'flex-1' || cls === 'flex-2' || cls === 'relative' || cls === 'absolute') return true
+  if (cls === 'h-full' || cls === 'w-full' || cls === 'inset-0') return true
+  if (cls === 'items-center' || cls === 'items-start' || cls === 'items-end' || cls === 'items-stretch') return true
+  if (cls === 'justify-start' || cls === 'justify-center' || cls === 'justify-end' || cls === 'justify-between') return true
+  if (cls === 'mx-auto' || cls === 'self-center' || cls === 'self-end') return true
+  if (cls === 'overflow-x-auto' || cls === 'overflow-y-auto') return true
+  if (/^(gap-(\d+(?:\.\d+)?)|gap-\[.+\]|space-(?:x|y)-(\d+(?:\.\d+)?)|space-(?:x|y)-\[.+\])$/.test(cls)) return true
+  if (/^(p|px|py|pt|pr|pb|pl)-(\d+(?:\.\d+)?|\[.+\])$/.test(cls)) return true
+  if (/^(m|mx|my|mt|mr|mb|ml)-(\d+(?:\.\d+)?|\[.+\])$/.test(cls)) return true
+  if (/^(h|min-h|max-h|w|min-w|max-w)-(\d+|\[.+\])$/.test(cls)) return true
+  if (/^(top|right|bottom|left|inset)-(.+)$/.test(cls)) return true
+  if (/^aspect-\[\d+\/\d+\]$/.test(cls)) return true
+  return false
+}
+
+function stripResponsivePrefix(
+  cls: string,
+): { minWidth: number, className: string } | null {
+  const colon = cls.indexOf(':')
+  if (colon <= 0) return null
+  const prefix = cls.slice(0, colon)
+  const minWidth = RESPONSIVE_BREAKPOINTS[prefix]
+  if (minWidth == null) return null
+  return {
+    minWidth,
+    className: cls.slice(colon + 1),
+  }
+}
+
+function parseTailwindClasses(classes: string[], handle: string): TailwindResult {
+  const result = createTailwindResult()
 
   let pt = -1
   let pr = -1
@@ -773,5 +814,40 @@ export function parseTailwind(className: string, handle: string): TailwindResult
   }
 
   result.calls = result.ops.flatMap(op => renderTailwindOp(op, handle))
+  return result
+}
+
+export function parseTailwind(className: string, handle: string): TailwindResult {
+  const allClasses = tokenizeClassName(className)
+  const baseClasses: string[] = []
+  const responsiveClasses = new Map<number, string[]>()
+
+  for (const cls of allClasses) {
+    const responsive = stripResponsivePrefix(cls)
+    if (!responsive) {
+      baseClasses.push(cls)
+      continue
+    }
+    if (!isResponsiveLayoutClass(responsive.className)) {
+      throw new Error(`Responsive Tailwind class "${cls}" is not supported yet. Use layout utilities with breakpoints for now.`)
+    }
+    const bucket = responsiveClasses.get(responsive.minWidth) ?? []
+    bucket.push(responsive.className)
+    responsiveClasses.set(responsive.minWidth, bucket)
+  }
+
+  const result = parseTailwindClasses(baseClasses, handle)
+  const variants: TailwindResponsiveVariant[] = Array.from(responsiveClasses.entries())
+    .sort((left, right) => left[0] - right[0])
+    .map(([minWidth, classes]) => {
+      const parsed = parseTailwindClasses(classes, handle)
+      return {
+        selector: { minWidth },
+        ops: parsed.ops,
+        stylePatch: parsed.stylePatch,
+      }
+    })
+
+  result.responsiveVariants = variants
   return result
 }

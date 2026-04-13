@@ -1,26 +1,16 @@
 import { useRoute } from '../../../packages/tsn-ui/src/react'
 import { AppStoreSidebar } from './sidebar'
-import { DiscoverScreen } from './screens/discover'
-import { ArcadeScreen } from './screens/arcade'
-import { DetailScreen } from './screens/detail'
-import { DevelopScreen } from './screens/develop'
-import { PlayScreen } from './screens/play'
+import { AppStoreContent } from './content'
 
 export function App() {
   const [route, navigate] = useRoute('discover')
-
-  let content: JSX.Element = <DiscoverScreen />
-  if (route === 'arcade') content = <ArcadeScreen />
-  if (route === 'play') content = <PlayScreen />
-  if (route === 'develop') content = <DevelopScreen />
-  if (route === 'detail') content = <DetailScreen />
 
   return (
     <Window title="App Store" width={1400} height={900} dark subtitle="Apple Arcade">
       <HStack className="flex-1 gap-0 bg-black">
         <AppStoreSidebar />
         <VStack className="flex-1 gap-0 bg-[#161617]">
-          {content}
+          <AppStoreContent route={route} />
         </VStack>
       </HStack>
     </Window>

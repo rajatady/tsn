@@ -16,26 +16,85 @@
 import * as net from 'node:net'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { execFileSync } from 'node:child_process'
 
-function resolveSocket(appName: string | null): string {
-  if (appName && appName.length > 0) return `/tmp/tsn-inspect-${appName}.sock`
+type UnixInspectorEndpoint = {
+  kind: 'unix'
+  path: string
+  name: string
+}
+
+type TcpInspectorEndpoint = {
+  kind: 'tcp'
+  name: string
+  host: string
+  port: number
+  platform: 'ios'
+  deviceUdid: string
+  bundleId: string
+  executableName: string
+}
+
+type InspectorEndpoint = UnixInspectorEndpoint | TcpInspectorEndpoint
+
+function resolveNamedEndpoint(appName: string): InspectorEndpoint {
+  const registryPath = `/tmp/tsn-inspect-${appName}.json`
+  if (fs.existsSync(registryPath)) {
+    const raw = JSON.parse(fs.readFileSync(registryPath, 'utf8')) as Omit<TcpInspectorEndpoint, 'name'>
+    return { name: appName, ...raw }
+  }
+  return { kind: 'unix', path: `/tmp/tsn-inspect-${appName}.sock`, name: appName }
+}
+
+function resolveEndpoint(appName: string | null): InspectorEndpoint {
+  if (appName && appName.length > 0) return resolveNamedEndpoint(appName)
 
   const legacy = '/tmp/tsn-inspect.sock'
-  if (fs.existsSync(legacy)) return legacy
+  const endpoints: InspectorEndpoint[] = []
+  if (fs.existsSync(legacy)) {
+    endpoints.push({ kind: 'unix', path: legacy, name: 'app' })
+  }
 
   const tmpEntries = fs.readdirSync('/tmp')
   const sockets = tmpEntries
     .filter((entry) => entry.startsWith('tsn-inspect-') && entry.endsWith('.sock'))
-    .map((entry) => path.join('/tmp', entry))
+    .map((entry) => ({
+      kind: 'unix' as const,
+      path: path.join('/tmp', entry),
+      name: path.basename(entry, '.sock').replace('tsn-inspect-', ''),
+    }))
+  const registries = tmpEntries
+    .filter((entry) => entry.startsWith('tsn-inspect-') && entry.endsWith('.json'))
+    .map((entry) => {
+      const name = path.basename(entry, '.json').replace('tsn-inspect-', '')
+      const raw = JSON.parse(fs.readFileSync(path.join('/tmp', entry), 'utf8')) as Omit<TcpInspectorEndpoint, 'name'>
+      return { name, ...raw }
+    })
+  endpoints.push(...sockets, ...registries)
 
-  if (sockets.length === 1) return sockets[0]
-  if (sockets.length > 1) {
-    const names = sockets.map((sock) => path.basename(sock, '.sock').replace('tsn-inspect-', '')).join(', ')
+  if (endpoints.length === 1) return endpoints[0]
+  if (endpoints.length > 1) {
+    const names = endpoints.map((endpoint) => endpoint.name).join(', ')
     console.error(`Multiple running TSN apps found. Use --app <name>. Available: ${names}`)
     process.exit(1)
   }
 
-  return legacy
+  return { kind: 'unix', path: legacy, name: 'app' }
+}
+
+function takeIOSSimulatorScreenshot(endpoint: TcpInspectorEndpoint): void {
+  const outputPath = '/tmp/tsn-screenshot.png'
+  execFileSync('xcrun', ['simctl', 'io', endpoint.deviceUdid, 'screenshot', outputPath], { stdio: 'ignore' })
+  process.stdout.write(`Screenshot saved: ${outputPath}\n`)
+}
+
+function showIOSLogs(endpoint: TcpInspectorEndpoint): void {
+  const output = execFileSync(
+    'xcrun',
+    ['simctl', 'spawn', endpoint.deviceUdid, 'log', 'show', '--style', 'compact', '--last', '5m', '--predicate', `process == "${endpoint.executableName}"`],
+    { encoding: 'utf8' },
+  )
+  process.stdout.write(output.length > 0 ? output : `No recent logs for ${endpoint.executableName}\n`)
 }
 
 const rawArgs = process.argv.slice(2)
@@ -53,10 +112,22 @@ while (i < rawArgs.length) {
   i += 1
 }
 
-const SOCK = resolveSocket(appName)
+const endpoint = resolveEndpoint(appName)
 const cmd = args.join(' ') || 'help'
 
-const client = net.createConnection(SOCK, () => {
+if (endpoint.kind === 'tcp' && cmd === 'screenshot') {
+  takeIOSSimulatorScreenshot(endpoint)
+  process.exit(0)
+}
+
+if (endpoint.kind === 'tcp' && cmd === 'logs') {
+  showIOSLogs(endpoint)
+  process.exit(0)
+}
+
+const client = net.createConnection(endpoint.kind === 'unix'
+  ? { path: endpoint.path }
+  : { host: endpoint.host, port: endpoint.port }, () => {
   client.write(cmd)
 })
 

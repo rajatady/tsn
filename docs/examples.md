@@ -301,6 +301,8 @@ Compile it with:
 ```bash
 tsn build examples/native-gui/app-store.tsx
 tsn build examples/native-gui/app-store.tsx --debug
+tsn build examples/native-gui/app-store-ios.tsx
+tsn build examples/native-gui/app-store-ios.tsx --platform ios
 ```
 
 The App Store example is paired with browser oracles under `scratch/app-store-html/` and is covered by the full-page harness in `conformance/app-harness.ts`.

@@ -20,6 +20,15 @@ function collectYogaSources(dir: string): string[] {
   return sources
 }
 
+export function listYogaSources(projectRoot = process.cwd()): string[] {
+  const yogaRoot = path.join(projectRoot, 'vendor', 'yoga')
+  const sources = collectYogaSources(yogaRoot)
+  if (sources.length === 0) {
+    throw new Error(`Yoga sources not found under ${yogaRoot}`)
+  }
+  return sources
+}
+
 function needsRebuild(archivePath: string, sources: string[]): boolean {
   if (!fs.existsSync(archivePath)) return true
   const archiveMtime = fs.statSync(archivePath).mtimeMs
@@ -30,11 +39,7 @@ export function ensureYogaStaticLibrary(projectRoot = process.cwd()): string {
   const buildDir = path.join(projectRoot, 'build')
   const archivePath = path.join(buildDir, 'libyoga.a')
   const yogaRoot = path.join(projectRoot, 'vendor', 'yoga')
-  const sources = collectYogaSources(yogaRoot)
-
-  if (sources.length === 0) {
-    throw new Error(`Yoga sources not found under ${yogaRoot}`)
-  }
+  const sources = listYogaSources(projectRoot)
 
   if (!needsRebuild(archivePath, sources)) {
     return archivePath

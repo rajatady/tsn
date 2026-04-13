@@ -10,6 +10,7 @@ import { generateCSingle } from '../src/codegen.js'
 import { getLibcurlFlags } from '../src/libcurl.js'
 import { ensureLibuvStaticLibrary } from '../src/libuv.js'
 import { validate } from '../src/validator.js'
+import { appKitHostTarget } from '../../tsn-host-appkit/src/index.js'
 
 export function sourceFromText(
   text: string,
@@ -24,7 +25,7 @@ export function validateMessages(text: string, fileName = '/virtual/test.ts'): s
 }
 
 export function generateCFromText(text: string, fileName = '/virtual/test.ts'): string {
-  return generateCSingle(sourceFromText(text, fileName), 'test')
+  return generateCSingle(sourceFromText(text, fileName), 'test', appKitHostTarget)
 }
 
 export function assertIncludesAll(haystack: string, needles: string[]): void {

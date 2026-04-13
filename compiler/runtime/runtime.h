@@ -468,10 +468,12 @@ static inline OwnedStr read_stdin(void) {
     return (OwnedStr){ buf, len };
 }
 
+#ifndef TSN_RUNTIME_DISABLE_HOSTED_IO
 #include "runtime_async.h"
 #include "runtime_hosted_io.h"
 #include "runtime_fetch.h"
 #include "runtime_timers.h"
+#endif
 
 /* ─── Math ───────────────────────────────────────────────────────── */
 

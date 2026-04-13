@@ -1,4 +1,4 @@
-import type { TSNLengthResolvable, TSNNode, TSNTextStyle } from '@tsn/core'
+import type { TSNBehavior, TSNLayoutStyle, TSNLengthResolvable, TSNNode, TSNTextStyle, TSNVisualStyle } from '@tsn/core'
 
 export interface AppKitNodePlan {
   id: string
@@ -99,70 +99,95 @@ function resolveCreateCall(node: TSNNode): string {
 }
 
 function resolveStyleCalls(node: TSNNode): string[] {
-  const calls: string[] = []
-  pushLengthCall(calls, 'ui_set_size', 'ui_set_size_pct', node.ref.id, node.layoutStyle.width, node.layoutStyle.height)
-  pushLengthCall(calls, 'ui_set_min_size', 'ui_set_min_size_pct', node.ref.id, node.layoutStyle.minWidth, node.layoutStyle.minHeight)
-  pushLengthCall(calls, 'ui_set_max_size', 'ui_set_max_size_pct', node.ref.id, node.layoutStyle.maxWidth, node.layoutStyle.maxHeight)
+  const calls = resolveStyleCallsForPatch(node.ref.id, node.layoutStyle, node.visualStyle, node.textStyle, node.behavior)
+  for (const variant of node.responsiveVariants ?? []) {
+    if (variant.selector.minWidth == null) continue
+    calls.push(`ui_variant_begin_min_width(${node.ref.id}, ${variant.selector.minWidth});`)
+    calls.push(
+      ...resolveStyleCallsForPatch(
+        node.ref.id,
+        variant.layoutStyle,
+        variant.visualStyle,
+        variant.textStyle,
+        variant.behavior,
+      ),
+    )
+    calls.push(`ui_variant_end(${node.ref.id});`)
+  }
+  return calls
+}
 
-  if (node.layoutStyle.grow != null) calls.push(`ui_set_flex(${node.ref.id}, ${node.layoutStyle.grow});`)
-  if (node.layoutStyle.gap != null) calls.push(`ui_set_spacing(${node.ref.id}, ${node.layoutStyle.gap});`)
-  if (node.layoutStyle.aspectRatio != null && node.layoutStyle.aspectRatio > 0) {
-    const aspectWidth = Math.max(1, Math.round(node.layoutStyle.aspectRatio * 1000))
-    calls.push(`ui_set_aspect(${node.ref.id}, ${aspectWidth}, 1000);`)
+function resolveStyleCallsForPatch(
+  handle: string,
+  layoutStyle: Partial<TSNLayoutStyle>,
+  visualStyle: Partial<TSNVisualStyle>,
+  textStyle: Partial<TSNTextStyle>,
+  behavior: Partial<TSNBehavior>,
+): string[] {
+  const calls: string[] = []
+  pushLengthCall(calls, 'ui_set_size', 'ui_set_size_pct', handle, layoutStyle.width, layoutStyle.height)
+  pushLengthCall(calls, 'ui_set_min_size', 'ui_set_min_size_pct', handle, layoutStyle.minWidth, layoutStyle.minHeight)
+  pushLengthCall(calls, 'ui_set_max_size', 'ui_set_max_size_pct', handle, layoutStyle.maxWidth, layoutStyle.maxHeight)
+
+  if (layoutStyle.grow != null) calls.push(`ui_set_flex(${handle}, ${layoutStyle.grow});`)
+  if (layoutStyle.gap != null) calls.push(`ui_set_spacing(${handle}, ${layoutStyle.gap});`)
+  if (layoutStyle.aspectRatio != null && layoutStyle.aspectRatio > 0) {
+    const aspectWidth = Math.max(1, Math.round(layoutStyle.aspectRatio * 1000))
+    calls.push(`ui_set_aspect(${handle}, ${aspectWidth}, 1000);`)
   }
-  if (node.layoutStyle.position != null) {
-    calls.push(`ui_set_position_type(${node.ref.id}, ${node.layoutStyle.position === 'absolute' ? 1 : 0});`)
+  if (layoutStyle.position != null) {
+    calls.push(`ui_set_position_type(${handle}, ${layoutStyle.position === 'absolute' ? 1 : 0});`)
   }
-  pushInsetCalls(calls, node.ref.id, node.layoutStyle.insetTop, node.layoutStyle.insetRight, node.layoutStyle.insetBottom, node.layoutStyle.insetLeft)
-  if (node.layoutStyle.marginAuto) calls.push(`ui_set_margin_auto(${node.ref.id});`)
-  if (node.layoutStyle.alignItems != null) calls.push(`ui_set_align_items(${node.ref.id}, ${layoutAlignValue(node.layoutStyle.alignItems)});`)
-  if (node.layoutStyle.justifyContent != null) {
-    calls.push(`ui_set_justify_content(${node.ref.id}, ${layoutJustifyValue(node.layoutStyle.justifyContent)});`)
+  pushInsetCalls(calls, handle, layoutStyle.insetTop, layoutStyle.insetRight, layoutStyle.insetBottom, layoutStyle.insetLeft)
+  if (layoutStyle.marginAuto) calls.push(`ui_set_margin_auto(${handle});`)
+  if (layoutStyle.alignItems != null) calls.push(`ui_set_align_items(${handle}, ${layoutAlignValue(layoutStyle.alignItems)});`)
+  if (layoutStyle.justifyContent != null) {
+    calls.push(`ui_set_justify_content(${handle}, ${layoutJustifyValue(layoutStyle.justifyContent)});`)
   }
-  if (node.layoutStyle.alignSelf != null) calls.push(`ui_set_alignment(${node.ref.id}, ${layoutAlignValue(node.layoutStyle.alignSelf)});`)
+  if (layoutStyle.alignSelf != null) calls.push(`ui_set_alignment(${handle}, ${layoutAlignValue(layoutStyle.alignSelf)});`)
   if (
-    node.layoutStyle.marginTop != null ||
-    node.layoutStyle.marginRight != null ||
-    node.layoutStyle.marginBottom != null ||
-    node.layoutStyle.marginLeft != null
+    layoutStyle.marginTop != null ||
+    layoutStyle.marginRight != null ||
+    layoutStyle.marginBottom != null ||
+    layoutStyle.marginLeft != null
   ) {
     calls.push(
-      `ui_set_margin(${node.ref.id}, ${node.layoutStyle.marginTop ?? 0}, ${node.layoutStyle.marginRight ?? 0}, ${node.layoutStyle.marginBottom ?? 0}, ${node.layoutStyle.marginLeft ?? 0});`,
+      `ui_set_margin(${handle}, ${layoutStyle.marginTop ?? 0}, ${layoutStyle.marginRight ?? 0}, ${layoutStyle.marginBottom ?? 0}, ${layoutStyle.marginLeft ?? 0});`,
     )
   }
   if (
-    node.layoutStyle.paddingTop != null ||
-    node.layoutStyle.paddingRight != null ||
-    node.layoutStyle.paddingBottom != null ||
-    node.layoutStyle.paddingLeft != null
+    layoutStyle.paddingTop != null ||
+    layoutStyle.paddingRight != null ||
+    layoutStyle.paddingBottom != null ||
+    layoutStyle.paddingLeft != null
   ) {
     calls.push(
-      `ui_set_padding(${node.ref.id}, ${node.layoutStyle.paddingTop ?? 0}, ${node.layoutStyle.paddingRight ?? 0}, ${node.layoutStyle.paddingBottom ?? 0}, ${node.layoutStyle.paddingLeft ?? 0});`,
+      `ui_set_padding(${handle}, ${layoutStyle.paddingTop ?? 0}, ${layoutStyle.paddingRight ?? 0}, ${layoutStyle.paddingBottom ?? 0}, ${layoutStyle.paddingLeft ?? 0});`,
     )
   }
-  emitBackgroundColorCall(calls, node.ref.id, node.visualStyle.backgroundColor)
-  emitBorderCalls(calls, node.ref.id, node.visualStyle.borderColor, node.visualStyle.borderWidth)
-  if (node.visualStyle.cornerRadius != null) {
-    calls.push(`ui_set_corner_radius(${node.ref.id}, ${node.visualStyle.cornerRadius});`)
+  emitBackgroundColorCall(calls, handle, visualStyle.backgroundColor)
+  emitBorderCalls(calls, handle, visualStyle.borderColor, visualStyle.borderWidth)
+  if (visualStyle.cornerRadius != null) {
+    calls.push(`ui_set_corner_radius(${handle}, ${visualStyle.cornerRadius});`)
   }
-  if (node.visualStyle.clip) {
-    calls.push(`ui_set_clip(${node.ref.id}, 1);`)
+  if (visualStyle.clip) {
+    calls.push(`ui_set_clip(${handle}, 1);`)
   }
-  if (node.visualStyle.shadow) {
+  if (visualStyle.shadow) {
     calls.push(
-      `ui_set_shadow(${node.ref.id}, ${node.visualStyle.shadow.offsetX}, ${node.visualStyle.shadow.offsetY}, ${node.visualStyle.shadow.radius}, ${node.visualStyle.shadow.opacity});`,
+      `ui_set_shadow(${handle}, ${visualStyle.shadow.offsetX}, ${visualStyle.shadow.offsetY}, ${visualStyle.shadow.radius}, ${visualStyle.shadow.opacity});`,
     )
   }
-  if (node.behavior.scrollAxis != null) {
-    calls.push(`ui_scroll_set_axis(${node.ref.id}, ${node.behavior.scrollAxis === 'horizontal' ? 1 : 0});`)
+  if (behavior.scrollAxis != null) {
+    calls.push(`ui_scroll_set_axis(${handle}, ${behavior.scrollAxis === 'horizontal' ? 1 : 0});`)
   }
-  if (node.textStyle.truncate) {
-    calls.push(`ui_text_set_truncate(${node.ref.id});`)
+  if (textStyle.truncate) {
+    calls.push(`ui_text_set_truncate(${handle});`)
   }
-  if (node.behavior.text?.selectable) {
-    calls.push(`ui_text_set_selectable(${node.ref.id}, true);`)
+  if (behavior.text?.selectable) {
+    calls.push(`ui_text_set_selectable(${handle}, true);`)
   }
-  emitTextStyleCalls(calls, node.ref.id, node.textStyle)
+  emitTextStyleCalls(calls, handle, textStyle)
   return calls
 }
 

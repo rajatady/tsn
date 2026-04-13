@@ -27,4 +27,5 @@ export {
   tableCreateCall,
   textCreateCall,
 } from './primitive_cases.js'
+export type { HostNodePlan, TSNTargetPlatform, UIHostBuildKind, UIHostTarget } from './host_target.js'
 export type { CodeGenContext, FuncSig } from './types.js'

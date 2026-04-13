@@ -188,7 +188,7 @@ export class JsxEmitter {
       rawCStringProps: Record<string, string> = {},
     ) => {
       const testId = this.propsUtil.propCStr(props, 'testId')
-      const emission = buildHostPlanEmission(plan.node, {
+      const emission = buildHostPlanEmission(plan.node, this.ctx.uiHostTarget, {
         props: propOverrides,
         rawCStringProps,
       })

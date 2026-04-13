@@ -13,16 +13,20 @@ import { execSync, spawn, type ChildProcess } from 'node:child_process'
 import { validate } from './validator.js'
 import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
+import { parseCompilerArgs } from '../packages/tsn-compiler-core/src/argv.js'
 import { getLibcurlShellFlags } from '../packages/tsn-compiler-core/src/libcurl.js'
 import { ensureLibuvStaticLibrary } from '../packages/tsn-compiler-core/src/libuv.js'
 import { ensureYogaStaticLibrary } from '../packages/tsn-compiler-core/src/yoga.js'
-import { appKitHostRoot, appKitSourcePath } from '../packages/tsn-host-appkit/src/index.js'
+import { resolveUIHostTarget } from '../packages/tsn-compiler-core/src/ui_targets.js'
 
 const inputPath = process.argv[2]
 if (!inputPath) {
   console.error('Usage: npx tsx compiler/dev.ts <file.ts|.tsx>')
   process.exit(1)
 }
+
+const options = parseCompilerArgs(process.argv.slice(3))
+const uiHostTarget = resolveUIHostTarget(options.platform)
 
 const absolutePath = path.resolve(inputPath)
 const ext = path.extname(inputPath)
@@ -61,22 +65,26 @@ function compile(): boolean {
     }
     if (totalErrors > 0) return false
 
-    const cCode = generateC(sourceFiles, baseName)
+    const cCode = generateC(sourceFiles, baseName, uiHostTarget)
     fs.writeFileSync(cPath, cCode)
 
-    const hasUi = cCode.includes('#include "ui.h"')
+    const hasUi = cCode.includes(`#include "${uiHostTarget.headerInclude}"`)
     const libuvLib = ensureLibuvStaticLibrary()
     const libuvInclude = path.join('vendor', 'libuv', 'include')
     const libcurlFlags = getLibcurlShellFlags()
 
     if (hasUi) {
+      if (!uiHostTarget.supportsDevServer || uiHostTarget.buildKind !== 'native-binary') {
+        throw new Error(`${uiHostTarget.displayName} watch mode is not implemented yet`)
+      }
       const runtimeDir = path.join('compiler', 'runtime')
       const yogaLib = ensureYogaStaticLibrary()
       const yogaInclude = 'vendor'
+      const frameworks = uiHostTarget.frameworkFlags.join(' ')
 
       execSync(
-        `clang -O0 -g -DTSN_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
+        `clang -O0 -g -DTSN_DEBUG -fobjc-arc ${frameworks} ` +
+        `${cPath} ${uiHostTarget.runtimeSource} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${uiHostTarget.runtimeRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
         `-lc++ -o ${binaryPath}`,
         { stdio: 'pipe' }
       )

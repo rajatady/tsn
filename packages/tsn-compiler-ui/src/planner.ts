@@ -64,6 +64,13 @@ export function buildPrimitivePlan(
       visualStyle: tailwind?.stylePatch.visualStyle ?? {},
       textStyle,
       behavior,
+      responsiveVariants: tailwind?.responsiveVariants.map(variant => ({
+        selector: variant.selector,
+        layoutStyle: variant.stylePatch.layoutStyle,
+        visualStyle: variant.stylePatch.visualStyle,
+        textStyle: variant.stylePatch.textStyle,
+        behavior: variant.stylePatch.behavior,
+      })) ?? [],
       events: [],
       children: [],
     },

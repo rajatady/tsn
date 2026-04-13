@@ -3,6 +3,7 @@ import type {
   TSNLayoutStyle,
   TSNLengthUnit,
   TSNLengthValue,
+  TSNResponsiveSelector,
   TSNTextStyle,
   TSNVisualStyle,
 } from '@tsn/core'
@@ -15,6 +16,12 @@ export interface TailwindStylePatch {
   visualStyle: Partial<TSNVisualStyle>
   textStyle: Partial<TSNTextStyle>
   behavior: Partial<TSNBehavior>
+}
+
+export interface TailwindResponsiveVariant {
+  selector: TSNResponsiveSelector
+  ops: TailwindOp[]
+  stylePatch: TailwindStylePatch
 }
 
 export type TailwindOp =
@@ -48,6 +55,7 @@ export interface TailwindResult {
   ops: TailwindOp[]
   calls: string[]
   stylePatch: TailwindStylePatch
+  responsiveVariants: TailwindResponsiveVariant[]
   textSize: number
   textBold: boolean
   textWeight: number     /* -1=unset, 0=thin..4=regular..6=semibold..7=bold..9=black */

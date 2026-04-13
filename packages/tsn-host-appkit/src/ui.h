@@ -49,6 +49,8 @@ void        ui_set_alignment(UIHandle v, int align); /* child self-alignment on 
 void        ui_set_margin_auto(UIHandle v);           /* mx-auto: auto left+right margins for centering */
 void        ui_set_align_items(UIHandle v, int align);    /* container cross-axis: 0=start, 1=center, 2=end, 3=stretch */
 void        ui_set_justify_content(UIHandle v, int just); /* container main-axis: 0=start, 1=center, 2=end, 3=space-between */
+void        ui_variant_begin_min_width(UIHandle v, double min_width);
+void        ui_variant_end(UIHandle v);
 void        ui_add_child(UIHandle parent, UIHandle child);
 UIHandle    ui_spacer(void);
 UIHandle    ui_divider(void);

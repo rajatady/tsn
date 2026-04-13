@@ -123,6 +123,8 @@ Query running UI apps via Unix socket. When a single app is running, the inspect
 
 The inspector commands are synchronous now: `click` and `type` only return after the main-thread interaction has been applied. This makes screenshot- and state-based verification reliable in automated checks.
 
+That same CLI now works for iOS simulator builds too. macOS apps still expose a Unix socket directly; iOS simulator apps register a host-visible TCP endpoint plus simulator metadata, and `tsn inspect` abstracts the difference away. `screenshot` on iOS uses `simctl io screenshot` so the saved image lands on the host at the same `/tmp/tsn-screenshot.png` path as desktop.
+
 The default UI verification path now includes the native gallery app at [conformance/gallery.tsx](/Users/kumardivyarajat/WebstormProjects/bun-vite/vite/conformance/gallery.tsx). `bash harness/ui-conformance.sh` builds it, launches it, drives it through the inspector, and writes screenshots plus tree dumps to `/tmp/tsn-ui-conformance`.
 
 That matters for debugging too: the inspector path is part of the maintained verification loop, not an extra tool that only works in demos. Release and debug GUI builds go through `bash harness/gui-builds.sh`, and inspector-driven UI verification goes through `bash harness/ui-conformance.sh`.
@@ -143,6 +145,7 @@ The repo also has two additional UI verification entrypoints:
 | `find <text>` | Find all elements containing text (case-insensitive) |
 | `get <id> [prop]` | Get element property by JSX handle ID |
 | `help` | Show command list |
+| `logs` | Show recent iOS simulator logs for the selected app |
 
 ### Element Properties (get command)
 

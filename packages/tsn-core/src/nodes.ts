@@ -63,6 +63,10 @@ export interface TSNStyleSource {
   variant?: string
 }
 
+export interface TSNResponsiveSelector {
+  minWidth?: number
+}
+
 export interface TSNLayoutStyle {
   axis?: TSNAxis
   position?: TSNLayoutPosition
@@ -121,6 +125,14 @@ export interface TSNBehavior {
   text?: TSNTextBehavior
 }
 
+export interface TSNResponsiveVariant {
+  selector: TSNResponsiveSelector
+  layoutStyle: Partial<TSNLayoutStyle>
+  visualStyle: Partial<TSNVisualStyle>
+  textStyle: Partial<TSNTextStyle>
+  behavior: Partial<TSNBehavior>
+}
+
 export type TSNPropValue = string | number | boolean | TSNMediaValue | null
 
 export interface TSNNode {
@@ -132,6 +144,7 @@ export interface TSNNode {
   visualStyle: TSNVisualStyle
   textStyle: TSNTextStyle
   behavior: TSNBehavior
+  responsiveVariants?: TSNResponsiveVariant[]
   events: TSNEventBinding[]
   children: TSNNode[]
 }

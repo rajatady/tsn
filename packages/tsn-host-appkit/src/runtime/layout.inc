@@ -37,7 +37,11 @@ static NSSize tsn_measure_text_bounds(NSTextField *field, CGFloat maxWidth) {
     return NSMakeSize(ceil(MAX(bounds.size.width, cell.width)), ceil(MAX(bounds.size.height, cell.height)));
 }
 
+@class TSNShadowNode;
+static void tsn_apply_responsive_layout_tree(TSNShadowNode *node, CGFloat viewportWidth);
+
 #include "runtime/shadow_tree.inc"
+#include "runtime/layout_style.inc"
 
 static YGSize yoga_measure_func(YGNodeConstRef node, float width, YGMeasureMode widthMode,
                                 float height, YGMeasureMode heightMode) {
@@ -194,11 +198,14 @@ UIHandle ui_view(void) {
 
 void ui_set_aspect(UIHandle v, int w, int h) {
     NSView *view = view_for_handle(v);
-    if (!view) return;
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow || h == 0) return;
     NSValue *val = [NSValue valueWithSize:NSMakeSize(w, h)];
     objc_setAssociatedObject(view, &kAspectRatioKey, val, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (node) YGNodeStyleSetAspectRatio(node, (float)w / (float)h);
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasAspectRatio = YES;
+    style->aspectRatio = (CGFloat)w / (CGFloat)h;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_clip(UIHandle v, int clip) {
@@ -228,150 +235,202 @@ void ui_set_gradient(UIHandle v, double r1, double g1, double b1, double a1,
 }
 
 void ui_set_padding(UIHandle v, int t, int r, int b, int l) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    YGNodeStyleSetPadding(node, YGEdgeTop, t);
-    YGNodeStyleSetPadding(node, YGEdgeRight, r);
-    YGNodeStyleSetPadding(node, YGEdgeBottom, b);
-    YGNodeStyleSetPadding(node, YGEdgeLeft, l);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasPadding = YES;
+    style->paddingTop = t;
+    style->paddingRight = r;
+    style->paddingBottom = b;
+    style->paddingLeft = l;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_margin(UIHandle v, int t, int r, int b, int l) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    YGNodeStyleSetMargin(node, YGEdgeTop, t);
-    YGNodeStyleSetMargin(node, YGEdgeRight, r);
-    YGNodeStyleSetMargin(node, YGEdgeBottom, b);
-    YGNodeStyleSetMargin(node, YGEdgeLeft, l);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasMargin = YES;
+    style->marginTop = t;
+    style->marginRight = r;
+    style->marginBottom = b;
+    style->marginLeft = l;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_spacing(UIHandle v, int sp) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (node) YGNodeStyleSetGap(node, YGGutterAll, sp);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasSpacing = YES;
+    style->spacing = sp;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_flex(UIHandle v, int f) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (f > 0) {
-        YGNodeStyleSetFlexGrow(node, (float)f);
-        YGNodeStyleSetFlexShrink(node, 1);
-        YGNodeStyleSetFlexBasis(node, 0);
-        return;
-    }
-    YGNodeStyleSetFlexGrow(node, 0);
-    YGNodeStyleSetFlexShrink(node, 0);
-    YGNodeStyleSetFlexBasisAuto(node);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasFlex = YES;
+    style->flex = f;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_size(UIHandle v, int w, int h) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (w >= 0) YGNodeStyleSetWidth(node, w);
-    if (h >= 0) YGNodeStyleSetHeight(node, h);
     NSView *view = view_for_handle(v);
-    if (!view) return;
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (w >= 0) style->width = tsn_layout_length_point(w);
+    if (h >= 0) style->height = tsn_layout_length_point(h);
     NSRect frame = view.frame;
     if (w >= 0) frame.size.width = w;
     if (h >= 0) frame.size.height = h;
     view.frame = frame;
     [view invalidateIntrinsicContentSize];
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_size_pct(UIHandle v, double w, double h) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (w >= 0) YGNodeStyleSetWidthPercent(node, w);
-    if (h >= 0) YGNodeStyleSetHeightPercent(node, h);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (w >= 0) style->width = tsn_layout_length_percent(w);
+    if (h >= 0) style->height = tsn_layout_length_percent(h);
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_min_size(UIHandle v, int w, int h) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (w >= 0) YGNodeStyleSetMinWidth(node, w);
-    if (h >= 0) YGNodeStyleSetMinHeight(node, h);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (w >= 0) style->minWidth = tsn_layout_length_point(w);
+    if (h >= 0) style->minHeight = tsn_layout_length_point(h);
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_min_size_pct(UIHandle v, double w, double h) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (w >= 0) YGNodeStyleSetMinWidthPercent(node, w);
-    if (h >= 0) YGNodeStyleSetMinHeightPercent(node, h);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (w >= 0) style->minWidth = tsn_layout_length_percent(w);
+    if (h >= 0) style->minHeight = tsn_layout_length_percent(h);
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_max_size(UIHandle v, int w, int h) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (w >= 0) YGNodeStyleSetMaxWidth(node, w);
-    if (h >= 0) YGNodeStyleSetMaxHeight(node, h);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (w >= 0) style->maxWidth = tsn_layout_length_point(w);
+    if (h >= 0) style->maxHeight = tsn_layout_length_point(h);
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_max_size_pct(UIHandle v, double w, double h) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (w >= 0) YGNodeStyleSetMaxWidthPercent(node, w);
-    if (h >= 0) YGNodeStyleSetMaxHeightPercent(node, h);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (w >= 0) style->maxWidth = tsn_layout_length_percent(w);
+    if (h >= 0) style->maxHeight = tsn_layout_length_percent(h);
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_position_type(UIHandle v, int position) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    YGNodeStyleSetPositionType(node, position == 1 ? YGPositionTypeAbsolute : YGPositionTypeRelative);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasPositionType = YES;
+    style->positionType = position;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_inset(UIHandle v, int top, int right, int bottom, int left) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (top >= 0) YGNodeStyleSetPosition(node, YGEdgeTop, top);
-    if (right >= 0) YGNodeStyleSetPosition(node, YGEdgeRight, right);
-    if (bottom >= 0) YGNodeStyleSetPosition(node, YGEdgeBottom, bottom);
-    if (left >= 0) YGNodeStyleSetPosition(node, YGEdgeLeft, left);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (top >= 0) style->insetTop = tsn_layout_length_point(top);
+    if (right >= 0) style->insetRight = tsn_layout_length_point(right);
+    if (bottom >= 0) style->insetBottom = tsn_layout_length_point(bottom);
+    if (left >= 0) style->insetLeft = tsn_layout_length_point(left);
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_inset_pct(UIHandle v, double top, double right, double bottom, double left) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    if (top >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeTop, top);
-    if (right >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeRight, right);
-    if (bottom >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeBottom, bottom);
-    if (left >= 0) YGNodeStyleSetPositionPercent(node, YGEdgeLeft, left);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    if (top >= 0) style->insetTop = tsn_layout_length_percent(top);
+    if (right >= 0) style->insetRight = tsn_layout_length_percent(right);
+    if (bottom >= 0) style->insetBottom = tsn_layout_length_percent(bottom);
+    if (left >= 0) style->insetLeft = tsn_layout_length_percent(left);
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_alignment(UIHandle v, int a) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    YGAlign align = YGAlignAuto;
-    if (a == 1) align = YGAlignCenter;
-    else if (a == 2) align = YGAlignFlexEnd;
-    YGNodeStyleSetAlignSelf(node, align);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasAlignSelf = YES;
+    style->alignSelf = a;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_margin_auto(UIHandle v) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    YGNodeStyleSetWidthPercent(node, 100);
-    YGNodeStyleSetMarginAuto(node, YGEdgeLeft);
-    YGNodeStyleSetMarginAuto(node, YGEdgeRight);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasMarginAuto = YES;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_align_items(UIHandle v, int a) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    YGAlign align = YGAlignStretch;
-    if (a == 0) align = YGAlignFlexStart;
-    else if (a == 1) align = YGAlignCenter;
-    else if (a == 2) align = YGAlignFlexEnd;
-    YGNodeStyleSetAlignItems(node, align);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasAlignItems = YES;
+    style->alignItems = a;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
 }
 
 void ui_set_justify_content(UIHandle v, int j) {
-    YGNodeRef node = yoga_node_for_handle(v);
-    if (!node) return;
-    YGJustify justify = YGJustifyFlexStart;
-    if (j == 1) justify = YGJustifyCenter;
-    else if (j == 2) justify = YGJustifyFlexEnd;
-    else if (j == 3) justify = YGJustifySpaceBetween;
-    YGNodeStyleSetJustifyContent(node, justify);
+    NSView *view = view_for_handle(v);
+    TSNShadowNode *shadow = tsn_shadow_node_for_handle(v);
+    if (!view || !shadow) return;
+    TSNPendingLayoutStyle *style = tsn_current_layout_style(view, YES);
+    style->hasJustifyContent = YES;
+    style->justifyContent = j;
+    if (!tsn_is_recording_responsive_variant(view)) tsn_apply_layout_style(shadow, style);
+}
+
+void ui_variant_begin_min_width(UIHandle v, double min_width) {
+    NSView *view = view_for_handle(v);
+    if (!view) return;
+    gResponsiveVariantView = view;
+    gResponsiveVariant = tsn_responsive_variant_for_min_width(view, min_width, YES);
+}
+
+void ui_variant_end(UIHandle v) {
+    NSView *view = view_for_handle(v);
+    if (view && view == gResponsiveVariantView) {
+        gResponsiveVariantView = nil;
+        gResponsiveVariant = nil;
+    }
 }
 
 void ui_add_child(UIHandle parent, UIHandle child) {

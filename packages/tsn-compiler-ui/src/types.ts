@@ -1,4 +1,5 @@
 import * as ts from 'typescript'
+import type { UIHostTarget } from './host_target.js'
 
 export interface FuncSig {
   name: string
@@ -12,6 +13,7 @@ export interface CodeGenContext {
   lambdas: string[]
   indent: number
   hasJsx: boolean
+  uiHostTarget: UIHostTarget
   funcSigs: Map<string, FuncSig>
   pad(): string
   pushJsxStmt(line: string): void

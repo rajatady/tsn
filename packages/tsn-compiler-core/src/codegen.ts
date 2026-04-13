@@ -24,6 +24,7 @@
 
 import * as ts from 'typescript'
 import { JsxEmitter } from '../../tsn-compiler-ui/src/jsx.js'
+import type { UIHostTarget } from '../../tsn-compiler-ui/src/host_target.js'
 import type { CodeGenContext, FuncSig } from '../../tsn-compiler-ui/src/types.js'
 import {
   emitClassDeclaration as emitClassDeclarationFor,
@@ -121,6 +122,7 @@ class CodeGen {
   jsxStmts: string[] = []    // accumulated C statements from JSX emission
   jsxGlobals: string[] = []  // global variable declarations for JSX mode
   hasJsx = false              // track if source uses JSX (for includes/linking)
+  uiHostTarget: UIHostTarget
   private jsxEmitter: JsxEmitter
   private activeStmtSink: string[] | null = null
   // Source mapping
@@ -131,7 +133,8 @@ class CodeGen {
   private classTemplates: Map<string, ts.ClassDeclaration> = new Map()
   private currentClass: string | null = null
 
-  constructor() {
+  constructor(uiHostTarget: UIHostTarget) {
+    this.uiHostTarget = uiHostTarget
     this.jsxEmitter = new JsxEmitter(this as CodeGenContext)
     this.hooks = new HookRegistry({
       tsTypeNameToC: (tsType: string, fallback = 'double') => this.tsTypeNameToC(tsType, fallback),
@@ -480,11 +483,11 @@ class CodeGen {
   }
 }
 
-export function generateC(sourceFiles: ts.SourceFile[], name: string): string {
-  return new CodeGen().generate(sourceFiles)
+export function generateC(sourceFiles: ts.SourceFile[], name: string, uiHostTarget: UIHostTarget): string {
+  return new CodeGen(uiHostTarget).generate(sourceFiles)
 }
 
 /** Backward-compatible single-file entry point */
-export function generateCSingle(sf: ts.SourceFile, name: string): string {
-  return new CodeGen().generate([sf])
+export function generateCSingle(sf: ts.SourceFile, name: string, uiHostTarget: UIHostTarget): string {
+  return new CodeGen(uiHostTarget).generate([sf])
 }
