@@ -6,8 +6,6 @@ import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
 import { getLibcurlShellFlags } from './libcurl.js'
 import { ensureLibuvStaticLibrary } from './libuv.js'
-import { ensureYogaStaticLibrary } from './yoga.js'
-import { appKitHostRoot, appKitSourcePath } from '../../tsn-host-appkit/src/index.js'
 
 export function buildTSN(inputPath: string, argv: string[] = []): void {
   const absolutePath = path.resolve(inputPath)
@@ -15,7 +13,13 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
   const baseName = path.basename(inputPath, ext)
 
   console.log(`[1/4] Parsing ${baseName}${ext}...`)
-  const sourceFiles = resolveModules(absolutePath)
+  let sourceFiles
+  try {
+    sourceFiles = resolveModules(absolutePath)
+  } catch (error) {
+    console.error(`  ${(error as Error).message}`)
+    process.exit(1)
+  }
   if (sourceFiles.length > 1) console.log(`  → ${sourceFiles.length} files resolved`)
 
   console.log('[2/4] Validating (rejecting banned features)...')
@@ -48,28 +52,15 @@ export function buildTSN(inputPath: string, argv: string[] = []): void {
   const optFlag = isDebug ? '-O0 -g -DTSN_DEBUG' : '-O2'
   console.log(`[4/4] Compiling with clang${isDebug ? ' (debug)' : ''}...`)
   const binaryPath = path.join('build', baseName)
-  const hasUi = cCode.includes('#include "ui.h"')
   const libuvLib = ensureLibuvStaticLibrary()
   const libuvInclude = path.join('vendor', 'libuv', 'include')
   const libcurlFlags = getLibcurlShellFlags()
 
   try {
-    if (hasUi) {
-      const runtimeDir = path.join('compiler', 'runtime')
-      const yogaLib = ensureYogaStaticLibrary()
-      const yogaInclude = 'vendor'
-      execSync(
-        `clang ${optFlag} -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
-        `-lc++ -o ${binaryPath}`,
-        { stdio: 'inherit' }
-      )
-    } else {
-      execSync(
-        `clang ${optFlag} -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
-        { stdio: 'inherit' },
-      )
-    }
+    execSync(
+      `clang ${optFlag} -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
+      { stdio: 'inherit' },
+    )
 
     const size = fs.statSync(binaryPath).size
     const sizeStr = size > 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${(size / 1024).toFixed(0)} KB`

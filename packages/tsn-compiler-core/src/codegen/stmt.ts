@@ -3,12 +3,7 @@ import * as ts from 'typescript'
 import { emitThrownValue, type CatchTarget } from './exceptions.js'
 import type { ClassDef } from './types.js'
 
-export interface HookBindingEmitter {
-  tryEmitBindingDeclaration(decl: ts.VariableDeclaration, out: string[], pad: () => string): boolean
-}
-
 export interface StatementEmitterContext {
-  hooks: HookBindingEmitter
   builderVars: Set<string>
   varTypes: Map<string, string>
   funcLocalVars: Map<string, string>
@@ -390,8 +385,6 @@ export function emitBlock(ctx: StatementEmitterContext, node: ts.Node, out: stri
 }
 
 export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDeclaration, out: string[]): void {
-  if (ctx.hooks.tryEmitBindingDeclaration(decl, out, () => ctx.pad())) return
-
   const name = decl.name.getText()
   const tsType = decl.type ? ctx.tsTypeName(decl.type) : ctx.inferVarTsType(decl)
   const cType = decl.type ? ctx.tsTypeToC(decl.type) : ctx.inferVarType(decl)

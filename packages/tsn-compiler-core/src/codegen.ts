@@ -5,7 +5,6 @@
  *   number       → double
  *   string       → Str  (16 bytes, by value, zero alloc)
  *   boolean      → bool
- *   JSX.Element  → UIHandle
  *   T[]          → TArr (typed dynamic array via DEFINE_ARRAY macro)
  *   interface T  → struct T
  *   function     → C function
@@ -23,8 +22,7 @@
  */
 
 import * as ts from 'typescript'
-import { JsxEmitter } from '../../tsn-compiler-ui/src/jsx.js'
-import type { CodeGenContext, FuncSig } from '../../tsn-compiler-ui/src/types.js'
+import type { FuncSig } from './codegen/func_sig.js'
 import {
   emitClassDeclaration as emitClassDeclarationFor,
   ensureMonomorphized as ensureMonomorphizedFor,
@@ -35,7 +33,6 @@ import {
   emitPredicateCallback as emitPredicateCallbackFor,
   getStructFields as getStructFieldsFor,
   nextTempId as nextTempIdFor,
-  pushJsxStmt as pushJsxStmtFor,
   withStmtSink as withStmtSinkFor,
 } from './codegen/context.js'
 import {
@@ -76,7 +73,6 @@ import { runCompilationPasses } from './codegen/passes.js'
 import { assembleProgram } from './codegen/program.js'
 import { emitBlock as emitBlockFor, emitStmt as emitStmtFor, emitVarDecl as emitVarDeclFor } from './codegen/stmt.js'
 import { isSkippableStatement, sourceLineDirective } from './codegen/top-level.js'
-import { HookRegistry } from './hooks.js'
 import {
   arrayCElemType as arrayCElemTypeFor,
   arrayTypeName as arrayTypeNameFor,
@@ -115,13 +111,7 @@ class CodeGen {
   currentFunctionIsAsync = false
   currentCatchTarget: CatchTarget | null = null
   private identifierAliases: Map<string, string> = new Map()
-  private hooks: HookRegistry
-  private jsxBootStmts: string[] = []
-  // JSX support
-  jsxStmts: string[] = []    // accumulated C statements from JSX emission
-  jsxGlobals: string[] = []  // global variable declarations for JSX mode
-  hasJsx = false              // track if source uses JSX (for includes/linking)
-  private jsxEmitter: JsxEmitter
+  globalDecls: string[] = []
   private activeStmtSink: string[] | null = null
   // Source mapping
   private sourceFile: ts.SourceFile | null = null
@@ -130,19 +120,6 @@ class CodeGen {
   private classDefs: Map<string, ClassDef> = new Map()
   private classTemplates: Map<string, ts.ClassDeclaration> = new Map()
   private currentClass: string | null = null
-
-  constructor() {
-    this.jsxEmitter = new JsxEmitter(this as CodeGenContext)
-    this.hooks = new HookRegistry({
-      tsTypeNameToC: (tsType: string, fallback = 'double') => this.tsTypeNameToC(tsType, fallback),
-      arrayTypeName: (innerTsType: string) => this.arrayTypeName(innerTsType),
-      exprType: (node: ts.Node) => this.exprType(node),
-      emitExpr: (node: ts.Node) => this.emitExpr(node),
-      getReleaseForType: (varName: string, tsType: string) => this.getReleaseForType(varName, tsType),
-      varTypes: this.varTypes,
-      identifierAliases: this.identifierAliases,
-    })
-  }
 
   // ─── Type Resolution ────────────────────────────────────────────
 
@@ -180,10 +157,6 @@ class CodeGen {
 
   arrayCElemType(tsType: string): string {
     return arrayCElemTypeFor(tsType)
-  }
-
-  pushJsxStmt(line: string): void {
-    pushJsxStmtFor(this.activeStmtSink, this.jsxStmts, line)
   }
 
   getStructFields(name: string): Array<{ name: string; tsType: string; cType: string }> | undefined {
@@ -339,16 +312,6 @@ class CodeGen {
     if (ts.isArrayLiteralExpression(node) && node.elements.length === 0)
       return `StrArr_new()` // default to StrArr; will be overridden by var decl context
 
-    // JSX support — delegated to JsxEmitter
-    if (ts.isJsxElement(node))
-      return this.jsxEmitter.emitElement(node.openingElement, node.children)
-    if (ts.isJsxSelfClosingElement(node))
-      return this.jsxEmitter.emitElement(node, [])
-    if (ts.isJsxExpression(node) && node.expression)
-      return this.emitExpr(node.expression)
-    if (ts.isJsxFragment(node))
-      return this.jsxEmitter.emitFragment(node.children)
-
     return `/* UNSUPPORTED: ${ts.SyntaxKind[node.kind]} */0`
   }
 
@@ -475,8 +438,8 @@ class CodeGen {
   // ─── Main Entry ─────────────────────────────────────────────────
 
   generate(sourceFiles: ts.SourceFile[]): string {
-    const { entryFile, hasTopLevelJsx } = runCompilationPasses(this, sourceFiles)
-    return assembleProgram(this, sourceFiles, entryFile, hasTopLevelJsx)
+    const { entryFile } = runCompilationPasses(this, sourceFiles)
+    return assembleProgram(this, sourceFiles, entryFile)
   }
 }
 

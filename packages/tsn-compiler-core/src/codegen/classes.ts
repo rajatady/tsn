@@ -1,6 +1,6 @@
 import * as ts from 'typescript'
 
-import type { FuncSig } from '../../tsn-compiler-ui/src/types.js'
+import type { FuncSig } from './func_sig.js'
 import type { ClassDef, ClassMethod, StructField } from './types.js'
 
 export interface ClassEmitterContext {

@@ -1,10 +1,10 @@
 /**
  * TSN Dev Server — watch mode with fast recompilation
  *
- * Usage: npx tsx compiler/dev.ts <file.ts|.tsx>
+ * Usage: npx tsx compiler/dev.ts <file.ts>
  *
  * Watches the source file, recompiles on change (~50ms),
- * and relaunches the binary. For UI apps, kills and restarts.
+ * and relaunches the binary.
  */
 
 import * as fs from 'node:fs'
@@ -15,19 +15,16 @@ import { generateC } from './codegen.js'
 import { resolveModules } from './resolver.js'
 import { getLibcurlShellFlags } from '../packages/tsn-compiler-core/src/libcurl.js'
 import { ensureLibuvStaticLibrary } from '../packages/tsn-compiler-core/src/libuv.js'
-import { ensureYogaStaticLibrary } from '../packages/tsn-compiler-core/src/yoga.js'
-import { appKitHostRoot, appKitSourcePath } from '../packages/tsn-host-appkit/src/index.js'
 
 const inputPath = process.argv[2]
 if (!inputPath) {
-  console.error('Usage: npx tsx compiler/dev.ts <file.ts|.tsx>')
+  console.error('Usage: npx tsx compiler/dev.ts <file.ts>')
   process.exit(1)
 }
 
 const absolutePath = path.resolve(inputPath)
 const ext = path.extname(inputPath)
 const baseName = path.basename(inputPath, ext)
-const isTsx = ext === '.tsx'
 const cPath = path.join('build', `${baseName}.c`)
 const binaryPath = path.join('build', baseName)
 
@@ -64,28 +61,14 @@ function compile(): boolean {
     const cCode = generateC(sourceFiles, baseName)
     fs.writeFileSync(cPath, cCode)
 
-    const hasUi = cCode.includes('#include "ui.h"')
     const libuvLib = ensureLibuvStaticLibrary()
     const libuvInclude = path.join('vendor', 'libuv', 'include')
     const libcurlFlags = getLibcurlShellFlags()
 
-    if (hasUi) {
-      const runtimeDir = path.join('compiler', 'runtime')
-      const yogaLib = ensureYogaStaticLibrary()
-      const yogaInclude = 'vendor'
-
-      execSync(
-        `clang -O0 -g -DTSN_DEBUG -fobjc-arc -framework Cocoa -framework QuartzCore ` +
-        `${cPath} ${appKitSourcePath} ${yogaLib} ${libuvLib} ${libcurlFlags} -I ${appKitHostRoot} -I ${runtimeDir} -I ${yogaInclude} -I ${libuvInclude} ` +
-        `-lc++ -o ${binaryPath}`,
-        { stdio: 'pipe' }
-      )
-    } else {
-      execSync(
-        `clang -O0 -g -DTSN_DEBUG -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
-        { stdio: 'pipe' }
-      )
-    }
+    execSync(
+      `clang -O0 -g -DTSN_DEBUG -o ${binaryPath} ${cPath} ${libuvLib} ${libcurlFlags} -lm -I compiler/runtime -I ${libuvInclude}`,
+      { stdio: 'pipe' }
+    )
 
     const elapsed = (performance.now() - start).toFixed(0)
     const size = fs.statSync(binaryPath).size
@@ -106,37 +89,7 @@ function timestamp(): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
 }
 
-/** Save window geometry before killing the app (via inspector socket) */
-function saveWindowGeometry(): { x: number; y: number; w: number; h: number } | null {
-  try {
-    const net = require('node:net') as typeof import('node:net')
-    const sock = '/tmp/tsn-inspect.sock'
-    if (!fs.existsSync(sock)) return null
-
-    // Quick synchronous-ish socket read via execSync
-    const result = execSync(
-      `echo "get _j0 frame" | nc -U ${sock} -w 1 2>/dev/null || true`,
-      { encoding: 'utf-8', timeout: 2000 }
-    ).trim()
-
-    // Parse "1200×780 at 100,200"
-    const match = result.match(/(\d+)×(\d+)\s+at\s+(\d+),(\d+)/)
-    if (match) {
-      return { w: +match[1], h: +match[2], x: +match[3], y: +match[4] }
-    }
-  } catch { /* ignore */ }
-  return null
-}
-
-let savedGeometry: { x: number; y: number; w: number; h: number } | null = null
-
 function launchApp(): void {
-  // Save window position before killing (UI apps only)
-  if (appProcess && isTsx) {
-    savedGeometry = saveWindowGeometry()
-  }
-
-  // Kill previous instance
   if (appProcess) {
     appProcess.kill('SIGTERM')
     appProcess = null
@@ -211,7 +164,7 @@ function setupWatchers(): void {
       watchedDirs.add(dir)
       try {
         const w = fs.watch(dir, (eventType, filename) => {
-          if (!filename || (!filename.endsWith('.ts') && !filename.endsWith('.tsx'))) return
+          if (!filename || !filename.endsWith('.ts')) return
           if (debounce) clearTimeout(debounce)
           debounce = setTimeout(() => {
             console.log(`  [${timestamp()}] Change detected...`)

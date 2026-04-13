@@ -17,7 +17,7 @@ interface AwaitField {
 }
 
 export interface AsyncStateMachineContext {
-  funcSigs: Map<string, import('../../tsn-compiler-ui/src/types.js').FuncSig>
+  funcSigs: Map<string, import('./func_sig.js').FuncSig>
   functions: string[]
   varTypes: Map<string, string>
   identifierAliases: Map<string, string>
