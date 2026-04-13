@@ -53,9 +53,8 @@ function main(): void {
   const breachCount: number = rows.count((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650)
   const anyCriticalErrors: boolean = rows.some((row: ServiceSnapshot): boolean => row.errorRate >= 1.5)
   const allStable: boolean = rows.every((row: ServiceSnapshot): boolean => row.uptime >= 99 && row.p95ms < 900)
-  const hotServices: string[] = rows
-    .filter((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650)
-    .map((row: ServiceSnapshot): string => row.service)
+  const hotRows: ServiceSnapshot[] = rows.filter((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650)
+  const hotServices: string[] = hotRows.map((row: ServiceSnapshot): string => row.service)
 
   console.log("=== SLA SCORECARD ===")
   console.log("Services: " + String(rows.length))

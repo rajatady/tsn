@@ -83,7 +83,12 @@ function parseRequest(line: string): ParsedRequest {
 // ─── Route Matching ─────────────────────────────────────────────────
 
 function splitPath(path: string): string[] {
-  return path.split("/").filter((p: string): boolean => p.length > 0);
+  const all: string[] = path.split("/");
+  const parts: string[] = [];
+  for (const p of all) {
+    if (p.length > 0) parts.push(p);
+  }
+  return parts;
 }
 
 function matchRoute(route: Route, req: ParsedRequest): MatchResult {

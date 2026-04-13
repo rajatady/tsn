@@ -315,9 +315,11 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
         ctx.varTypes.set(n, ctx.tsTypeName(d.type))
       }
     }
+    const varsBefore = new Set(ctx.varTypes.keys())
     out.push(ctx.pad() + `for (${init}; ${node.condition ? ctx.emitExpr(node.condition) : ''}; ${node.incrementor ? ctx.emitExpr(node.incrementor) : ''}) {`)
     ctx.indent++
     if (node.statement) emitBlock(ctx, node.statement, out)
+    ctx.emitScopeCleanup(varsBefore, out, node.statement && ts.isBlock(node.statement) ? node.statement : undefined)
     ctx.indent--
     out.push(ctx.pad() + `}`)
     return
@@ -335,15 +337,31 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
 
     const innerType = arrType?.endsWith('[]') ? arrType.replace('[]', '') : 'number'
     const elemCType = ctx.arrayCElemType(arrType ?? 'number[]')
+    const arrTypeC = ctx.arrayTypeName(innerType)
     ctx.varTypes.set(varName, innerType)
 
     const id = ctx.nextTempId()
-    out.push(ctx.pad() + `for (int _i${id} = 0; _i${id} < ${arrExpr}.len; _i${id}++) {`)
+    // Hoist the iterable into a temp so function calls (e.g. str_split) aren't
+    // re-evaluated on every iteration. Skip the hoist when arrExpr is already
+    // a bare identifier so we don't churn the codegen for the common case.
+    const isSimple = /^[a-zA-Z_]\w*$/.test(arrExpr)
+    const arrRef = isSimple ? arrExpr : `_for${id}`
+    if (!isSimple) {
+      out.push(ctx.pad() + `${arrTypeC} ${arrRef} = ${arrExpr};`)
+    }
+    const varsBefore = new Set(ctx.varTypes.keys())
+    out.push(ctx.pad() + `for (int _i${id} = 0; _i${id} < ${arrRef}.len; _i${id}++) {`)
     ctx.indent++
-    out.push(ctx.pad() + `${elemCType} ${varName} = ${arrExpr}.data[_i${id}];`)
+    out.push(ctx.pad() + `${elemCType} ${varName} = ${arrRef}.data[_i${id}];`)
     emitBlock(ctx, node.statement, out)
+    ctx.emitScopeCleanup(varsBefore, out, ts.isBlock(node.statement) ? node.statement : undefined)
     ctx.indent--
     out.push(ctx.pad() + `}`)
+    if (!isSimple && innerType === 'string') {
+      out.push(ctx.pad() + `StrArr_release_deep(&${arrRef});`)
+    } else if (!isSimple) {
+      out.push(ctx.pad() + `${arrTypeC}_release(&${arrRef});`)
+    }
     return
   }
 
