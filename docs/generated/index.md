@@ -20,7 +20,7 @@ Generated from inline source comments. This is the single source of truth.
 | [Classes](./language-classes.md) | No entries |
 | [Control Flow](./language-control-flow.md) | 1 entries |
 | [Error Handling](./language-exceptions.md) | No entries |
-| [Functions](./language-functions.md) | No entries |
+| [Functions](./language-functions.md) | 1 entries |
 | [Operators & Expressions](./language-operators.md) | No entries |
 | [Type System](./language-types.md) | No entries |
 | [Variables & Declarations](./language-variables.md) | 1 entries |

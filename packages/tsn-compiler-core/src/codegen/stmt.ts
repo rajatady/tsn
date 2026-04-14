@@ -541,26 +541,36 @@ export function emitBlock(ctx: StatementEmitterContext, node: ts.Node, out: stri
  * Types can be explicit or inferred from the initializer. When the
  * compiler can't infer the type, it defaults to `number`.
  *
- * Variables used by functions should have explicit type annotations
- * to ensure correct codegen.
+ * Array destructuring (`const [a, b] = arr`) compiles to indexed
+ * access into the array's `.data` field. Object destructuring
+ * (`const { name, age } = person`) compiles to field access on
+ * the struct.
  *
  * @page language/variables
  * @section declarations
- * @syntax const x: number = 42 | let name: string = "Alice" | const arr: number[] = []
+ * @syntax const x: number = 42 | let name: string = "Alice" | const [a, b] = arr | const { name, age } = person
  * @compilesTo C variable declarations with the mapped type. Arrays
  * initialize via TArr_new(). Object literals become C struct initializers.
- * Nullable primitives (number | null) use tagged structs with a has_value flag.
+ * Destructuring compiles to indexed or field access. Nullable primitives
+ * (number | null) use tagged structs with a has_value flag.
  * @example
  * const count: number = 42
  * let name: string = "Alice"
  * const scores: number[] = []
- * const config: Config = { host: "localhost", port: 8080 }
+ *
+ * // Array destructuring
+ * const parts = line.split("|")
+ * const [name, dept, salary] = parts
+ *
+ * // Object destructuring
+ * const { host, port } = config
  *
  * // Nullable primitives
  * const maybeCount: number | null = null
  * const result: number = maybeCount ?? 0
  * @limitation var is banned — use let or const.
- * @limitation Destructuring declarations are not yet supported.
+ * @limitation Rest elements in array destructuring (...rest) are not yet supported.
+ * @limitation Renaming in object destructuring ({ name: alias }) is not yet supported.
  * @limitation Type inference defaults to number when ambiguous — prefer explicit annotations.
  * @since 0.1.0
  */

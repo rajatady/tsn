@@ -406,6 +406,7 @@ const CODEGEN_FILES: Array<{ path: string; defaultPage: string }> = [
   { path: 'packages/tsn-compiler-core/src/codegen/builtins-timers.ts', defaultPage: 'stdlib/timers' },
   { path: 'packages/tsn-compiler-core/src/codegen/classes.ts', defaultPage: 'language/classes' },
   { path: 'packages/tsn-compiler-core/src/codegen/functions.ts', defaultPage: 'language/functions' },
+  { path: 'packages/tsn-compiler-core/src/codegen/function-emit.ts', defaultPage: 'language/functions' },
   { path: 'packages/tsn-compiler-core/src/codegen/exceptions.ts', defaultPage: 'language/exceptions' },
   { path: 'packages/tsn-compiler-core/src/codegen/async-lowering.ts', defaultPage: 'language/async' },
 ]
