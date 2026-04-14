@@ -6,8 +6,7 @@ Array methods available on every `T[]` value in TSN.
 
 Transformation methods (map, filter, sort, reverse) return new arrays.
 Mutation methods (push, pop) modify in place. Predicate methods (some,
-every, findIndex, count) scan with early exit. Numeric reductions
-(sum, min, max) work on number[] only.
+every, findIndex) scan with early exit. Use reduce() for aggregations.
 
 **Syntax:**
 ```typescript

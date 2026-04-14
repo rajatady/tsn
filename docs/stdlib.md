@@ -87,15 +87,11 @@ zero. For invalid input, both return `0`.
 | `arr.findIndex(fn)` | `((T) => boolean) => number` | Inline scan with early exit |
 | `arr.some(fn)` | `((T) => boolean) => boolean` | Stops at first match |
 | `arr.every(fn)` | `((T) => boolean) => boolean` | Stops at first failure |
-| `arr.count(fn)` | `((T) => boolean) => number` | Counts matching elements |
-| `nums.sum()` | `() => number` | `number[]` only |
-| `nums.min()` | `() => number` | `number[]` only, `0` if empty |
-| `nums.max()` | `() => number` | `number[]` only, `0` if empty |
 | `arr.join(sep?)` | `(?string) => string` | Stack `StrBuf`, heap finalization |
 | `arr.length` | `number` (property) | Direct field access, O(1) |
 | `arr[i]` | `T` | Bounds-checked in debug mode |
 
-**Predicate/callback rules:** `map`, `filter`, `sort`, `reduce`, `forEach`, `some`, `every`, `findIndex`, `count` accept **arrow functions** only (`(x) => x.field > 0`), not function identifiers. This keeps callbacks inlinable with no closure allocation.
+**Predicate/callback rules:** `map`, `filter`, `sort`, `reduce`, `forEach`, `some`, `every`, `findIndex` accept **arrow functions** only (`(x) => x.field > 0`), not function identifiers. This keeps callbacks inlinable with no closure allocation.
 
 Because array headers are passed by value, helpers that call `push()` should
 return the updated array and let the caller rebind it.
@@ -106,15 +102,15 @@ return the updated array and let the caller rebind it.
 const hasErrors = logs.some(log => log.status >= 500)
 const allHealthy = services.every(name => serviceErrorCount(logs, name) === 0)
 const firstSlow = logs.findIndex(log => log.latencyMs >= 900)
-const breaches = logs.count(log => log.status >= 500)
+const breaches = logs.filter(log => log.status >= 500).length
 ```
 
-### Numeric Reductions
+### Reduce
 
 ```typescript
-const total = revenues.sum()
-const highest = revenues.max()
-const lowest = costs.min()
+const total = revenues.reduce((a, b) => a + b, 0)
+const highest = revenues.reduce((a, b) => a > b ? a : b, 0)
+const lowest = costs.reduce((a, b) => a < b ? a : b, 0)
 ```
 
 ### Filter

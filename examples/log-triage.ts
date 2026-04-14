@@ -86,8 +86,8 @@ function parseEntries(raw: string): LogEntry[] {
 
 function printSummary(entries: LogEntry[]): void {
   const actionable: LogEntry[] = entries.filter((e: LogEntry): boolean => isActionable(e));
-  const errorCount: number = entries.count((e: LogEntry): boolean => e.level === "ERROR");
-  const warnCount: number = entries.count((e: LogEntry): boolean => e.level === "WARN");
+  const errorCount: number = entries.filter((e: LogEntry): boolean => e.level === "ERROR").length;
+  const warnCount: number = entries.filter((e: LogEntry): boolean => e.level === "WARN").length;
 
   const serviceCounts = new Map<string, number>();
   for (const entry of actionable) {

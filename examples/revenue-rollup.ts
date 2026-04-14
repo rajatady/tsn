@@ -45,10 +45,10 @@ function main(): void {
   const costs: number[] = rows.map((row: SaleRow): number => row.cost)
   const orders: number[] = rows.map((row: SaleRow): number => row.orders)
 
-  const totalRevenue: number = revenues.sum()
-  const totalCost: number = costs.sum()
-  const topRevenue: number = revenues.max()
-  const highRevenueCount: number = rows.count((row: SaleRow): boolean => row.revenue >= 120000)
+  const totalRevenue: number = revenues.reduce((a: number, b: number): number => a + b, 0)
+  const totalCost: number = costs.reduce((a: number, b: number): number => a + b, 0)
+  const topRevenue: number = revenues.reduce((a: number, b: number): number => a > b ? a : b, 0)
+  const highRevenueCount: number = rows.filter((row: SaleRow): boolean => row.revenue >= 120000).length
   const bestIdx: number = rows.findIndex((row: SaleRow): boolean => row.revenue === topRevenue)
   const topRegion: string = bestIdx === -1 ? "" : rows[bestIdx].region
   const highRows: SaleRow[] = rows.filter((row: SaleRow): boolean => row.revenue >= 120000)
@@ -59,9 +59,9 @@ function main(): void {
   console.log("Total revenue: " + String(totalRevenue))
   console.log("Total cost: " + String(totalCost))
   console.log("Gross margin: " + String(totalRevenue - totalCost))
-  console.log("Total orders: " + String(orders.sum()))
+  console.log("Total orders: " + String(orders.reduce((a: number, b: number): number => a + b, 0)))
   console.log("Highest revenue: " + String(topRevenue))
-  console.log("Lowest cost: " + String(costs.min()))
+  console.log("Lowest cost: " + String(costs.reduce((a: number, b: number): number => a < b ? a : b, costs[0])))
   console.log("Top region: " + topRegion)
   console.log("Regions above 120k revenue: " + String(highRevenueCount))
   console.log("High revenue regions: " + summaryRegions.join(", "))

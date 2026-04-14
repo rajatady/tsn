@@ -38,25 +38,6 @@ function emitPredicateMethod(
       `if (${body}) { _find${id} = _i${id}; break; } } _find${id}; })`
   }
 
-  if (method === 'count') {
-    return `({ int _count${id} = 0; for (int _i${id} = 0; _i${id} < ${objExpr}.len; _i${id}++) { ` +
-      `${elemCType} ${paramName} = ${objExpr}.data[_i${id}]; ` +
-      `if (${body}) _count${id}++; } _count${id}; })`
-  }
-
-  return null
-}
-
-function emitNumberArrayReduction(objExpr: string, method: string, id: number): string | null {
-  if (method === 'sum') {
-    return `({ double _sum${id} = 0; for (int _i${id} = 0; _i${id} < ${objExpr}.len; _i${id}++) _sum${id} += ${objExpr}.data[_i${id}]; _sum${id}; })`
-  }
-  if (method === 'min') {
-    return `({ double _min${id} = ${objExpr}.len > 0 ? ${objExpr}.data[0] : 0; for (int _i${id} = 1; _i${id} < ${objExpr}.len; _i${id}++) if (${objExpr}.data[_i${id}] < _min${id}) _min${id} = ${objExpr}.data[_i${id}]; _min${id}; })`
-  }
-  if (method === 'max') {
-    return `({ double _max${id} = ${objExpr}.len > 0 ? ${objExpr}.data[0] : 0; for (int _i${id} = 1; _i${id} < ${objExpr}.len; _i${id}++) if (${objExpr}.data[_i${id}] > _max${id}) _max${id} = ${objExpr}.data[_i${id}]; _max${id}; })`
-  }
   return null
 }
 
@@ -65,8 +46,7 @@ function emitNumberArrayReduction(objExpr: string, method: string, id: number): 
  *
  * Transformation methods (map, filter, sort, reverse) return new arrays.
  * Mutation methods (push, pop) modify in place. Predicate methods (some,
- * every, findIndex, count) scan with early exit. Numeric reductions
- * (sum, min, max) work on number[] only.
+ * every, findIndex) scan with early exit. Use reduce() for aggregations.
  *
  * @page stdlib/arrays
  * @section overview
@@ -97,10 +77,6 @@ export function emitArrayMethod(
   const innerType = objType.replace('[]', '')
   const elemCType = ctx.arrayCElemType(objType)
   const arrTypeName = ctx.arrayTypeName(innerType)
-
-  if (innerType === 'number' && (method === 'sum' || method === 'min' || method === 'max')) {
-    return emitNumberArrayReduction(objExpr, method, ctx.nextTempId())
-  }
 
   if (method === 'slice') {
     const a = args.map(n => ctx.emitExpr(n))
@@ -152,7 +128,7 @@ export function emitArrayMethod(
     return `${arrTypeName}_pop(&${objExpr})`
   }
 
-  if ((method === 'some' || method === 'every' || method === 'findIndex' || method === 'count') && args.length > 0) {
+  if ((method === 'some' || method === 'every' || method === 'findIndex') && args.length > 0) {
     return emitPredicateMethod(ctx, objExpr, innerType, elemCType, method, args[0])
   }
 

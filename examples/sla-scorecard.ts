@@ -51,7 +51,7 @@ function main(): void {
   const uptimes: number[] = rows.map((row: ServiceSnapshot): number => row.uptime)
   const deploys: number[] = rows.map((row: ServiceSnapshot): number => row.deploys)
 
-  const breachCount: number = rows.count((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650)
+  const breachCount: number = rows.filter((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650).length
   const anyCriticalErrors: boolean = rows.some((row: ServiceSnapshot): boolean => row.errorRate >= 1.5)
   const allStable: boolean = rows.every((row: ServiceSnapshot): boolean => row.uptime >= 99 && row.p95ms < 900)
   const hotRows: ServiceSnapshot[] = rows.filter((row: ServiceSnapshot): boolean => row.errorRate > 0.5 || row.p95ms > 650)
@@ -59,10 +59,10 @@ function main(): void {
 
   console.log("=== SLA SCORECARD ===")
   console.log("Services: " + String(rows.length))
-  console.log("Worst p95 ms: " + String(p95s.max()))
-  console.log("Best p95 ms: " + String(p95s.min()))
-  console.log("Lowest uptime: " + String(uptimes.min()))
-  console.log("Total deploys: " + String(deploys.sum()))
+  console.log("Worst p95 ms: " + String(p95s.reduce((a: number, b: number): number => a > b ? a : b, p95s[0])))
+  console.log("Best p95 ms: " + String(p95s.reduce((a: number, b: number): number => a < b ? a : b, p95s[0])))
+  console.log("Lowest uptime: " + String(uptimes.reduce((a: number, b: number): number => a < b ? a : b, uptimes[0])))
+  console.log("Total deploys: " + String(deploys.reduce((a: number, b: number): number => a + b, 0)))
   console.log("SLA breaches: " + String(breachCount))
   console.log("Any critical errors: " + boolText(anyCriticalErrors))
   console.log("All services stable: " + boolText(allStable))

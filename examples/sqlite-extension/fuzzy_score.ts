@@ -8,8 +8,6 @@
 //   ORDER BY score DESC
 //   LIMIT 10;
 //
-// This is IMPOSSIBLE with Bun, Node, or any JS runtime.
-// You cannot load a JS runtime inside SQLite.
 
 function fuzzyScore(text: string, query: string): number {
   // Simplified fuzzy matching: count consecutive character matches,

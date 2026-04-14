@@ -42,7 +42,7 @@ function parseLogs(raw: string): RequestLog[] {
 }
 
 function serviceErrorCount(logs: RequestLog[], service: string): number {
-  return logs.count((log: RequestLog): boolean => log.service === service && log.status >= 500)
+  return logs.filter((log: RequestLog): boolean => log.service === service && log.status >= 500).length
 }
 
 function topPaths(logs: RequestLog[]): string[] {
