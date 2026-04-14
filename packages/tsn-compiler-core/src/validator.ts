@@ -261,13 +261,7 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
       errors.push({ pos: node.getStart(), message: '"var" is banned — use "let" or "const"' })
     }
 
-    // Ban: arbitrary array destructuring.
-    if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name)) {
-      errors.push({
-        pos: node.getStart(),
-        message: 'Array destructuring is not supported yet',
-      })
-    }
+    // Array destructuring is now supported (indexed access codegen).
 
     // Ban: computed property access with non-literal key
     if (ts.isElementAccessExpression(node)) {

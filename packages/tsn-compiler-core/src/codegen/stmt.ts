@@ -51,6 +51,7 @@ export interface StatementEmitterContext {
   wrapAsyncReturn(expr: ts.Expression | null): string
   wrapAsyncThrow(errorExpr: string): string
   zeroValueForTsType(tsType: string): string
+  getStructFields(name: string): Array<{ name: string; tsType: string; cType: string }> | undefined
 }
 
 /**
@@ -564,6 +565,80 @@ export function emitBlock(ctx: StatementEmitterContext, node: ts.Node, out: stri
  * @since 0.1.0
  */
 export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDeclaration, out: string[]): void {
+  /*
+   * [language/variables :: array-destructuring]
+   * Syntax:      const [a, b, c] = arr
+   * Compiles to: Indexed access into the array's .data field:
+   *              double a = arr.data[0]; double b = arr.data[1]; ...
+   *              The array type is inferred from the initializer.
+   * Example:     const [name, dept] = line.split("|")
+   * Limitation:  Rest elements (...rest) are not yet supported.
+   * Since: 0.2.0
+   */
+  if (ts.isArrayBindingPattern(decl.name) && decl.initializer) {
+    const arrExpr = ctx.emitExpr(decl.initializer)
+    const arrTsType = ctx.inferVarTsType(decl)
+    const innerType = arrTsType.endsWith('[]') ? arrTsType.replace('[]', '') : 'number'
+    const elemCType = ctx.arrayCElemType(arrTsType)
+
+    // Hoist the initializer if it's not a simple identifier (avoid re-evaluation)
+    const isSimple = /^[a-zA-Z_]\w*$/.test(arrExpr)
+    const arrRef = isSimple ? arrExpr : `_destr${ctx.nextTempId()}`
+    if (!isSimple) {
+      const arrCType = ctx.arrayTypeName(innerType)
+      out.push(ctx.pad() + `${arrCType} ${arrRef} = ${arrExpr};`)
+    }
+
+    for (let i = 0; i < decl.name.elements.length; i++) {
+      const elem = decl.name.elements[i]
+      if (ts.isOmittedExpression(elem)) continue
+      if (!ts.isBindingElement(elem) || !ts.isIdentifier(elem.name)) continue
+      const elemName = elem.name.text
+      ctx.varTypes.set(elemName, innerType)
+      ctx.funcLocalVars.set(elemName, innerType)
+      if (ctx.funcTopLevelVars.has(elemName)) ctx.funcDeclaredSoFar.add(elemName)
+      out.push(ctx.pad() + `${elemCType} ${elemName} = ${arrRef}.data[${i}];`)
+    }
+
+    // Release hoisted temp if it was a function call result
+    if (!isSimple && innerType === 'string') {
+      // Don't release yet — elements are borrowed from the array
+    }
+    return
+  }
+
+  /*
+   * [language/variables :: object-destructuring]
+   * Syntax:      const { name, age } = person
+   * Compiles to: Field access on the struct:
+   *              Str name = person.name; double age = person.age;
+   *              The struct type is inferred from the initializer.
+   * Example:     const { host, port } = config
+   * Limitation:  Renaming ({ name: alias }) is not yet supported.
+   * Since: 0.2.0
+   */
+  if (ts.isObjectBindingPattern(decl.name) && decl.initializer) {
+    const objExpr = ctx.emitExpr(decl.initializer)
+    const objTsType = decl.type ? ctx.tsTypeName(decl.type) : ctx.inferVarTsType(decl)
+    const structType = ctx.exprType(decl.initializer) ?? objTsType
+    const fields = ctx.getStructFields(structType) ?? []
+
+    for (const elem of decl.name.elements) {
+      if (!ts.isBindingElement(elem) || !ts.isIdentifier(elem.name)) continue
+      const fieldName = elem.propertyName ? elem.propertyName.getText() : elem.name.text
+      const localName = elem.name.text
+      const field = fields.find(f => f.name === fieldName)
+      const fieldTsType = field?.tsType ?? 'number'
+      const fieldCType = field?.cType ?? 'double'
+
+      ctx.varTypes.set(localName, fieldTsType)
+      ctx.funcLocalVars.set(localName, fieldTsType)
+      if (ctx.funcTopLevelVars.has(localName)) ctx.funcDeclaredSoFar.add(localName)
+      out.push(ctx.pad() + `${fieldCType} ${localName} = ${objExpr}.${fieldName};`)
+    }
+    return
+  }
+
   const name = decl.name.getText()
   const tsType = decl.type ? ctx.tsTypeName(decl.type) : ctx.inferVarTsType(decl)
   const cType = decl.type ? ctx.tsTypeToC(decl.type) : ctx.inferVarType(decl)

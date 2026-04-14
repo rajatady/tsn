@@ -203,14 +203,15 @@ function* gen(): Generator<number, void, void> {
   assert.ok(messages.some(msg => msg.includes('Generators are banned')))
 })
 
-test('validator rejects general array destructuring', () => {
+test('validator allows array destructuring', () => {
   const messages = validateMessages(`
 function main(): void {
-  const [a, b] = [1, 2]
+  const nums: number[] = []
+  const [a, b] = nums
   console.log(String(a + b))
 }
 `)
-  assert.ok(messages.some(msg => msg.includes('Array destructuring is not supported yet')))
+  assert.equal(messages.length, 0)
 })
 
 test('validator rejects JSX syntax in .ts files with a clear message', () => {
