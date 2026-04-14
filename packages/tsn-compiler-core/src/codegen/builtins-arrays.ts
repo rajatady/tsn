@@ -117,6 +117,14 @@ export function emitArrayMethod(
       `Str _rjoin${id} = strbuf_to_heap_str(&_join${id}); strbuf_free(&_join${id});${hoistRelease} _rjoin${id}; })`
   }
 
+  if (method === 'reverse') {
+    return `${arrTypeName}_reverse(&${objExpr})`
+  }
+
+  if (method === 'pop') {
+    return `${arrTypeName}_pop(&${objExpr})`
+  }
+
   if ((method === 'some' || method === 'every' || method === 'findIndex' || method === 'count') && args.length > 0) {
     return emitPredicateMethod(ctx, objExpr, innerType, elemCType, method, args[0])
   }

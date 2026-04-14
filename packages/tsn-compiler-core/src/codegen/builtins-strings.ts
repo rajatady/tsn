@@ -31,6 +31,9 @@ export function emitStringMethod(
   if (method === 'toLowerCase') return `str_lower_ascii(${objExpr})`
   if (method === 'toUpperCase') return `str_upper_ascii(${objExpr})`
   if (method === 'charCodeAt') return `((double)(unsigned char)str_at(${objExpr}, (int)(${ctx.emitExpr(args[0])})))`
+  if (method === 'replace' && args.length >= 2) return `str_replace(${objExpr}, ${ctx.emitExpr(args[0])}, ${ctx.emitExpr(args[1])})`
+  if (method === 'replaceAll' && args.length >= 2) return `str_replaceAll(${objExpr}, ${ctx.emitExpr(args[0])}, ${ctx.emitExpr(args[1])})`
+  if (method === 'repeat' && args.length >= 1) return `str_repeat(${objExpr}, (int)(${ctx.emitExpr(args[0])}))`
 
   return null
 }

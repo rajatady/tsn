@@ -223,7 +223,11 @@ export function exprType(
         if (classMethod) return classMethod.returnTsType
       }
 
-      if (method === 'filter' || method === 'slice' || method === 'sort') return ctx.exprType(node.expression.expression)
+      if (method === 'filter' || method === 'slice' || method === 'sort' || method === 'reverse') return ctx.exprType(node.expression.expression)
+      if (method === 'pop') {
+        const arrType = ctx.exprType(node.expression.expression)
+        return arrType?.endsWith('[]') ? arrType.replace('[]', '') : 'number'
+      }
       if (method === 'map' && node.arguments.length > 0) {
         const fn = node.arguments[0]
         if (ts.isArrowFunction(fn) && fn.parameters.length > 0) {

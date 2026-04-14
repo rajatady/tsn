@@ -382,7 +382,17 @@ static inline double ts_parse_int(Str s) {
             a->data = NULL; a->len = 0; a->cap = 0;                    \
         }                                                               \
     }                                                                   \
-    static inline void Name##_free(Name *a) { Name##_release(a); }
+    static inline void Name##_free(Name *a) { Name##_release(a); }      \
+    static inline Name Name##_reverse(Name *a) {                        \
+        Name r = Name##_new();                                          \
+        for (int i = a->len - 1; i >= 0; i--) Name##_push(&r, a->data[i]); \
+        return r;                                                       \
+    }                                                                   \
+    static inline Type Name##_pop(Name *a) {                            \
+        Type v = a->data[a->len - 1];                                   \
+        a->len--;                                                       \
+        return v;                                                       \
+    }
 
 DEFINE_ARRAY(StrArr, Str)
 DEFINE_ARRAY(DoubleArr, double)
@@ -415,6 +425,61 @@ static inline void StrArr_release_deep(StrArr *a) {
         for (int i = 0; i < a->len; i++) str_release(&a->data[i]);
     }
     StrArr_release(a);
+}
+
+/* ─── String: replace / replaceAll / repeat ─────────────────────── */
+
+static inline Str str_replace(Str s, Str search, Str replacement) {
+    if (search.len == 0) return s;
+    int idx = str_indexOf(s, search);
+    if (idx < 0) return s;
+    int newlen = s.len - search.len + replacement.len;
+    char *buf = (char *)rc_alloc(newlen + 1);
+    memcpy(buf, s.data, idx);
+    memcpy(buf + idx, replacement.data, replacement.len);
+    memcpy(buf + idx + replacement.len, s.data + idx + search.len, s.len - idx - search.len);
+    buf[newlen] = '\0';
+    return (Str){ buf, buf, newlen, 0 };
+}
+
+static inline Str str_replaceAll(Str s, Str search, Str replacement) {
+    if (search.len == 0) return s;
+    int count = 0;
+    int pos = 0;
+    while (pos <= s.len - search.len) {
+        int idx = str_indexOf_from(s, search, pos);
+        if (idx < 0) break;
+        count++;
+        pos = idx + search.len;
+    }
+    if (count == 0) return s;
+    int newlen = s.len + count * (replacement.len - search.len);
+    char *buf = (char *)rc_alloc(newlen + 1);
+    int src = 0, dst = 0;
+    while (src <= s.len) {
+        int idx = str_indexOf_from(s, search, src);
+        if (idx < 0) {
+            memcpy(buf + dst, s.data + src, s.len - src);
+            dst += s.len - src;
+            break;
+        }
+        memcpy(buf + dst, s.data + src, idx - src);
+        dst += idx - src;
+        memcpy(buf + dst, replacement.data, replacement.len);
+        dst += replacement.len;
+        src = idx + search.len;
+    }
+    buf[newlen] = '\0';
+    return (Str){ buf, buf, newlen, 0 };
+}
+
+static inline Str str_repeat(Str s, int n) {
+    if (n <= 0 || s.len == 0) return str_lit("");
+    int newlen = s.len * n;
+    char *buf = (char *)rc_alloc(newlen + 1);
+    for (int i = 0; i < n; i++) memcpy(buf + i * s.len, s.data, s.len);
+    buf[newlen] = '\0';
+    return (Str){ buf, buf, newlen, 0 };
 }
 
 /* ─── console.log — direct stdout ────────────────────────────────── */
