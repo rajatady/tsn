@@ -538,6 +538,19 @@ static inline OwnedStr read_stdin(void) {
 #include "runtime_fetch.h"
 #include "runtime_timers.h"
 
+/* ─── Date ─────────────────────────────────────────────────────────
+ * Date.now() → milliseconds since Unix epoch.
+ * Maps to POSIX clock_gettime(CLOCK_REALTIME).
+ */
+
+#include <time.h>
+
+static inline double ts_date_now(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+}
+
 /* ─── Math ─────────────────────────────────────────────────────────
  * All Math.* calls compile to ts_math_*(args).
  * Constants: Math.PI → ts_math_PI, Math.E → ts_math_E.

@@ -405,6 +405,7 @@ const CODEGEN_FILES: Array<{ path: string; defaultPage: string }> = [
   { path: 'packages/tsn-compiler-core/src/codegen/builtins-hosted.ts', defaultPage: 'stdlib/fs' },
   { path: 'packages/tsn-compiler-core/src/codegen/builtins-map.ts', defaultPage: 'stdlib/collections' },
   { path: 'packages/tsn-compiler-core/src/codegen/builtins-math.ts', defaultPage: 'stdlib/math' },
+  { path: 'packages/tsn-compiler-core/src/codegen/builtins-date.ts', defaultPage: 'stdlib/date' },
   { path: 'packages/tsn-compiler-core/src/codegen/builtins-json.ts', defaultPage: 'stdlib/json' },
   { path: 'packages/tsn-compiler-core/src/codegen/builtins-regex.ts', defaultPage: 'stdlib/strings' },
   { path: 'packages/tsn-compiler-core/src/codegen/builtins-timers.ts', defaultPage: 'stdlib/timers' },

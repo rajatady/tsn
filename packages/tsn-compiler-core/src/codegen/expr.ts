@@ -136,6 +136,10 @@ export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): stri
       return `ts_math_${method}(${args})`
     }
 
+    if (ts.isIdentifier(obj) && obj.text === 'Date' && method === 'now') {
+      return `ts_date_now()`
+    }
+
     if (ts.isIdentifier(obj) && obj.text === 'Cpu') {
       if (method === 'inb') return `((double)ts_cpu_inb((uint16_t)(${ctx.emitExpr(node.arguments[0])})))`
       if (method === 'outb') return `ts_cpu_outb((uint16_t)(${ctx.emitExpr(node.arguments[0])}), (uint8_t)(${ctx.emitExpr(node.arguments[1])}))`

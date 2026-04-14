@@ -189,6 +189,7 @@ export function exprType(
     if (ts.isPropertyAccessExpression(node.expression)) {
       const method = node.expression.name.text
       if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Math') return 'number'
+      if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Date' && method === 'now') return 'number'
       if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Cpu') return 'number'
       if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'Mem') return 'number'
 

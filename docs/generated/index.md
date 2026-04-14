@@ -8,6 +8,7 @@ Generated from inline source comments. This is the single source of truth.
 |------|-------------|
 | [Array Methods](./stdlib-arrays.md) | 1 entries |
 | [collections](./stdlib-collections.md) | 2 entries |
+| [date](./stdlib-date.md) | 1 entries |
 | [File System (@tsn/fs)](./stdlib-fs.md) | 12 entries |
 | [HTTP (@tsn/http)](./stdlib-http.md) | 8 entries |
 | [JSON](./stdlib-json.md) | 2 entries |
