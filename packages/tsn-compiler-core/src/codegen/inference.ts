@@ -3,7 +3,7 @@ import * as ts from 'typescript'
 import { unwrapAwaitType } from './async-lowering.js'
 import type { FuncSig } from './func_sig.js'
 import type { ClassDef, StructDef, StructField } from './types.js'
-import { isNullableCapableTypeName, makeNullableType, nullableBaseType } from './types.js'
+import { isNullableCapableTypeName, makeNullableType, mapTypeName, nullableBaseType, setTypeName } from './types.js'
 
 export interface InferenceContext {
   structs: StructDef[]
@@ -44,6 +44,14 @@ export function inferVarType(
 
   if (ts.isNewExpression(decl.initializer)) {
     const name = decl.initializer.expression.getText()
+    if (name === 'Map' && decl.initializer.typeArguments?.length >= 2) {
+      const k = ctx.tsTypeName(decl.initializer.typeArguments[0])
+      const v = ctx.tsTypeName(decl.initializer.typeArguments[1])
+      return mapTypeName(k, v)
+    }
+    if (name === 'Set' && decl.initializer.typeArguments?.length >= 1) {
+      return setTypeName(ctx.tsTypeName(decl.initializer.typeArguments[0]))
+    }
     if (decl.initializer.typeArguments?.length) {
       const arg = ctx.tsTypeName(decl.initializer.typeArguments[0])
       const mono = ctx.ensureMonomorphized(name, arg)
@@ -63,6 +71,14 @@ export function inferVarTsType(
 
   if (ts.isNewExpression(decl.initializer)) {
     const name = decl.initializer.expression.getText()
+    if (name === 'Map' && decl.initializer.typeArguments?.length >= 2) {
+      const k = ctx.tsTypeName(decl.initializer.typeArguments[0])
+      const v = ctx.tsTypeName(decl.initializer.typeArguments[1])
+      return `Map<${k}, ${v}>`
+    }
+    if (name === 'Set' && decl.initializer.typeArguments?.length >= 1) {
+      return `Set<${ctx.tsTypeName(decl.initializer.typeArguments[0])}>`
+    }
     if (decl.initializer.typeArguments?.length) {
       const arg = ctx.tsTypeName(decl.initializer.typeArguments[0])
       return ctx.ensureMonomorphized(name, arg)
@@ -124,6 +140,14 @@ export function exprType(
 
   if (ts.isNewExpression(node)) {
     const name = node.expression.getText()
+    if (name === 'Map' && node.typeArguments?.length >= 2) {
+      const k = ctx.tsTypeName(node.typeArguments[0])
+      const v = ctx.tsTypeName(node.typeArguments[1])
+      return `Map<${k}, ${v}>`
+    }
+    if (name === 'Set' && node.typeArguments?.length >= 1) {
+      return `Set<${ctx.tsTypeName(node.typeArguments[0])}>`
+    }
     if (node.typeArguments?.length) {
       const arg = ctx.tsTypeName(node.typeArguments[0])
       return ctx.monomorphizeName(name, arg)
@@ -173,6 +197,26 @@ export function exprType(
         if (method === 'text') return 'Promise<string>'
         if (method === 'header') return 'string'
       }
+      // Map<K,V> method return types
+      if (callObjType?.startsWith('Map<')) {
+        if (method === 'has') return 'boolean'
+        if (method === 'delete') return 'boolean'
+        if (method === 'get') {
+          const inner = callObjType.slice(4, -1)
+          const valType = inner.split(',').map(s => s.trim())[1]
+          // get() returns nullable — the key might not exist
+          if (valType === 'number' || valType === 'boolean' || valType === 'string') return `${valType}?`
+          return valType
+        }
+        if (method === 'set') return 'void'
+      }
+      // Set<T> method return types
+      if (callObjType?.startsWith('Set<')) {
+        if (method === 'has') return 'boolean'
+        if (method === 'delete') return 'boolean'
+        if (method === 'add') return 'void'
+      }
+
       if (callObjType && ctx.classDefs.has(callObjType)) {
         const cls = ctx.classDefs.get(callObjType)
         const classMethod = cls?.methods.find(x => x.name === method)

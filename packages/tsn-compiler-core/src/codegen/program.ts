@@ -2,12 +2,14 @@ import * as ts from 'typescript'
 
 import type { FuncSig } from './func_sig.js'
 import { appendHostedAsyncHelpers } from './builtins-hosted.js'
-import type { ClassDef, StructDef } from './types.js'
+import type { ClassDef, MapTypeInfo, SetTypeInfo, StructDef } from './types.js'
 
 export interface ProgramAssemblyContext {
   classDefs: Map<string, ClassDef>
   structs: StructDef[]
   arrayTypes: Set<string>
+  mapTypes: Map<string, MapTypeInfo>
+  setTypes: Map<string, SetTypeInfo>
   promiseTypes: Map<string, string>
   needsJsonParser: boolean
   globalDecls: string[]
@@ -68,6 +70,14 @@ export function assembleProgram(
   for (const t of ctx.arrayTypes) {
     if (t === 'Str' || t === 'double') continue
     lines.push(`DEFINE_ARRAY(${t}Arr, ${t})`)
+  }
+
+  for (const [, info] of ctx.mapTypes) {
+    lines.push(`DEFINE_MAP(${info.name}, ${info.keyCType}, ${info.valCType}, ${info.hashFn}, ${info.eqFn})`)
+  }
+
+  for (const [, info] of ctx.setTypes) {
+    lines.push(`DEFINE_SET(${info.name}, ${info.elemCType}, ${info.hashFn}, ${info.eqFn})`)
   }
 
   for (const [name, valueCType] of ctx.promiseTypes) {

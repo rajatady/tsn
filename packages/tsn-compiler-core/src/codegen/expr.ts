@@ -5,7 +5,7 @@ import { emitHostedBuiltinCall } from './builtins-hosted.js'
 import { emitStringMethod } from './builtins-strings.js'
 import type { FuncSig } from './func_sig.js'
 import type { ClassDef, StructDef } from './types.js'
-import { isNullableCapableTypeName, isNullablePrimitive, makeNullableType, nullableBaseType } from './types.js'
+import { isNullableCapableTypeName, isNullablePrimitive, makeNullableType, mapTypeName, nullableBaseType, setTypeName } from './types.js'
 
 export interface ExprEmitterContext {
   builderVars: Set<string>
@@ -95,6 +95,14 @@ export function emitPropAccess(ctx: ExprEmitterContext, node: ts.PropertyAccessE
     if (prop === 'error') return `${promiseCType}_error(${obj})`
     if (prop === 'value') return `${promiseCType}_value(${obj})`
   }
+  // Map.size / Set.size
+  if (objType?.startsWith('Map<') && prop === 'size') {
+    return `${ctx.emitExpr(node.expression)}.len`
+  }
+  if (objType?.startsWith('Set<') && prop === 'size') {
+    return `${ctx.emitExpr(node.expression)}._m.len`
+  }
+
   if (objType === 'Response' && prop === 'statusText') {
     return `ts_response_status_text(${ctx.emitExpr(node.expression)})`
   }
@@ -156,6 +164,60 @@ export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): stri
         return args ? `${objType}_${method}(self, ${args})` : `${objType}_${method}(self)`
       }
       return args ? `${objType}_${method}(${objExpr}, ${args})` : `${objType}_${method}(${objExpr})`
+    }
+
+    // Map<K,V> method dispatch
+    if (objType?.startsWith('Map<')) {
+      const inner = objType.slice(4, -1) // "string, number"
+      const [keyTsType, valTsType] = inner.split(',').map(s => s.trim())
+      const mapName = mapTypeName(keyTsType, valTsType)
+
+      if (method === 'set') {
+        const keyArg = ctx.emitExpr(node.arguments[0])
+        const valArg = ctx.emitExpr(node.arguments[1])
+        return `${mapName}_set(&${objExpr}, ${keyArg}, ${valArg})`
+      }
+      if (method === 'get') {
+        const keyArg = ctx.emitExpr(node.arguments[0])
+        // For primitive value types, wrap in nullable to distinguish "not found" from "zero"
+        if (valTsType === 'number') {
+          const tmpId = ctx.nextTempId()
+          return `({ double _mgv${tmpId} = ${mapName}_get(&${objExpr}, ${keyArg}); ${mapName}_has(&${objExpr}, ${keyArg}) ? (NullableDouble){_mgv${tmpId}, true} : (NullableDouble){0, false}; })`
+        }
+        if (valTsType === 'boolean') {
+          const tmpId = ctx.nextTempId()
+          return `({ bool _mgv${tmpId} = ${mapName}_get(&${objExpr}, ${keyArg}); ${mapName}_has(&${objExpr}, ${keyArg}) ? (NullableBool){_mgv${tmpId}, true} : (NullableBool){false, false}; })`
+        }
+        // For string/struct values, the zeroed return (.data==NULL) is naturally nullable
+        return `${mapName}_get(&${objExpr}, ${keyArg})`
+      }
+      if (method === 'has') {
+        const keyArg = ctx.emitExpr(node.arguments[0])
+        return `${mapName}_has(&${objExpr}, ${keyArg})`
+      }
+      if (method === 'delete') {
+        const keyArg = ctx.emitExpr(node.arguments[0])
+        return `${mapName}_delete(&${objExpr}, ${keyArg})`
+      }
+    }
+
+    // Set<T> method dispatch
+    if (objType?.startsWith('Set<')) {
+      const elemTsType = objType.slice(4, -1).trim()
+      const setName = setTypeName(elemTsType)
+
+      if (method === 'add') {
+        const arg = ctx.emitExpr(node.arguments[0])
+        return `${setName}_add(&${objExpr}, ${arg})`
+      }
+      if (method === 'has') {
+        const arg = ctx.emitExpr(node.arguments[0])
+        return `${setName}_has(&${objExpr}, ${arg})`
+      }
+      if (method === 'delete') {
+        const arg = ctx.emitExpr(node.arguments[0])
+        return `${setName}_delete(&${objExpr}, ${arg})`
+      }
     }
 
     if (objType === 'Response') {

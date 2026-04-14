@@ -113,6 +113,94 @@ export function tsTypeName(typeNode: ts.TypeNode | undefined): string {
   return typeNode.getText()
 }
 
+function cTypeLabel(tsType: string): string {
+  switch (tsType) {
+    case 'string': return 'Str'
+    case 'number': return 'Double'
+    case 'boolean': return 'Bool'
+    default: return tsType
+  }
+}
+
+function hashFnForKey(tsType: string): string {
+  switch (tsType) {
+    case 'string': return 'tsn_hash_str'
+    case 'number': return 'tsn_hash_double'
+    case 'boolean': return 'tsn_hash_bool'
+    default: return 'tsn_hash_str'
+  }
+}
+
+function eqFnForKey(tsType: string): string {
+  switch (tsType) {
+    case 'string': return 'tsn_eq_str'
+    case 'number': return 'tsn_eq_double'
+    case 'boolean': return 'tsn_eq_bool'
+    default: return 'tsn_eq_str'
+  }
+}
+
+function keyCType(tsType: string): string {
+  switch (tsType) {
+    case 'string': return 'Str'
+    case 'number': return 'double'
+    case 'boolean': return 'bool'
+    default: return tsType
+  }
+}
+
+function valCType(tsType: string): string {
+  return keyCType(tsType)
+}
+
+export interface MapTypeInfo {
+  name: string
+  keyCType: string
+  valCType: string
+  hashFn: string
+  eqFn: string
+  keyTsType: string
+  valTsType: string
+}
+
+export function mapTypeName(keyTsType: string, valTsType: string): string {
+  return `${cTypeLabel(keyTsType)}${cTypeLabel(valTsType)}Map`
+}
+
+export function mapTypeInfo(keyTsType: string, valTsType: string): MapTypeInfo {
+  return {
+    name: mapTypeName(keyTsType, valTsType),
+    keyCType: keyCType(keyTsType),
+    valCType: valCType(valTsType),
+    hashFn: hashFnForKey(keyTsType),
+    eqFn: eqFnForKey(keyTsType),
+    keyTsType,
+    valTsType,
+  }
+}
+
+export function setTypeName(elemTsType: string): string {
+  return `${cTypeLabel(elemTsType)}Set`
+}
+
+export interface SetTypeInfo {
+  name: string
+  elemCType: string
+  hashFn: string
+  eqFn: string
+  elemTsType: string
+}
+
+export function setTypeInfo(elemTsType: string): SetTypeInfo {
+  return {
+    name: setTypeName(elemTsType),
+    elemCType: keyCType(elemTsType),
+    hashFn: hashFnForKey(elemTsType),
+    eqFn: eqFnForKey(elemTsType),
+    elemTsType,
+  }
+}
+
 export function arrayTypeName(innerTsType: string, arrayTypes: Set<string>): string {
   switch (innerTsType) {
     case 'string':
@@ -160,6 +248,14 @@ export function tsTypeNameToC(tsType: string, ctx: TypeResolutionContext, fallba
   if (promisedInner) {
     const valueCType = tsTypeNameToC(promisedInner, ctx)
     return registerPromiseType(ctx, valueCType)
+  }
+  if (tsType.startsWith('Map<')) {
+    const inner = tsType.slice(4, -1)
+    const [k, v] = inner.split(',').map(s => s.trim())
+    return mapTypeName(k, v)
+  }
+  if (tsType.startsWith('Set<')) {
+    return setTypeName(tsType.slice(4, -1).trim())
   }
   if (tsType.endsWith('[]')) {
     const inner = tsType.slice(0, -2)

@@ -484,6 +484,10 @@ static inline double ts_math_floor(double x) { return floor(x); }
 #include "debug.h"
 #include "crash.h"
 
+/* ─── Hash Map and Set ─────────────────────────────────────────── */
+
+#include "runtime_map.h"
+
 /* ─── Nullable Primitives ──────────────────────────────────────── */
 /* number | null and boolean | null use tagged structs since primitive
  * C types (double, bool) have no natural null representation. */

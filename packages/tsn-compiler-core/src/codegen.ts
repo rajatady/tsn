@@ -76,13 +76,19 @@ import { isSkippableStatement, sourceLineDirective } from './codegen/top-level.j
 import {
   arrayCElemType as arrayCElemTypeFor,
   arrayTypeName as arrayTypeNameFor,
+  mapTypeInfo as mapTypeInfoFor,
+  mapTypeName as mapTypeNameFor,
+  setTypeInfo as setTypeInfoFor,
+  setTypeName as setTypeNameFor,
   zeroValueForTsType as zeroValueForTsTypeFor,
   tsTypeName as tsTypeNameFor,
   tsTypeNameToC as tsTypeNameToCFor,
   tsTypeToC as tsTypeToCFor,
   type ClassDef,
+  type MapTypeInfo,
   type ParamAlias,
   type ParamInfo,
+  type SetTypeInfo,
   type StructDef,
 } from './codegen/types.js'
 import { registerPromiseType as registerPromiseTypeFor } from './codegen/async-types.js'
@@ -100,6 +106,8 @@ class CodeGen {
   private needsJsonParser = false
   private jsonParseTargetType = ''
   private arrayTypes: Set<string> = new Set()  // track which array types we need
+  private mapTypes: Map<string, MapTypeInfo> = new Map()  // track which map types we need
+  private setTypes: Map<string, SetTypeInfo> = new Map()  // track which set types we need
   private promiseTypes: Map<string, string> = new Map()
   // Track variables that are being built with StrBuf in current scope
   private builderVars: Set<string> = new Set()
@@ -289,6 +297,24 @@ class CodeGen {
 
     if (ts.isArrowFunction(node))
       return `_lambda_${this.lambdaCounter++}`
+
+    // Map/Set instantiation: new Map<string, number>(), new Set<string>()
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
+      const baseName = node.expression.text
+      if (baseName === 'Map' && node.typeArguments && node.typeArguments.length >= 2) {
+        const keyType = this.tsTypeName(node.typeArguments[0])
+        const valType = this.tsTypeName(node.typeArguments[1])
+        const info = mapTypeInfoFor(keyType, valType)
+        this.mapTypes.set(info.name, info)
+        return `${info.name}_new()`
+      }
+      if (baseName === 'Set' && node.typeArguments && node.typeArguments.length >= 1) {
+        const elemType = this.tsTypeName(node.typeArguments[0])
+        const info = setTypeInfoFor(elemType)
+        this.setTypes.set(info.name, info)
+        return `${info.name}_new()`
+      }
+    }
 
     // Class instantiation: new VGA(), new Ring<number>(8, 0)
     if (ts.isNewExpression(node)) {
