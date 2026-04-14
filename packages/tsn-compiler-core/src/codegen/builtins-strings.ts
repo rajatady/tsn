@@ -57,6 +57,8 @@ export function emitStringMethod(
   if (method === 'replace' && args.length >= 2) return `str_replace(${objExpr}, ${ctx.emitExpr(args[0])}, ${ctx.emitExpr(args[1])})`
   if (method === 'replaceAll' && args.length >= 2) return `str_replaceAll(${objExpr}, ${ctx.emitExpr(args[0])}, ${ctx.emitExpr(args[1])})`
   if (method === 'repeat' && args.length >= 1) return `str_repeat(${objExpr}, (int)(${ctx.emitExpr(args[0])}))`
+  if (method === 'match' && args.length >= 1) return `str_match(${objExpr}, ${ctx.emitExpr(args[0])})`
+  if (method === 'search' && args.length >= 1) return `str_search(${objExpr}, ${ctx.emitExpr(args[0])})`
 
   return null
 }

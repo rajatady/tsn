@@ -252,9 +252,11 @@ export function exprType(
         return ctx.exprType(node.arguments[1]) ?? 'number'
       }
       if (method === 'forEach') return 'void'
+      if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'JSON' && method === 'stringify') return 'string'
       if (method === 'split') return 'string[]'
-      if (method === 'trim' || method === 'trimStart' || method === 'trimEnd' || method === 'join' || method === 'toLowerCase' || method === 'toUpperCase') return 'string'
-      if (method === 'indexOf' || method === 'findIndex' || method === 'count' || method === 'sum' || method === 'min' || method === 'max' || method === 'charCodeAt') return 'number'
+      if (method === 'trim' || method === 'trimStart' || method === 'trimEnd' || method === 'join' || method === 'toLowerCase' || method === 'toUpperCase' || method === 'replace' || method === 'replaceAll' || method === 'repeat') return 'string'
+      if (method === 'match') return 'string?'
+      if (method === 'indexOf' || method === 'findIndex' || method === 'count' || method === 'sum' || method === 'min' || method === 'max' || method === 'charCodeAt' || method === 'search') return 'number'
       if (method === 'includes' || method === 'startsWith' || method === 'endsWith' || method === 'some' || method === 'every') return 'boolean'
     }
   }

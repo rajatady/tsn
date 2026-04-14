@@ -52,3 +52,46 @@ const stars = "*".repeat(10)
 > Since 0.1.0
 
 ---
+
+### regex
+
+Regex support via POSIX `<regex.h>`.
+
+TSN provides basic regex matching through `string.match()` and
+`string.search()`. Patterns are POSIX Extended Regular Expressions
+(ERE), passed as plain strings — not `/pattern/` literals.
+
+**Syntax:**
+```typescript
+s.match("[0-9]+")
+s.search("[a-z]+")
+```
+
+**Returns:** `unknown`
+
+**Compiles to:**
+POSIX regcomp/regexec. The pattern string is compiled
+at each call (no caching). match() returns a Str slice of the
+first match (nullable — .data is NULL on no match). search()
+returns the index of the first match or -1.
+
+**Limitations:**
+- Patterns are POSIX ERE, not JavaScript regex. No /flags/.
+- No global matching (matchAll). Only first match returned.
+- Pattern is recompiled on every call — no regex caching.
+- No capture groups — match() returns the full match only.
+
+**Examples:**
+```typescript
+const log = "error: code 404 at line 72"
+const code = log.match("[0-9]+") ?? "none"  // "404"
+const idx = log.search("[0-9]+")             // 12
+```
+```typescript
+// Check if a string contains a pattern
+const hasDigits = s.search("[0-9]") >= 0
+```
+
+> Since 0.2.0
+
+---

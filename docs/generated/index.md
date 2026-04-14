@@ -10,7 +10,9 @@ Generated from inline source comments. This is the single source of truth.
 | [collections](./stdlib-collections.md) | 2 entries |
 | [File System (@tsn/fs)](./stdlib-fs.md) | 12 entries |
 | [HTTP (@tsn/http)](./stdlib-http.md) | 8 entries |
-| [String Methods](./stdlib-strings.md) | 1 entries |
+| [JSON](./stdlib-json.md) | 2 entries |
+| [Math](./stdlib-math.md) | 1 entries |
+| [String Methods](./stdlib-strings.md) | 2 entries |
 | [Timers](./stdlib-timers.md) | No entries |
 
 ## Language Reference

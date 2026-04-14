@@ -158,6 +158,44 @@ export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): stri
       return `json_parse_data(${ctx.emitExpr(node.arguments[0])})`
     }
 
+    if (ts.isIdentifier(obj) && obj.text === 'JSON' && method === 'stringify') {
+      const arg = node.arguments[0]
+      const argExpr = ctx.emitExpr(arg)
+      const argType = ctx.exprType(arg)
+      if (argType === 'number') return `json_stringify_num(${argExpr})`
+      if (argType === 'string') return `json_stringify_str(${argExpr})`
+      if (argType === 'boolean') return `json_stringify_bool(${argExpr})`
+      // Struct: generate inline serialization via StrBuf
+      const struct = ctx.structs.find(s => s.name === argType)
+      if (struct) {
+        const id = ctx.nextTempId()
+        const parts: string[] = []
+        parts.push(`STRBUF(_js${id}, 256)`)
+        parts.push(`strbuf_add_char(&_js${id}, '{')`)
+        for (let fi = 0; fi < struct.fields.length; fi++) {
+          const f = struct.fields[fi]
+          if (fi > 0) parts.push(`strbuf_add_char(&_js${id}, ',')`)
+          parts.push(`strbuf_add_char(&_js${id}, '"')`)
+          parts.push(`strbuf_add_cstr(&_js${id}, "${f.name}")`)
+          parts.push(`strbuf_add_cstr(&_js${id}, "\\":")`)
+          if (f.tsType === 'string') {
+            parts.push(`strbuf_add_char(&_js${id}, '"')`)
+            parts.push(`strbuf_add_str(&_js${id}, ${argExpr}.${f.name})`)
+            parts.push(`strbuf_add_char(&_js${id}, '"')`)
+          } else if (f.tsType === 'number') {
+            parts.push(`strbuf_add_double(&_js${id}, ${argExpr}.${f.name})`)
+          } else if (f.tsType === 'boolean') {
+            parts.push(`strbuf_add_cstr(&_js${id}, ${argExpr}.${f.name} ? "true" : "false")`)
+          }
+        }
+        parts.push(`strbuf_add_char(&_js${id}, '}')`)
+        parts.push(`Str _rjs${id} = strbuf_to_heap_str(&_js${id})`)
+        parts.push(`strbuf_free(&_js${id})`)
+        return `({ ${parts.join('; ')}; _rjs${id}; })`
+      }
+      return `json_stringify_str(${argExpr})`
+    }
+
     if (objType && ctx.classDefs.has(objType)) {
       const args = node.arguments.map(a => ctx.emitExpr(a)).join(', ')
       if (obj.kind === ts.SyntaxKind.ThisKeyword) {

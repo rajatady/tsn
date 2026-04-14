@@ -538,10 +538,101 @@ static inline OwnedStr read_stdin(void) {
 #include "runtime_fetch.h"
 #include "runtime_timers.h"
 
-/* ─── Math ───────────────────────────────────────────────────────── */
+/* ─── Math ─────────────────────────────────────────────────────────
+ * All Math.* calls compile to ts_math_*(args).
+ * Constants: Math.PI → ts_math_PI, Math.E → ts_math_E.
+ * All functions map directly to C <math.h> equivalents.
+ */
 
 static inline double ts_math_round(double x) { return round(x); }
 static inline double ts_math_floor(double x) { return floor(x); }
+static inline double ts_math_ceil(double x) { return ceil(x); }
+static inline double ts_math_abs(double x) { return fabs(x); }
+static inline double ts_math_pow(double x, double y) { return pow(x, y); }
+static inline double ts_math_sqrt(double x) { return sqrt(x); }
+static inline double ts_math_min(double x, double y) { return x < y ? x : y; }
+static inline double ts_math_max(double x, double y) { return x > y ? x : y; }
+static inline double ts_math_sin(double x) { return sin(x); }
+static inline double ts_math_cos(double x) { return cos(x); }
+static inline double ts_math_tan(double x) { return tan(x); }
+static inline double ts_math_exp(double x) { return exp(x); }
+static inline double ts_math_log(double x) { return log(x); }
+static inline double ts_math_random(void) { return (double)rand() / (double)RAND_MAX; }
+
+#define ts_math_PI 3.14159265358979323846
+#define ts_math_E  2.71828182845904523536
+
+/* ─── JSON.stringify primitives ──────────────────────────────────── */
+
+static inline Str json_stringify_num(double n) {
+    return num_to_str(n);
+}
+
+static inline Str json_stringify_str(Str s) {
+    int need = s.len + 2; /* quotes */
+    char *buf = (char *)rc_alloc(need + 1);
+    buf[0] = '"';
+    memcpy(buf + 1, s.data, s.len);
+    buf[s.len + 1] = '"';
+    buf[need] = '\0';
+    return (Str){ buf, buf, need, 0 };
+}
+
+static inline Str json_stringify_bool(bool b) {
+    return b ? str_lit("true") : str_lit("false");
+}
+
+/* ─── Regex (POSIX) ─────────────────────────────────────────────── */
+
+#include <regex.h>
+
+/* str.match(pattern) — returns first match or Str with null data */
+static inline Str str_match(Str s, Str pattern) {
+    char pat[1024];
+    int plen = pattern.len < 1023 ? pattern.len : 1023;
+    memcpy(pat, pattern.data, plen);
+    pat[plen] = '\0';
+
+    char src[s.len + 1];
+    memcpy(src, s.data, s.len);
+    src[s.len] = '\0';
+
+    regex_t re;
+    if (regcomp(&re, pat, REG_EXTENDED) != 0) return (Str){0};
+
+    regmatch_t m;
+    if (regexec(&re, src, 1, &m, 0) != 0) {
+        regfree(&re);
+        return (Str){0};
+    }
+    regfree(&re);
+    int start = m.rm_so;
+    int end = m.rm_eo;
+    return str_slice(s, start, end);
+}
+
+/* str.search(pattern) — returns index of first match or -1 */
+static inline double str_search(Str s, Str pattern) {
+    char pat[1024];
+    int plen = pattern.len < 1023 ? pattern.len : 1023;
+    memcpy(pat, pattern.data, plen);
+    pat[plen] = '\0';
+
+    char src[s.len + 1];
+    memcpy(src, s.data, s.len);
+    src[s.len] = '\0';
+
+    regex_t re;
+    if (regcomp(&re, pat, REG_EXTENDED) != 0) return -1;
+
+    regmatch_t m;
+    if (regexec(&re, src, 1, &m, 0) != 0) {
+        regfree(&re);
+        return -1;
+    }
+    regfree(&re);
+    return (double)m.rm_so;
+}
 
 /* ─── Debug & Crash Handling ─────────────────────────────────────── */
 
