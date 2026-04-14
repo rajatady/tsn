@@ -62,5 +62,5 @@ export function describeParameter(
     }
   }
 
-  return { name, tsType, cType, aliases }
+  return { name, tsType, cType, aliases, hasDefault: !!p.initializer }
 }

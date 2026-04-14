@@ -3,6 +3,7 @@ import * as ts from 'typescript'
 import { emitArrayMethod } from './builtins-arrays.js'
 import { emitHostedBuiltinCall } from './builtins-hosted.js'
 import { emitStringMethod } from './builtins-strings.js'
+import type { FuncSig } from './func_sig.js'
 import type { ClassDef, StructDef } from './types.js'
 import { isNullableCapableTypeName, isNullablePrimitive, makeNullableType, nullableBaseType } from './types.js'
 
@@ -26,6 +27,7 @@ export interface ExprEmitterContext {
   arrayTypes: Set<string>
   structs: StructDef[]
   lambdas: string[]
+  funcSigs: Map<string, FuncSig>
 }
 
 /**
@@ -219,14 +221,31 @@ export function emitCall(ctx: ExprEmitterContext, node: ts.CallExpression): stri
   const hostedBuiltin = emitHostedBuiltinCall(ctx, node)
   if (hostedBuiltin) return hostedBuiltin
 
+  /*
+   * [language/functions :: default-parameters]
+   * When the caller provides fewer arguments than the function declares,
+   * the compiler fills in default values from the function signature.
+   * Since: 0.2.0
+   */
   const name = ctx.emitExpr(node.expression)
-  const args = node.arguments.map(a => {
+  const emittedArgs = node.arguments.map(a => {
     if (ts.isIdentifier(a) && ctx.builderVars.has(a.text)) {
       return `strbuf_to_heap_str(&_b_${a.text})`
     }
     return ctx.emitExpr(a)
-  }).join(', ')
-  return `${name}(${args})`
+  })
+
+  // Fill in default parameter values for omitted arguments
+  const fnName = ts.isIdentifier(node.expression) ? node.expression.text : null
+  const sig = fnName ? ctx.funcSigs.get(fnName) : null
+  if (sig && emittedArgs.length < sig.params.length) {
+    for (let i = emittedArgs.length; i < sig.params.length; i++) {
+      const p = sig.params[i]
+      if (p.defaultExpr) emittedArgs.push(p.defaultExpr)
+    }
+  }
+
+  return `${name}(${emittedArgs.join(', ')})`
 }
 
 export function emitConsoleLog(ctx: ExprEmitterContext, args: ts.NodeArray<ts.Expression>): string {

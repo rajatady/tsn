@@ -58,8 +58,11 @@ export function emitFunction(ctx: FunctionEmitContext, node: ts.FunctionDeclarat
   const params: FuncSig['params'] = []
   const paramStrs: string[] = []
   const paramInfos = node.parameters.map((p, index) => ctx.describeParameter(p, index))
-  for (const info of paramInfos) {
-    params.push({ name: info.name, tsType: info.tsType, cType: info.cType })
+  for (let i = 0; i < paramInfos.length; i++) {
+    const info = paramInfos[i]
+    const paramDecl = node.parameters[i]
+    const defaultExpr = paramDecl.initializer ? ctx.emitExpr(paramDecl.initializer) : undefined
+    params.push({ name: info.name, tsType: info.tsType, cType: info.cType, defaultExpr })
     paramStrs.push(`${info.cType} ${info.name}`)
     ctx.varTypes.set(info.name, info.tsType)
     for (const alias of info.aliases) ctx.varTypes.set(alias.name, alias.tsType)

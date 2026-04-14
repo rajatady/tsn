@@ -48,6 +48,7 @@ export interface ParamInfo {
   tsType: string
   cType: string
   aliases: ParamAlias[]
+  hasDefault: boolean
 }
 
 export interface TypeResolutionContext {
