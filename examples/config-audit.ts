@@ -5,39 +5,12 @@
  * summary.
  */
 
-interface Entry {
-  key: string
-  value: string
-}
-
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
 function readStdin(): string {
   const fs = require("fs");
   return fs.readFileSync("/dev/stdin", "utf-8");
-}
-
-function parseEntries(raw: string): Entry[] {
-  const entries: Entry[] = []
-  for (const rawLine of raw.split("\n")) {
-    const line: string = rawLine.trim()
-    if (line.length === 0 || line.startsWith("#")) continue
-    const eq: number = line.indexOf("=")
-    if (eq === -1) continue
-    const entry: Entry = {
-      key: line.slice(0, eq).trim().toUpperCase(),
-      value: line.slice(eq + 1).trim(),
-    }
-    entries.push(entry)
-  }
-  return entries
-}
-
-function valueFor(entries: Entry[], key: string): string {
-  const idx: number = entries.findIndex((entry: Entry): boolean => entry.key === key)
-  if (idx === -1) return ""
-  return entries[idx].value
 }
 
 function csvValues(raw: string): string[] {
@@ -56,10 +29,18 @@ function boolText(value: boolean): string {
 }
 
 function main(): void {
-  const entries: Entry[] = parseEntries(readStdin())
-  const env: string = valueFor(entries, "APP_ENV").toUpperCase()
-  const featureFlags: string[] = csvValues(valueFor(entries, "FEATURE_FLAGS"))
-  const origins: string[] = csvValues(valueFor(entries, "ALLOWED_ORIGINS"))
+  const config = new Map<string, string>()
+  for (const rawLine of readStdin().split("\n")) {
+    const line: string = rawLine.trim()
+    if (line.length === 0 || line.startsWith("#")) continue
+    const eq: number = line.indexOf("=")
+    if (eq === -1) continue
+    config.set(line.slice(0, eq).trim().toUpperCase(), line.slice(eq + 1).trim())
+  }
+
+  const env: string = (config.get("APP_ENV") ?? "").toUpperCase()
+  const featureFlags: string[] = csvValues(config.get("FEATURE_FLAGS") ?? "")
+  const origins: string[] = csvValues(config.get("ALLOWED_ORIGINS") ?? "")
   const required: string[] = [
     "APP_ENV",
     "API_BASE_URL",
@@ -67,10 +48,10 @@ function main(): void {
     "SESSION_COOKIE_SECURE",
   ]
 
-  const hasAllRequired: boolean = required.every((key: string): boolean => valueFor(entries, key).length > 0)
-  const firstMissingIdx: number = required.findIndex((key: string): boolean => valueFor(entries, key).length === 0)
-  const auditEnabled: boolean = valueFor(entries, "ENABLE_AUDIT_LOG").toLowerCase() === "true"
-  const secureCookies: boolean = valueFor(entries, "SESSION_COOKIE_SECURE").toLowerCase() === "true"
+  const hasAllRequired: boolean = required.every((key: string): boolean => (config.get(key) ?? "").length > 0)
+  const firstMissingIdx: number = required.findIndex((key: string): boolean => (config.get(key) ?? "").length === 0)
+  const auditEnabled: boolean = (config.get("ENABLE_AUDIT_LOG") ?? "").toLowerCase() === "true"
+  const secureCookies: boolean = (config.get("SESSION_COOKIE_SECURE") ?? "").toLowerCase() === "true"
   const hasRiskyFlags: boolean = featureFlags.some((flag: string): boolean => {
     return flag.startsWith("alpha") || flag.endsWith("_dev") || flag.includes("debug")
   })

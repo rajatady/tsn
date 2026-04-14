@@ -23,17 +23,18 @@ function readStdin(): string {
 function parseSnapshots(raw: string): ServiceSnapshot[] {
   const rows: ServiceSnapshot[] = []
   const lines: string[] = raw.split("\n")
-  for (let i: number = 1; i < lines.length; i = i + 1) {
+  for (let i: number = 1; i < lines.length; i += 1) {
     const line: string = lines[i].trim()
     if (line.length === 0) continue
     const parts: string[] = line.split(",")
     if (parts.length < 5) continue
+    const [svc, uptimeStr, errStr, p95Str, deployStr] = parts
     const row: ServiceSnapshot = {
-      service: parts[0].trim().toLowerCase(),
-      uptime: parseFloat(parts[1].trim()),
-      errorRate: parseFloat(parts[2].trim()),
-      p95ms: parseInt(parts[3].trim()),
-      deploys: parseInt(parts[4].trim()),
+      service: svc.trim().toLowerCase(),
+      uptime: parseFloat(uptimeStr.trim()),
+      errorRate: parseFloat(errStr.trim()),
+      p95ms: parseInt(p95Str.trim()),
+      deploys: parseInt(deployStr.trim()),
     }
     rows.push(row)
   }

@@ -22,16 +22,17 @@ function readStdin(): string {
 function parseRows(raw: string): SaleRow[] {
   const rows: SaleRow[] = []
   const lines: string[] = raw.split("\n")
-  for (let i: number = 1; i < lines.length; i = i + 1) {
+  for (let i: number = 1; i < lines.length; i += 1) {
     const line: string = lines[i].trim()
     if (line.length === 0) continue
     const parts: string[] = line.split(",")
     if (parts.length < 4) continue
+    const [region, revenueStr, costStr, ordersStr] = parts
     const row: SaleRow = {
-      region: parts[0].trim(),
-      revenue: parseFloat(parts[1].trim()),
-      cost: parseFloat(parts[2].trim()),
-      orders: parseInt(parts[3].trim()),
+      region: region.trim(),
+      revenue: parseFloat(revenueStr.trim()),
+      cost: parseFloat(costStr.trim()),
+      orders: parseInt(ordersStr.trim()),
     }
     rows.push(row)
   }

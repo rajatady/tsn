@@ -15,11 +15,6 @@ interface LogEntry {
   tagLabel: string;
 }
 
-interface ServiceStat {
-  service: string;
-  count: number;
-}
-
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
@@ -80,20 +75,6 @@ function isActionable(entry: LogEntry): boolean {
   return false;
 }
 
-function bumpService(stats: ServiceStat[], service: string): ServiceStat[] {
-  const next: ServiceStat[] = stats.slice(0);
-  const idx: number = next.findIndex((s: ServiceStat): boolean => s.service === service);
-  if (idx === -1) {
-    const stat: ServiceStat = { service: service, count: 1 };
-    next.push(stat);
-    return next;
-  }
-  const current: ServiceStat = next[idx];
-  const updated: ServiceStat = { service: current.service, count: current.count + 1 };
-  next[idx] = updated;
-  return next;
-}
-
 function parseEntries(raw: string): LogEntry[] {
   const entries: LogEntry[] = [];
   for (const line of raw.split("\n")) {
@@ -108,13 +89,37 @@ function printSummary(entries: LogEntry[]): void {
   const errorCount: number = entries.count((e: LogEntry): boolean => e.level === "ERROR");
   const warnCount: number = entries.count((e: LogEntry): boolean => e.level === "WARN");
 
-  let serviceStats: ServiceStat[] = [];
+  const serviceCounts = new Map<string, number>();
   for (const entry of actionable) {
-    serviceStats = bumpService(serviceStats, entry.service);
+    const prev: number = serviceCounts.get(entry.service) ?? 0;
+    serviceCounts.set(entry.service, prev + 1);
   }
-  serviceStats.sort((a: ServiceStat, b: ServiceStat): number => b.count - a.count);
 
-  const serviceNames: string[] = serviceStats.map((s: ServiceStat): string => s.service);
+  // Build sorted service names by count (descending)
+  const serviceNames: string[] = [];
+  const serviceCountVals: number[] = [];
+  for (const entry of actionable) {
+    if (!serviceNames.includes(entry.service)) {
+      serviceNames.push(entry.service);
+      serviceCountVals.push(serviceCounts.get(entry.service) ?? 0);
+    }
+  }
+  // Sort by count descending using parallel arrays (Map iteration not yet supported)
+  const sorted: string[] = [];
+  const tempCounts: number[] = serviceCountVals.slice(0);
+  for (let i: number = 0; i < serviceNames.length; i += 1) {
+    let bestIdx: number = -1;
+    let bestVal: number = -1;
+    for (let j: number = 0; j < serviceNames.length; j += 1) {
+      if (tempCounts[j] > bestVal) {
+        bestIdx = j;
+        bestVal = tempCounts[j];
+      }
+    }
+    if (bestIdx === -1) break;
+    sorted.push(serviceNames[bestIdx]);
+    tempCounts[bestIdx] = -1;
+  }
 
   console.log("=== LOG TRIAGE ===");
   console.log("Total lines: " + String(entries.length));
@@ -122,7 +127,7 @@ function printSummary(entries: LogEntry[]): void {
   console.log("Errors: " + String(errorCount));
   console.log("Warnings: " + String(warnCount));
   console.log("");
-  console.log("Hot services: " + serviceNames.join(", "));
+  console.log("Hot services: " + sorted.join(", "));
   console.log("");
 
   for (const entry of actionable) {

@@ -28,12 +28,13 @@ function parseLogs(raw: string): RequestLog[] {
     if (line.length === 0 || line.startsWith("#")) continue
     const parts: string[] = line.split("|")
     if (parts.length < 6) continue
+    const [, method, path, statusStr, latencyStr, service] = parts
     const log: RequestLog = {
-      method: parts[1].trim().toUpperCase(),
-      path: parts[2].trim().toLowerCase(),
-      status: parseInt(parts[3].trim()),
-      latencyMs: parseInt(parts[4].trim()),
-      service: parts[5].trim().toLowerCase(),
+      method: method.trim().toUpperCase(),
+      path: path.trim().toLowerCase(),
+      status: parseInt(statusStr.trim()),
+      latencyMs: parseInt(latencyStr.trim()),
+      service: service.trim().toLowerCase(),
     }
     logs.push(log)
   }
@@ -45,31 +46,34 @@ function serviceErrorCount(logs: RequestLog[], service: string): number {
 }
 
 function topPaths(logs: RequestLog[]): string[] {
-  const paths: string[] = []
-  const counts: number[] = []
+  const counts = new Map<string, number>()
   for (const log of logs) {
-    const idx: number = paths.findIndex((value: string): boolean => value === log.path)
-    if (idx === -1) {
+    const prev: number = counts.get(log.path) ?? 0
+    counts.set(log.path, prev + 1)
+  }
+
+  const paths: string[] = []
+  const pathCounts: number[] = []
+  for (const log of logs) {
+    if (!paths.includes(log.path)) {
       paths.push(log.path)
-      counts.push(1)
-    } else {
-      counts[idx] = counts[idx] + 1
+      pathCounts.push(counts.get(log.path) ?? 0)
     }
   }
 
   const result: string[] = []
-  for (let picks: number = 0; picks < 3 && picks < paths.length; picks = picks + 1) {
+  for (let picks: number = 0; picks < 3 && picks < paths.length; picks += 1) {
     let bestIdx: number = -1
     let bestCount: number = -1
-    for (let j: number = 0; j < paths.length; j = j + 1) {
-      if (counts[j] > bestCount) {
+    for (let j: number = 0; j < paths.length; j += 1) {
+      if (pathCounts[j] > bestCount) {
         bestIdx = j
-        bestCount = counts[j]
+        bestCount = pathCounts[j]
       }
     }
     if (bestIdx === -1) break
     result.push(paths[bestIdx])
-    counts[bestIdx] = -1
+    pathCounts[bestIdx] = -1
   }
   return result
 }
