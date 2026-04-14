@@ -60,6 +60,33 @@ function emitNumberArrayReduction(objExpr: string, method: string, id: number): 
   return null
 }
 
+/**
+ * Array methods available on every `T[]` value in TSN.
+ *
+ * Transformation methods (map, filter, sort, reverse) return new arrays.
+ * Mutation methods (push, pop) modify in place. Predicate methods (some,
+ * every, findIndex, count) scan with early exit. Numeric reductions
+ * (sum, min, max) work on number[] only.
+ *
+ * @page stdlib/arrays
+ * @section overview
+ * @syntax arr.push(item) | arr.pop() | arr.filter(fn) | arr.map(fn) | arr.sort(fn) | arr.reverse() | arr.join(",") | arr.includes(x)
+ * @compilesTo Inline C loops for most methods. sort uses qsort with a
+ * lifted comparator. push/pop modify the array header in place. reverse
+ * creates a new array. Predicate callbacks are inlined at the call site.
+ * @example
+ * const nums: number[] = []
+ * nums.push(3)
+ * nums.push(1)
+ * nums.push(2)
+ * const sorted = nums.sort((a: number, b: number): number => a - b)
+ * const doubled = nums.map((n: number): number => n * 2)
+ * const last = nums.pop()
+ * const rev = nums.reverse()
+ * @limitation Callbacks must be arrow functions (not function identifiers).
+ * @limitation No flat(), concat(), or splice().
+ * @since 0.1.0
+ */
 export function emitArrayMethod(
   ctx: BuiltinEmitterContext,
   objExpr: string,

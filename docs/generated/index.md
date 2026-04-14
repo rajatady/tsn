@@ -6,10 +6,11 @@ Generated from inline source comments. This is the single source of truth.
 
 | Page | Description |
 |------|-------------|
-| [Array Methods](./stdlib-arrays.md) | No entries |
+| [Array Methods](./stdlib-arrays.md) | 1 entries |
+| [collections](./stdlib-collections.md) | 2 entries |
 | [File System (@tsn/fs)](./stdlib-fs.md) | 12 entries |
 | [HTTP (@tsn/http)](./stdlib-http.md) | 8 entries |
-| [String Methods](./stdlib-strings.md) | No entries |
+| [String Methods](./stdlib-strings.md) | 1 entries |
 | [Timers](./stdlib-timers.md) | No entries |
 
 ## Language Reference
