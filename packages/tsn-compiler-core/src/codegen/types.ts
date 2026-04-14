@@ -71,9 +71,18 @@ export function makeNullableType(tsType: string): string {
 export function isNullableCapableTypeName(tsType: string, ctx?: Pick<TypeResolutionContext, 'hasClassType'>): boolean {
   const base = nullableBaseType(tsType) ?? tsType
   if (base === 'string') return true
+  if (base === 'number') return true
+  if (base === 'boolean') return true
   if (base.endsWith('[]')) return true
   if (ctx?.hasClassType(base)) return true
   return false
+}
+
+/** Returns true only for nullable primitive types: number? or boolean? */
+export function isNullablePrimitive(tsType: string): boolean {
+  const base = nullableBaseType(tsType)
+  if (!base) return false
+  return base === 'number' || base === 'boolean'
 }
 
 export function tsTypeName(typeNode: ts.TypeNode | undefined): string {
@@ -141,7 +150,11 @@ export function arrayCElemType(tsType: string): string {
 
 export function tsTypeNameToC(tsType: string, ctx: TypeResolutionContext, fallback = 'double'): string {
   const nullableBase = nullableBaseType(tsType)
-  if (nullableBase) return tsTypeNameToC(nullableBase, ctx, fallback)
+  if (nullableBase) {
+    if (nullableBase === 'number') return 'NullableDouble'
+    if (nullableBase === 'boolean') return 'NullableBool'
+    return tsTypeNameToC(nullableBase, ctx, fallback)
+  }
   const promisedInner = promiseInnerType(tsType)
   if (promisedInner) {
     const valueCType = tsTypeNameToC(promisedInner, ctx)
@@ -176,7 +189,10 @@ export function tsTypeToC(typeNode: ts.TypeNode | undefined, ctx: TypeResolution
 }
 
 export function zeroValueForTsType(tsType: string, ctx: TypeResolutionContext): string {
-  const base = nullableBaseType(tsType) ?? tsType
+  const nullable = nullableBaseType(tsType)
+  if (nullable === 'number') return '(NullableDouble){0, false}'
+  if (nullable === 'boolean') return '(NullableBool){false, false}'
+  const base = nullable ?? tsType
   if (base === 'number') return '0'
   if (base === 'boolean') return 'false'
   if (base === 'string') return '(Str){0}'

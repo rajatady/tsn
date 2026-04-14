@@ -59,6 +59,8 @@ export function validate(sourceFile: ts.SourceFile): ValidationError[] {
 
   function isSupportedNullableBaseTypeNode(node: ts.TypeNode): boolean {
     if (node.kind === ts.SyntaxKind.StringKeyword) return true
+    if (node.kind === ts.SyntaxKind.NumberKeyword) return true
+    if (node.kind === ts.SyntaxKind.BooleanKeyword) return true
     if (ts.isArrayTypeNode(node)) return true
     if (ts.isTypeReferenceNode(node)) return classNames.has(node.typeName.getText())
     return false

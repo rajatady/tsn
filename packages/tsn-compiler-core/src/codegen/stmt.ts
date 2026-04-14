@@ -1,7 +1,19 @@
+/**
+ * TSN Statement Codegen
+ *
+ * Emits C code for TypeScript statements: control flow, loops, variable
+ * declarations, try/catch, return, throw, switch. Each handler maps the
+ * TS AST node to equivalent C with scope cleanup and ARC release calls.
+ *
+ * @page language/control-flow
+ * @section overview
+ */
+
 import * as ts from 'typescript'
 
 import { emitThrownValue, type CatchTarget } from './exceptions.js'
 import type { ClassDef } from './types.js'
+import { isNullablePrimitive, nullableBaseType } from './types.js'
 
 export interface StatementEmitterContext {
   builderVars: Set<string>
@@ -41,16 +53,50 @@ export interface StatementEmitterContext {
   zeroValueForTsType(tsType: string): string
 }
 
+/**
+ * Control flow in TSN maps directly to C — no hidden transformations,
+ * no implicit async boundaries. What you write is what runs.
+ *
+ * Supported: if/else, for, for-of, while, do-while, switch/case,
+ * break, continue, return, throw, try/catch/finally.
+ *
+ * @page language/control-flow
+ * @section overview
+ * @syntax if (cond) { } | for (let i = 0; i < n; i++) { } | while (cond) { } | do { } while (cond) | switch (n) { case 1: break } | for (const x of arr) { }
+ * @compilesTo Direct C equivalents. for-of becomes an indexed for loop over the array's .data/.len fields. Scope-local variables are released at the end of each iteration via ARC.
+ * @example
+ * for (const entry of logs) {
+ *   if (entry.level === "ERROR") continue
+ *   console.log(entry.message)
+ * }
+ *
+ * let retries: number = 0
+ * do {
+ *   retries = retries + 1
+ * } while (retries < 3)
+ * @limitation for-in is not supported — only for-of over arrays.
+ * @limitation switch expressions are cast to int — no string switch.
+ * @limitation Labeled break/continue not supported.
+ * @since 0.1.0
+ */
 export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: string[]): void {
   const sl = ctx.srcLine(node)
   if (sl) out.push(sl.trimEnd())
 
+  /*
+   * [language/variables :: declarations]
+   * Syntax:     const x: number = 42; let name: string = "Alice"
+   * Compiles to: double x = 42; Str name = str_lit("Alice");
+   * Limitation: var is banned — use let or const.
+   * Since: 0.1.0
+   */
   if (ts.isVariableStatement(node)) {
     for (const d of node.declarationList.declarations) emitVarDecl(ctx, d, out)
     return
   }
 
   if (ts.isExpressionStatement(node)) {
+    // StrBuf builder: result = "" clears the buffer
     if (
       ts.isBinaryExpression(node.expression) &&
       node.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
@@ -65,6 +111,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
         return
       }
 
+      // StrBuf builder: result = result + "piece" appends to the buffer
       if (ts.isBinaryExpression(rhs) && ctx.isBuilderConcat(rhs, vn)) {
         const pieces: ts.Node[] = []
         ctx.flattenBuilderConcat(rhs, vn, pieces)
@@ -83,6 +130,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
       }
     }
 
+    // Class field assignment via this.field = value
     if (
       ts.isBinaryExpression(node.expression) &&
       node.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
@@ -109,6 +157,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
         return
       }
 
+      // Class instance field assignment: obj.field = value
       const lhsObjType = ctx.exprType(lhs.expression)
       if (lhsObjType && ctx.classDefs.has(lhsObjType)) {
         const obj = ctx.emitExpr(lhs.expression)
@@ -119,6 +168,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
       }
     }
 
+    // String reassignment: release old refcount before overwriting
     if (
       ts.isBinaryExpression(node.expression) &&
       node.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
@@ -135,6 +185,7 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
         out.push(ctx.pad() + `str_release(&_old${tmpId});`)
         return
       }
+      // Array reassignment: release old refcount before overwriting
       if (varType?.endsWith('[]')) {
         const inner = varType.replace('[]', '')
         const tmpId = ctx.nextTempId()
@@ -153,6 +204,12 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/control-flow :: if-else]
+   * Syntax:      if (cond) { ... } else if (cond2) { ... } else { ... }
+   * Compiles to: Direct C if/else. Condition expressions are parenthesized.
+   * Since: 0.1.0
+   */
   if (ts.isIfStatement(node)) {
     out.push(ctx.pad() + `if (${ctx.emitExpr(node.expression)}) {`)
     ctx.indent++
@@ -175,6 +232,14 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/control-flow :: while]
+   * Syntax:      while (condition) { body }
+   * Compiles to: C while loop. StrBuf builder detection promotes string
+   *              concat variables to stack buffers. Scope cleanup releases
+   *              ARC vars declared inside the loop body at end of each iteration.
+   * Since: 0.1.0
+   */
   if (ts.isWhileStatement(node)) {
     const builders = ts.isBlock(node.statement) ? ctx.detectBuilders(node.statement) : []
     for (const v of builders) {
@@ -198,6 +263,15 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/control-flow :: return]
+   * Syntax:      return expr
+   * Compiles to: Pops any active try frames, releases all ARC-tracked local
+   *              variables (except the returned one), then emits C return.
+   *              Async functions wrap the return value in a resolved promise.
+   *              Returning null/undefined emits the type's zero value.
+   * Since: 0.1.0
+   */
   if (ts.isReturnStatement(node)) {
     const returnedVar = node.expression && ts.isIdentifier(node.expression) ? node.expression.text : null
     const nullishReturn = !!node.expression &&
@@ -222,6 +296,14 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/exceptions :: throw]
+   * Syntax:      throw "error message"
+   * Compiles to: ts_exception_throw(str_lit("...")). Inside async
+   *              functions, wraps as a rejected promise return instead.
+   * Limitation:  Thrown values must be string-shaped. No Error objects.
+   * Since: 0.1.0
+   */
   if (ts.isThrowStatement(node) && node.expression) {
     const thrownExpr = emitThrownValue(ctx, node.expression)
     if (ctx.currentCatchTarget) {
@@ -236,6 +318,17 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/exceptions :: try-catch]
+   * Syntax:      try { ... } catch (err) { console.log(err) } finally { ... }
+   * Compiles to: Uses setjmp/longjmp via TSExceptionFrame. The try block
+   *              pushes a frame; on exception, longjmp jumps to the catch.
+   *              Catch variable is always string type. Finally block is emitted
+   *              inline after both try and catch paths.
+   * Limitation:  No return/break/continue inside try/catch when finally present.
+   *              No throw inside catch/finally when finally present.
+   * Since: 0.1.0
+   */
   if (ts.isTryStatement(node)) {
     const tryId = ctx.nextTempId()
     const endLabel = `_ts_try_end_${tryId}`
@@ -300,6 +393,13 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/control-flow :: for]
+   * Syntax:      for (let i: number = 0; i < n; i++) { body }
+   * Compiles to: Direct C for loop. Loop variable is declared in the
+   *              initializer. Scope cleanup runs at end of each iteration.
+   * Since: 0.1.0
+   */
   if (ts.isForStatement(node)) {
     let init = ''
     if (node.initializer && ts.isVariableDeclarationList(node.initializer)) {
@@ -320,6 +420,18 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/control-flow :: for-of]
+   * Syntax:      for (const item of items) { body }
+   * Compiles to: Indexed C for loop: for (int _i = 0; _i < arr.len; _i++).
+   *              Non-identifier iterables (e.g. function calls) are hoisted
+   *              to a temp to avoid re-evaluation per iteration. Hoisted temps
+   *              are released after the loop.
+   * Limitation:  Only arrays are iterable. No for-of over strings, Maps, Sets.
+   *              No destructuring in the loop variable (not yet).
+   * Example:     for (const name of names) { console.log(name) }
+   * Since: 0.1.0
+   */
   if (ts.isForOfStatement(node)) {
     const arrExpr = ctx.emitExpr(node.expression)
     const arrType = ctx.exprType(node.expression)
@@ -336,9 +448,6 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     ctx.varTypes.set(varName, innerType)
 
     const id = ctx.nextTempId()
-    // Hoist the iterable into a temp so function calls (e.g. str_split) aren't
-    // re-evaluated on every iteration. Skip the hoist when arrExpr is already
-    // a bare identifier so we don't churn the codegen for the common case.
     const isSimple = /^[a-zA-Z_]\w*$/.test(arrExpr)
     const arrRef = isSimple ? arrExpr : `_for${id}`
     if (!isSimple) {
@@ -360,6 +469,47 @@ export function emitStmt(ctx: StatementEmitterContext, node: ts.Node, out: strin
     return
   }
 
+  /*
+   * [language/control-flow :: do-while]
+   * Syntax:      do { body } while (condition)
+   * Compiles to: C do-while with identical structure. Builder detection
+   *              and scope cleanup run the same as while loops. Body always
+   *              executes at least once.
+   * Example:     let i: number = 0; do { i = i + 1 } while (i < 10)
+   * Since: 0.2.0
+   */
+  if (ts.isDoStatement(node)) {
+    const builders = ts.isBlock(node.statement) ? ctx.detectBuilders(node.statement) : []
+    for (const v of builders) {
+      out.push(ctx.pad() + `STRBUF(_b_${v}, 4096);`)
+      out.push(ctx.pad() + `strbuf_add_str(&_b_${v}, ${v});`)
+      ctx.builderVars.add(v)
+    }
+    const varsBefore = new Set(ctx.varTypes.keys())
+
+    out.push(ctx.pad() + `do {`)
+    ctx.indent++
+    emitBlock(ctx, node.statement, out)
+    ctx.emitScopeCleanup(varsBefore, out, ts.isBlock(node.statement) ? node.statement : undefined)
+    ctx.indent--
+    out.push(ctx.pad() + `} while (${ctx.emitExpr(node.expression)});`)
+    for (const v of builders) {
+      out.push(ctx.pad() + `${v} = strbuf_to_heap_str(&_b_${v});`)
+      out.push(ctx.pad() + `strbuf_free(&_b_${v});`)
+      ctx.builderVars.delete(v)
+    }
+    return
+  }
+
+  /*
+   * [language/control-flow :: switch]
+   * Syntax:      switch (expr) { case 1: ... break; default: ... }
+   * Compiles to: C switch on (int)(expr). Cases must be numeric literals.
+   *              Fall-through works like C — use break to prevent it.
+   * Limitation:  Switch expression is cast to int. No string switch.
+   * Example:     switch (status) { case 200: console.log("ok"); break }
+   * Since: 0.1.0
+   */
   if (ts.isSwitchStatement(node)) {
     out.push(ctx.pad() + `switch ((int)(${ctx.emitExpr(node.expression)})) {`)
     ctx.indent++
@@ -384,6 +534,35 @@ export function emitBlock(ctx: StatementEmitterContext, node: ts.Node, out: stri
   }
 }
 
+/**
+ * Use `const` and `let` to declare variables. `var` is banned.
+ *
+ * Types can be explicit or inferred from the initializer. When the
+ * compiler can't infer the type, it defaults to `number`.
+ *
+ * Variables used by functions should have explicit type annotations
+ * to ensure correct codegen.
+ *
+ * @page language/variables
+ * @section declarations
+ * @syntax const x: number = 42 | let name: string = "Alice" | const arr: number[] = []
+ * @compilesTo C variable declarations with the mapped type. Arrays
+ * initialize via TArr_new(). Object literals become C struct initializers.
+ * Nullable primitives (number | null) use tagged structs with a has_value flag.
+ * @example
+ * const count: number = 42
+ * let name: string = "Alice"
+ * const scores: number[] = []
+ * const config: Config = { host: "localhost", port: 8080 }
+ *
+ * // Nullable primitives
+ * const maybeCount: number | null = null
+ * const result: number = maybeCount ?? 0
+ * @limitation var is banned — use let or const.
+ * @limitation Destructuring declarations are not yet supported.
+ * @limitation Type inference defaults to number when ambiguous — prefer explicit annotations.
+ * @since 0.1.0
+ */
 export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDeclaration, out: string[]): void {
   const name = decl.name.getText()
   const tsType = decl.type ? ctx.tsTypeName(decl.type) : ctx.inferVarTsType(decl)
@@ -392,8 +571,10 @@ export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDecla
   ctx.funcLocalVars.set(name, tsType)
   if (ctx.funcTopLevelVars.has(name)) ctx.funcDeclaredSoFar.add(name)
 
+  // Node compat: require() calls are skipped (no runtime module system)
   if (decl.initializer?.getText().includes('require(')) return
 
+  // stdin: fs.readFileSync mapped to read_stdin()
   if (decl.initializer && ts.isCallExpression(decl.initializer) && decl.initializer.getText().includes('readFileSync')) {
     ctx.varTypes.set(name, 'string')
     out.push(ctx.pad() + 'OwnedStr _stdin_owned = read_stdin();')
@@ -401,6 +582,7 @@ export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDecla
     return
   }
 
+  // JSON.parse: generates a typed parser for the target interface
   if (decl.initializer && ts.isCallExpression(decl.initializer) && decl.initializer.getText().includes('JSON.parse')) {
     ctx.needsJsonParser = true
     ctx.jsonParseTargetType = tsType
@@ -411,6 +593,7 @@ export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDecla
     return
   }
 
+  // Empty array literal: T[] = []
   if (decl.initializer && ts.isArrayLiteralExpression(decl.initializer) && decl.initializer.elements.length === 0) {
     const inner = tsType.replace('[]', '')
     const arrTypeName = ctx.arrayTypeName(inner)
@@ -418,6 +601,7 @@ export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDecla
     return
   }
 
+  // Non-empty array literal: T[] = [a, b, c]
   if (decl.initializer && ts.isArrayLiteralExpression(decl.initializer) && decl.initializer.elements.length > 0) {
     const inner = tsType.replace('[]', '')
     const arrTypeName = ctx.arrayTypeName(inner)
@@ -430,19 +614,26 @@ export function emitVarDecl(ctx: StatementEmitterContext, decl: ts.VariableDecla
     return
   }
 
+  // Object literal: Interface = { field: value }
   if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
     out.push(ctx.pad() + `${cType} ${name} = (${cType})${ctx.emitObjLit(decl.initializer, tsType)};`)
     return
   }
 
   if (!decl.initializer) {
+    // Uninitialized: use type-appropriate zero value
     if (tsType.endsWith('?')) out.push(ctx.pad() + `${cType} ${name} = ${ctx.zeroValueForTsType(tsType)};`)
     else if (cType === 'Str') out.push(ctx.pad() + `Str ${name} = str_lit("");`)
     else if (cType === 'double') out.push(ctx.pad() + `double ${name} = 0;`)
     else if (cType === 'bool') out.push(ctx.pad() + `bool ${name} = false;`)
     else out.push(ctx.pad() + `${cType} ${name} = {0};`)
   } else if (decl.initializer.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(decl.initializer) && decl.initializer.text === 'undefined')) {
+    // Explicit null/undefined: use type's zero value (nullable primitives get has_value=false)
     out.push(ctx.pad() + `${cType} ${name} = ${ctx.zeroValueForTsType(tsType)};`)
+  } else if (isNullablePrimitive(tsType)) {
+    // Nullable primitive with a value: wrap in tagged struct { value, has_value=true }
+    const val = ctx.emitExpr(decl.initializer)
+    out.push(ctx.pad() + `${cType} ${name} = (${cType}){${val}, true};`)
   } else {
     out.push(ctx.pad() + `${cType} ${name} = ${ctx.emitExpr(decl.initializer)};`)
   }

@@ -4,7 +4,7 @@ import { emitArrayMethod } from './builtins-arrays.js'
 import { emitHostedBuiltinCall } from './builtins-hosted.js'
 import { emitStringMethod } from './builtins-strings.js'
 import type { ClassDef, StructDef } from './types.js'
-import { isNullableCapableTypeName, makeNullableType, nullableBaseType } from './types.js'
+import { isNullableCapableTypeName, isNullablePrimitive, makeNullableType, nullableBaseType } from './types.js'
 
 export interface ExprEmitterContext {
   builderVars: Set<string>
@@ -28,8 +28,19 @@ export interface ExprEmitterContext {
   lambdas: string[]
 }
 
+/**
+ * Emit a C expression that evaluates to true when the nullable value is null/undefined.
+ *
+ * Supported nullable types and their null representation:
+ *   number?   → NullableDouble { value, has_value } — check !has_value
+ *   boolean?  → NullableBool   { value, has_value } — check !has_value
+ *   string?   → Str with .data == NULL
+ *   T[]?      → TArr with .data == NULL
+ *   Class?    → pointer == NULL
+ */
 function nullishCheck(ctx: ExprEmitterContext, expr: string, tsType: string): string {
   const base = nullableBaseType(tsType) ?? tsType
+  if (base === 'number' || base === 'boolean') return `!${expr}.has_value`
   if (base === 'string') return `${expr}.data == NULL`
   if (base.endsWith('[]')) return `${expr}.data == NULL`
   return `${expr} == NULL`
@@ -258,13 +269,17 @@ export function emitBinary(ctx: ExprEmitterContext, node: ts.BinaryExpression): 
   const left = ctx.emitExpr(node.left)
   const right = ctx.emitExpr(node.right)
 
+  // Nullish coalescing: x ?? fallback
+  // For nullable primitives (number?, boolean?), unwrap .value from the tagged struct.
+  // For strings/arrays/classes the C type IS the value, no unwrap needed.
   if (op === ts.SyntaxKind.QuestionQuestionToken && lt) {
     const base = nullableBaseType(lt)
     if (base) {
       const tmpId = ctx.nextTempId()
       const tmpName = `_coalesce${tmpId}`
       const leftCType = ctx.tsTypeNameToC(lt, 'void')
-      return `({ ${leftCType} ${tmpName} = ${left}; ${nullishCheck(ctx, tmpName, lt)} ? ${right} : ${tmpName}; })`
+      const unwrap = isNullablePrimitive(lt) ? `${tmpName}.value` : tmpName
+      return `({ ${leftCType} ${tmpName} = ${left}; ${nullishCheck(ctx, tmpName, lt)} ? ${right} : ${unwrap}; })`
     }
   }
 
@@ -324,6 +339,11 @@ export function emitBinary(ctx: ExprEmitterContext, node: ts.BinaryExpression): 
         return `${left} = ${ctx.zeroValueForTsType(leftType)}`
       }
     }
+    const leftType = ctx.exprType(node.left)
+    if (leftType && isNullablePrimitive(leftType)) {
+      const leftCType = ctx.tsTypeNameToC(leftType, 'void')
+      return `${left} = (${leftCType}){${right}, true}`
+    }
     return `${left} = ${right}`
   }
 
@@ -348,6 +368,10 @@ export function emitBinary(ctx: ExprEmitterContext, node: ts.BinaryExpression): 
 
   if (op === ts.SyntaxKind.PercentToken) {
     return `fmod(${left}, ${right})`
+  }
+
+  if (op === ts.SyntaxKind.PercentEqualsToken) {
+    return `${left} = fmod(${left}, ${right})`
   }
 
   if (op === ts.SyntaxKind.AmpersandToken || op === ts.SyntaxKind.BarToken ||
@@ -376,6 +400,8 @@ export function emitBinary(ctx: ExprEmitterContext, node: ts.BinaryExpression): 
     [ts.SyntaxKind.BarBarToken]: '||',
     [ts.SyntaxKind.PlusEqualsToken]: '+=',
     [ts.SyntaxKind.MinusEqualsToken]: '-=',
+    [ts.SyntaxKind.AsteriskEqualsToken]: '*=',
+    [ts.SyntaxKind.SlashEqualsToken]: '/=',
   }
   return `(${left} ${opMap[op] || '?'} ${right})`
 }

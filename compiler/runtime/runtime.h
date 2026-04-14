@@ -484,4 +484,11 @@ static inline double ts_math_floor(double x) { return floor(x); }
 #include "debug.h"
 #include "crash.h"
 
+/* ─── Nullable Primitives ──────────────────────────────────────── */
+/* number | null and boolean | null use tagged structs since primitive
+ * C types (double, bool) have no natural null representation. */
+
+typedef struct { double value; bool has_value; } NullableDouble;
+typedef struct { bool value; bool has_value; } NullableBool;
+
 #endif /* TSN_RUNTIME_H */
